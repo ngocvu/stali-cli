@@ -166,7 +166,7 @@ program
   )
   .version(VERSION)
   .option("-k, --key <token>", "Stali API Token để xác thực trực tiếp")
-  .option("-m, --models", "Xem nhanh danh sách và bảng giá model thời gian thực")
+  .option("--models", "Xem nhanh danh sách và bảng giá model thời gian thực")
   .option("-r, --reset", "Xóa token đã lưu trong ~/.stali/config.json để đăng nhập lại")
   .option("--logout", "Đăng xuất / xóa token đã lưu")
   .action(async (options) => {
