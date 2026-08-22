@@ -9,11 +9,18 @@ import {
   OpenClawDetailMenu,
   OpenClawMenuAction,
 } from "./tools/OpenClawDetailMenu";
+import {
+  VsCodeAgentDetailMenu,
+  VsCodeAgentMenuAction,
+} from "./tools/VsCodeAgentDetailMenu";
+
+const VSCODE_AGENT_TOOLS = new Set(["cline", "roo", "kilo"]);
 
 export type ToolMenuAction =
   | ClaudeMenuAction
   | CodexMenuAction
   | OpenClawMenuAction
+  | VsCodeAgentMenuAction
   | GenericMenuAction;
 
 export interface ToolDetailMenuProps {
@@ -72,6 +79,16 @@ export const ToolDetailMenu: React.FC<ToolDetailMenuProps> = ({
         />
       );
     default:
+      if (VSCODE_AGENT_TOOLS.has(toolId)) {
+        return (
+          <VsCodeAgentDetailMenu
+            toolId={toolId}
+            model={genericModel}
+            apiKey={apiKey}
+            onSelectAction={onSelectAction}
+          />
+        );
+      }
       return (
         <GenericToolDetailMenu
           toolId={toolId}

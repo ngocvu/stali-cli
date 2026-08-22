@@ -46,7 +46,7 @@ async function main() {
   assert("--help exit 0", help.ok, help.detail);
 
   const ver = spawnSync(BUN, [CLI, "--version"], { encoding: "utf8" });
-  assert("--version = 1.6.0", ver.stdout?.trim() === "1.6.0", ver.stdout?.trim());
+  assert("--version = 1.7.0", ver.stdout?.trim() === "1.7.0", ver.stdout?.trim());
 
   // 2. Token validation (no network)
   const badToken = run("models bad token", ["--models", "-k", "sk-openai-fake"]);
@@ -171,7 +171,13 @@ async function main() {
     encoding: "utf8",
     env: process.env,
   });
-  assert("bin/stali.js chạy được", binCli.stdout?.trim() === "1.6.0");
+  assert("bin/stali.js chạy được", binCli.stdout?.trim() === "1.7.0");
+
+  const exportEnv = run("export-env claude", ["export-env", "claude", "-k", rawKey, "-f", "json"], envHome);
+  assert("export-env claude json", exportEnv.ok && /ANTHROPIC_BASE_URL/.test(exportEnv.detail || ""));
+
+  const doctorFixDry = run("doctor --fix dry-run", ["doctor", "--fix", "--dry-run", "-k", rawKey], envHome);
+  assert("doctor --fix dry-run", doctorFixDry.ok, doctorFixDry.detail?.slice(0, 200));
 
   const completion = run("completion bash", ["completion", "bash"]);
   assert("completion bash", completion.ok && /_stali_completion/.test(completion.detail || ""));

@@ -17,6 +17,7 @@ const SUBCOMMANDS = [
   "update",
   "configure",
   "configure-all",
+  "export-env",
   "restore",
   "completion",
   "ls",
@@ -36,7 +37,7 @@ const CONFIGURE_ALL_FLAGS = [
   "--skip-advanced",
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
-const DOCTOR_FLAGS = ["--json"];
+const DOCTOR_FLAGS = ["--json", "--fix", "--dry-run", "--force", "--tools"];
 
 function bashCompletion(): string {
   const tools = [...TOOL_IDS, ...TOOL_ALIASES].join(" ");
@@ -72,6 +73,13 @@ _stali_completion() {
       ;;
     doctor)
       COMPREPLY=( $(compgen -W "${DOCTOR_FLAGS.join(" ")}" -- "\${cur}") )
+      ;;
+    export-env)
+      if [[ "\${prev}" == "export-env" ]]; then
+        COMPREPLY=( $(compgen -W "${tools}" -- "\${cur}") )
+      else
+        COMPREPLY=( $(compgen -W "-m --model -f --format" -- "\${cur}") )
+      fi
       ;;
     completion)
       COMPREPLY=( $(compgen -W "bash zsh fish" -- "\${cur}") )

@@ -12,6 +12,8 @@ import { buildToolConfigPreview } from "./services/syncers/preview";
 import { selfUpdate } from "./services/self-update";
 import { runConfigureBatch } from "./services/configure-batch";
 import { renderCompletion } from "./commands/completion";
+import { renderEnvExport, type ExportEnvFormat } from "./services/export-env";
+import { runDoctorFix } from "./services/doctor-fix";
 import { restoreFromBackup, listBackupsForFile } from "./utils/backup";
 import { getToolById, resolveToolId } from "./utils/tool-utils";
 import { resolveHomePath } from "./utils/file";
@@ -98,7 +100,44 @@ async function runToolsList() {
   console.log(chalk.gray("\nCấu hình: stali configure <toolId> -k sk-stali-...\n"));
 }
 
-async function runDoctor(jsonOut?: boolean) {
+async function runDoctor(jsonOut?: boolean, fixOpts?: {
+  apiKey?: string;
+  fix?: boolean;
+  dryRun?: boolean;
+  force?: boolean;
+  tools?: string;
+  model?: string;
+}) {
+  if (fixOpts?.fix) {
+    const apiKey = fixOpts.apiKey;
+    if (!apiKey) {
+      console.error(chalk.red("❌ doctor --fix cần API key (-k hoặc token đã lưu)."));
+      process.exit(1);
+    }
+    const toolInputs = fixOpts.tools
+      ? fixOpts.tools.split(",").map((t) => t.trim()).filter(Boolean)
+      : undefined;
+    const { items, allOk } = await runDoctorFix({
+      apiKey,
+      model: fixOpts.model,
+      toolInputs,
+      dryRun: fixOpts.dryRun,
+      force: fixOpts.force,
+    });
+
+    if (fixOpts.dryRun) {
+      console.log(chalk.bold.cyan("\n🔍 Doctor fix (dry-run)\n"));
+    } else {
+      console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — FIX\n"));
+    }
+    for (const item of items) {
+      const icon = item.success ? chalk.green("✓") : chalk.red("✗");
+      console.log(`${icon} ${chalk.white(item.toolName || item.toolId)} — ${item.message}`);
+    }
+    console.log("");
+    process.exit(allOk ? 0 : 1);
+  }
+
   const statuses = await runDoctorScan();
   if (jsonOut) {
     console.log(JSON.stringify(statuses, null, 2));
@@ -264,11 +303,64 @@ program
   });
 
 program
+  .command("export-env <tool>")
+  .description("In biến môi trường / snippet cấu hình để copy thủ công")
+  .option("-m, --model <model>", "Model Stali")
+  .option(
+    "-f, --format <format>",
+    "Định dạng: shell | dotenv | json | powershell",
+    "shell"
+  )
+  .action(async (tool: string, opts: { model?: string; format?: string }) => {
+    const globals = program.opts<{ key?: string }>();
+    const apiKey = await resolveApiKey(globals.key);
+    if (!apiKey) {
+      console.error(chalk.red("❌ Thiếu API key. Dùng -k hoặc lưu token qua wizard."));
+      process.exit(1);
+    }
+    const toolId = resolveToolId(tool);
+    const toolDef = getToolById(toolId);
+    if (!toolDef) {
+      console.error(chalk.red(`❌ Tool không hợp lệ: ${tool}`));
+      process.exit(1);
+    }
+    const fmt = (opts.format || "shell") as ExportEnvFormat;
+    if (!["shell", "dotenv", "json", "powershell"].includes(fmt)) {
+      console.error(chalk.red(`❌ Format không hợp lệ: ${fmt}`));
+      process.exit(1);
+    }
+    const model = opts.model || toolDef.defaultModel;
+    console.log(renderEnvExport(toolId, apiKey, model, fmt));
+    process.exit(0);
+  });
+
+program
   .command("doctor")
   .description("Kiểm tra công cụ nào đã trỏ Stali API")
   .option("--json", "Xuất JSON (cho script/automation)")
-  .action(async (opts: { json?: boolean }) => {
-    await runDoctor(opts.json);
+  .option("--fix", "Tự cấu hình lại tool chưa trỏ Stali")
+  .option("--dry-run", "Với --fix: chỉ liệt kê, không ghi file")
+  .option("--force", "Với --fix: cấu hình lại cả tool đã OK")
+  .option("--tools <list>", "Với --fix: chỉ các tool (cách nhau bởi dấu phẩy)")
+  .option("-m, --model <model>", "Với --fix: model áp dụng")
+  .action(async (opts: {
+    json?: boolean;
+    fix?: boolean;
+    dryRun?: boolean;
+    force?: boolean;
+    tools?: string;
+    model?: string;
+  }) => {
+    const globals = program.opts<{ key?: string }>();
+    const apiKey = await resolveApiKey(globals.key);
+    await runDoctor(opts.json, {
+      apiKey,
+      fix: opts.fix,
+      dryRun: opts.dryRun,
+      force: opts.force,
+      tools: opts.tools,
+      model: opts.model,
+    });
     process.exit(0);
   });
 

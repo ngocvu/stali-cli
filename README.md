@@ -19,6 +19,9 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - ⚙️ **Batch**: `stali configure-all` — cấu hình hàng loạt (dry-run, filter tool)
 - 🐾 **OpenClaw menu**: wizard riêng với status live
 - ⌨️ **Completion**: `stali completion bash|zsh|fish`
+- 📤 **Export**: `stali export-env <tool>` — copy env thủ công
+- 🩺 **Doctor fix**: `stali doctor --fix` — sửa tool chưa trỏ Stali
+- 🧩 **VS Code menu**: Cline / Roo / Kilo wizard riêng
 
 ---
 
@@ -58,7 +61,10 @@ stali update             # Cập nhật từ GitHub
 stali configure claude --dry-run -k sk-stali-...  # Xem preview, không ghi file
 stali configure-all --skip-advanced -k sk-stali-... # 11 tool (bỏ claude/codex)
 stali configure-all --tools openclaw,cline -k sk-stali-...
-stali completion bash   # eval "$(stali completion bash)"
+stali export-env claude -k sk-stali-...           # export ANTHROPIC_* (shell)
+stali export-env codex -f json -k sk-stali-...
+stali doctor --fix -k sk-stali-...                # sửa tool chưa OK
+stali doctor --fix --dry-run -k sk-stali-...
 stali restore -t claude  # Khôi phục backup gần nhất
 stali --reset            # Xóa token ~/.stali
 ```

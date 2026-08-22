@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0] — 2026-08-22
+
+### Added
+- **VsCodeAgentDetailMenu** — wizard riêng cho Cline, Roo Code, Kilo Code
+- **`stali export-env <tool>`** — xuất biến môi trường (shell/dotenv/json/powershell)
+- **`stali doctor --fix`** — tự cấu hình lại tool chưa trỏ Stali (`--dry-run`, `--force`, `--tools`)
+
 ## [1.6.0] — 2026-08-22
 
 ### Added
