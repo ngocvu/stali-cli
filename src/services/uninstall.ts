@@ -8,12 +8,15 @@ import {
   getStaliHome,
   LEGACY_PATHS,
 } from "../constants/paths";
+import { purgeStaliFromUserPath } from "./path-purge";
 
 export interface UninstallOptions {
   /** Giữ ~/.stali/config.json (API key) */
   keepConfig?: boolean;
   /** Giữ ~/.stali/cli (source) */
   keepSource?: boolean;
+  /** Gỡ ~/.stali/bin khỏi User PATH (Windows) */
+  purgePath?: boolean;
 }
 
 export interface UninstallResult {
@@ -22,6 +25,7 @@ export interface UninstallResult {
   skipped: string[];
   message: string;
   pathNote?: string;
+  pathPurge?: string;
 }
 
 async function safeUnlink(filePath: string): Promise<boolean> {
@@ -85,11 +89,22 @@ export async function runUninstall(opts: UninstallOptions = {}): Promise<Uninsta
   }
 
   const isWin = process.platform === "win32";
-  const pathNote = isWin
-    ? `Gỡ thủ công khỏi User PATH nếu cần: ${getStaliBinDir()}`
+  let pathPurge: string | undefined;
+  let pathPurged = false;
+  if (opts.purgePath) {
+    const purge = purgeStaliFromUserPath();
+    pathPurge = purge.detail;
+    pathPurged = purge.purged;
+    if (purge.purged) removed.push(`PATH:${getStaliBinDir()}`);
+  }
+
+  const pathNote = opts.purgePath
+    ? pathPurge
+    : isWin
+    ? `Gỡ thủ công khỏi User PATH nếu cần: ${getStaliBinDir()} (hoặc dùng --purge-path)`
     : `Xóa khỏi ~/.bashrc nếu đã thêm: export PATH="${getStaliBinDir()}:$PATH"`;
 
-  const success = removed.length > 0;
+  const success = removed.length > 0 || pathPurged;
   const message = success
     ? `Đã gỡ stali-cli (${removed.length} mục). Bun runtime (~/.bun) không bị xóa.`
     : "Không tìm thấy file cài đặt stali-cli để gỡ.";
@@ -100,6 +115,7 @@ export async function runUninstall(opts: UninstallOptions = {}): Promise<Uninsta
     skipped,
     message,
     pathNote,
+    pathPurge,
   };
 }
 

@@ -479,11 +479,13 @@ program
   .description("Gỡ stali-cli (wrapper ~/.stali/bin, tùy chọn giữ config/source)")
   .option("--keep-config", "Giữ ~/.stali/config.json (API key)")
   .option("--keep-source", "Giữ ~/.stali/cli (source)")
-  .action(async (opts: { keepConfig?: boolean; keepSource?: boolean }) => {
+  .option("--purge-path", "Gỡ ~/.stali/bin khỏi User PATH (Windows)")
+  .action(async (opts: { keepConfig?: boolean; keepSource?: boolean; purgePath?: boolean }) => {
     console.log(chalk.bold.yellow("\n🗑️  STALI CLI — UNINSTALL\n"));
     const result = await runUninstall({
       keepConfig: opts.keepConfig,
       keepSource: opts.keepSource,
+      purgePath: opts.purgePath,
     });
     if (result.removed.length > 0) {
       console.log(chalk.green(`✅ ${result.message}\n`));

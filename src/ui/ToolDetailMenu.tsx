@@ -21,9 +21,15 @@ import {
   OpenCodeDetailMenu,
   OpenCodeMenuAction,
 } from "./tools/OpenCodeDetailMenu";
+import { QwenDetailMenu, QwenMenuAction } from "./tools/QwenDetailMenu";
+import {
+  OpenAiJsonDetailMenu,
+  OpenAiJsonMenuAction,
+} from "./tools/OpenAiJsonDetailMenu";
 
 const VSCODE_AGENT_TOOLS = new Set(["cline", "roo", "kilo"]);
 const OPENAI_TOML_TOOLS = new Set(["deepseek-tui", "grok-build", "jcode"]);
+const OPENAI_JSON_TOOLS = new Set(["droid", "cowork"]);
 
 export type ToolMenuAction =
   | ClaudeMenuAction
@@ -32,6 +38,8 @@ export type ToolMenuAction =
   | VsCodeAgentMenuAction
   | OpenAiTomlMenuAction
   | OpenCodeMenuAction
+  | QwenMenuAction
+  | OpenAiJsonMenuAction
   | GenericMenuAction;
 
 export interface ToolDetailMenuProps {
@@ -97,7 +105,25 @@ export const ToolDetailMenu: React.FC<ToolDetailMenuProps> = ({
           onSelectAction={onSelectAction}
         />
       );
+    case "qwen":
+      return (
+        <QwenDetailMenu
+          model={genericModel}
+          apiKey={apiKey}
+          onSelectAction={onSelectAction}
+        />
+      );
     default:
+      if (OPENAI_JSON_TOOLS.has(toolId)) {
+        return (
+          <OpenAiJsonDetailMenu
+            toolId={toolId}
+            model={genericModel}
+            apiKey={apiKey}
+            onSelectAction={onSelectAction}
+          />
+        );
+      }
       if (OPENAI_TOML_TOOLS.has(toolId)) {
         return (
           <OpenAiTomlDetailMenu

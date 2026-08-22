@@ -10,6 +10,7 @@ interface MainMenuProps {
   onSelect: (
     action:
       | "configure"
+      | "configure-all"
       | "models"
       | "change-key"
       | "doctor"
@@ -22,6 +23,7 @@ interface MainMenuProps {
 export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, onSelect }) => {
   const items = [
     { label: "⚡ Cấu hình ứng dụng AI", value: "configure" as const },
+    { label: "⚙️  Cấu hình hàng loạt (configure-all)", value: "configure-all" as const },
     { label: "📊 Xem bảng giá & danh sách Model Stali API", value: "models" as const },
     { label: "🩺 Kiểm tra trạng thái cấu hình (doctor)", value: "doctor" as const },
     { label: "🔧 Sửa tất cả tool chưa OK (doctor fix)", value: "fix-all" as const },

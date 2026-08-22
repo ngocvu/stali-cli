@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0] — 2026-08-22
+
+### Added
+- **QwenDetailMenu**, **OpenAiJsonDetailMenu** — hoàn thiện **13/13 menu wizard riêng**
+- **ConfigureAllMenu** — cấu hình hàng loạt từ wizard (11/13 tool, dry-run)
+- **`stali uninstall --purge-path`** — gỡ `~/.stali/bin` khỏi User PATH (Windows)
+- **npm publishConfig** — sẵn sàng `npm publish`
+
 ## [1.8.0] — 2026-08-22
 
 ### Added

@@ -30,6 +30,8 @@ import {
 import { syncTool, resetTool, runDoctorScan } from "../services/syncers";
 import { buildToolConfigPreview } from "../services/syncers/preview";
 import { runDoctorFix } from "../services/doctor-fix";
+import { runConfigureBatch } from "../services/configure-batch";
+import { ConfigureAllMenu, ConfigureAllAction } from "./ConfigureAllMenu";
 import { getToolById } from "../utils/tool-utils";
 import { resolveToolDefaultModel } from "../utils/tool-utils";
 
@@ -42,6 +44,7 @@ type WizardStep =
   | "menu"
   | "pricing"
   | "doctor"
+  | "configure-all"
   | "app"
   | "tool-detail"
   | "model"
@@ -138,6 +141,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   const handleMenuSelect = async (
     action:
       | "configure"
+      | "configure-all"
       | "models"
       | "change-key"
       | "doctor"
@@ -148,6 +152,9 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     switch (action) {
       case "configure":
         setStep("app");
+        break;
+      case "configure-all":
+        setStep("configure-all");
         break;
       case "models":
         setStep("pricing");
@@ -209,6 +216,37 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       }))
     );
     setSelectedModel("Doctor fix");
+    setLoading(false);
+    setStep("done");
+  };
+
+  const handleConfigureAllSelect = async (action: ConfigureAllAction) => {
+    if (action === "back") {
+      setStep("menu");
+      return;
+    }
+    setLoading(true);
+    setError(undefined);
+    const skipAdvanced = action !== "batch-13";
+    const dryRun = action === "dry-run-11";
+    const batch = await runConfigureBatch({
+      apiKey,
+      skipAdvanced,
+      dryRun,
+      continueOnError: true,
+    });
+    setResults(
+      batch.items.map((item) => ({
+        toolId: item.toolId || "batch",
+        toolName: item.toolName || "Configure-all",
+        success: item.success,
+        message: item.message,
+        configPath: item.configPath,
+        backupPath: item.backupPath,
+        error: item.error,
+      }))
+    );
+    setSelectedModel(dryRun ? "Configure-all (dry-run)" : "Configure-all");
     setLoading(false);
     setStep("done");
   };
@@ -589,6 +627,10 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           onBack={() => setStep("menu")}
           onFixAll={handleDoctorFix}
         />
+      )}
+
+      {step === "configure-all" && (
+        <ConfigureAllMenu onSelect={handleConfigureAllSelect} />
       )}
 
       {step === "app" && <AppSelect onSelect={handleAppSelect} />}
