@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0] — 2026-08-22
+
+### Added
+- **`stali auth login|status|logout`** — quản lý API key chính thức
+- **`stali info [--json]`** — version, paths, auth, doctor tóm tắt
+- **`stali open keys|docs`** — mở Dashboard / docs trong trình duyệt
+- **`stali guide <app>`** — hướng dẫn Cursor, Chatbox, n8n (không patch file)
+- **Wizard** — menu «Mở Dashboard Keys»
+
+### Changed
+- Major version 2.0 — CLI đủ bộ lệnh vận hành production
+
 ## [1.9.0] — 2026-08-22
 
 ### Added

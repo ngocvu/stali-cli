@@ -26,6 +26,9 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🟢 **OpenCode menu**: wizard provider JSON riêng
 - 🗑️ **Uninstall**: `stali uninstall` gỡ wrapper an toàn
 - 🔧 **Wizard fix-all**: sửa hàng loạt từ menu chính / doctor
+- 🔑 **Auth**: `stali auth login|status|logout`
+- 📋 **Info**: `stali info --json`
+- 🔗 **Open**: `stali open keys` · **Guide**: `stali guide cursor`
 - ⚙️ **Wizard configure-all**: batch 11/13 tool từ menu chính
 - 🟣 **13/13 menu riêng**: Qwen, Droid, Cowork — không còn generic fallback
 
@@ -72,7 +75,12 @@ stali export-env codex -f json -k sk-stali-...
 stali doctor --fix -k sk-stali-...                # sửa tool chưa OK
 stali doctor --fix --dry-run -k sk-stali-...
 stali uninstall                  # Gỡ wrapper (~/.stali/bin)
-stali uninstall --purge-path       # Windows: gỡ khỏi User PATH
+stali auth login -k sk-stali-...     # Lưu API key
+stali auth status
+stali info --json
+stali open keys                      # Mở Dashboard tạo key
+stali guide cursor                   # Hướng dẫn Cursor IDE
+stali uninstall --purge-path    # Windows: gỡ khỏi User PATH
 stali restore -t claude  # Khôi phục backup gần nhất
 stali --reset            # Xóa token ~/.stali
 ```

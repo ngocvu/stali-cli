@@ -146,6 +146,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       | "change-key"
       | "doctor"
       | "fix-all"
+      | "open-keys"
       | "update"
       | "exit"
   ) => {
@@ -194,6 +195,23 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       case "change-key":
         setStep("token");
         break;
+      case "open-keys": {
+        const { openUrlInBrowser } = await import("../utils/open-url");
+        const { STALI_DASHBOARD_KEYS_URL } = await import("../services/auth-cli");
+        openUrlInBrowser(STALI_DASHBOARD_KEYS_URL);
+        setResults([
+          {
+            toolId: "open",
+            toolName: "Dashboard Keys",
+            success: true,
+            message: STALI_DASHBOARD_KEYS_URL,
+            configPath: STALI_DASHBOARD_KEYS_URL,
+          },
+        ]);
+        setSelectedModel("Mở Dashboard");
+        setStep("done");
+        break;
+      }
       case "exit":
         exit();
         break;

@@ -15,6 +15,16 @@ import { renderCompletion } from "./commands/completion";
 import { renderEnvExport, type ExportEnvFormat } from "./services/export-env";
 import { runDoctorFix } from "./services/doctor-fix";
 import { runUninstall } from "./services/uninstall";
+import {
+  authLogin,
+  authLogout,
+  authStatus,
+  STALI_DASHBOARD_KEYS_URL,
+} from "./services/auth-cli";
+import { gatherCliInfo } from "./services/cli-info";
+import { openUrlInBrowser } from "./utils/open-url";
+import { renderAppGuide, listGuideIds } from "./constants/guides";
+import { STALI_DOCS_URL } from "./constants/api";
 import { restoreFromBackup, listBackupsForFile } from "./utils/backup";
 import { getToolById, resolveToolId } from "./utils/tool-utils";
 import { resolveHomePath } from "./utils/file";
@@ -284,6 +294,140 @@ program
   .action(async (opts) => {
     const globals = program.opts<{ key?: string }>();
     await displayModelsTable(opts.key || globals.key);
+    process.exit(0);
+  });
+
+program
+  .command("info")
+  .description("Thông tin cài đặt stali-cli, auth và doctor tóm tắt")
+  .option("--json", "Xuất JSON")
+  .action(async (opts: { json?: boolean }) => {
+    const info = await gatherCliInfo();
+    if (opts.json) {
+      console.log(JSON.stringify(info, null, 2));
+      process.exit(0);
+    }
+    console.log(chalk.bold.cyan("\n📋 STALI CLI INFO\n"));
+    console.log(`${chalk.white("Version")}     ${info.version}`);
+    console.log(`${chalk.white("Platform")}    ${info.platform}`);
+    if (info.bunVersion) console.log(`${chalk.white("Bun")}         ${info.bunVersion}`);
+    console.log(`${chalk.white("Home")}        ${info.staliHome}`);
+    console.log(`${chalk.white("CLI")}         ${info.cliInstallDir}`);
+    console.log(`${chalk.white("Bin")}         ${info.binDir}`);
+    console.log(`${chalk.white("Config")}      ${info.configPath}${info.configExists ? "" : chalk.gray(" (chưa có)")}`);
+    const authLine = info.auth.hasKey
+      ? info.auth.valid
+        ? chalk.green(`✓ ${info.auth.masked}`)
+        : chalk.yellow(`○ ${info.auth.masked} (không hợp lệ)`)
+      : chalk.gray("○ chưa đăng nhập");
+    console.log(`${chalk.white("Auth")}        ${authLine}`);
+    console.log(
+      `${chalk.white("Doctor")}      ${chalk.green(info.doctor.configured)}/${info.doctor.total} tool trỏ Stali`
+    );
+    console.log("");
+    process.exit(0);
+  });
+
+const authCmd = program
+  .command("auth")
+  .description("Quản lý API key Stali (~/.stali/config.json)");
+
+authCmd
+  .command("login")
+  .description("Validate và lưu API key")
+  .option("-k, --key <token>", "Stali API key (sk-stali-...)")
+  .action(async (opts: { key?: string }) => {
+    const globals = program.opts<{ key?: string }>();
+    const apiKey = opts.key || globals.key;
+    if (!apiKey?.trim()) {
+      console.error(chalk.red("❌ Thiếu API key. Dùng: stali auth login -k sk-stali-..."));
+      console.log(chalk.cyan(`\nTạo key: ${STALI_DASHBOARD_KEYS_URL}\n`));
+      process.exit(1);
+    }
+    const result = await authLogin(apiKey);
+    if (result.success) {
+      console.log(chalk.green(`\n✅ ${result.message}`));
+      if (result.defaultModel) {
+        console.log(chalk.gray(`   Model mặc định API: ${result.defaultModel}\n`));
+      }
+      process.exit(0);
+    }
+    console.error(chalk.red(`\n❌ ${result.message}\n`));
+    process.exit(1);
+  });
+
+authCmd
+  .command("status")
+  .description("Kiểm tra token đã lưu")
+  .option("--json", "Xuất JSON")
+  .action(async (opts: { json?: boolean }) => {
+    const status = await authStatus();
+    if (opts.json) {
+      console.log(JSON.stringify(status, null, 2));
+      process.exit(status.hasKey && status.valid !== false ? 0 : 1);
+    }
+    console.log(chalk.bold.cyan("\n🔑 STALI AUTH STATUS\n"));
+    if (status.corrupt) {
+      console.log(chalk.red("❌ ~/.stali/config.json bị lỗi định dạng"));
+      process.exit(1);
+    }
+    if (!status.hasKey) {
+      console.log(chalk.yellow("○ Chưa lưu API key"));
+      console.log(chalk.cyan(`\nTạo key: ${STALI_DASHBOARD_KEYS_URL}`));
+      console.log(chalk.gray("Lưu: stali auth login -k sk-stali-...\n"));
+      process.exit(1);
+    }
+    const valid = status.valid ? chalk.green("hợp lệ") : chalk.red("không hợp lệ");
+    console.log(`Token: ${chalk.yellow(status.masked)} — ${valid}`);
+    if (status.lastUpdated) console.log(chalk.gray(`Cập nhật: ${status.lastUpdated}`));
+    if (status.error) console.log(chalk.red(`Lỗi: ${status.error}`));
+    console.log("");
+    process.exit(status.valid ? 0 : 1);
+  });
+
+authCmd
+  .command("logout")
+  .description("Xóa token đã lưu")
+  .action(async () => {
+    const ok = await authLogout();
+    if (ok) {
+      console.log(chalk.green("\n✅ Đã xóa token ~/.stali/config.json\n"));
+      process.exit(0);
+    }
+    console.log(chalk.yellow("\n○ Không có config để xóa\n"));
+    process.exit(0);
+  });
+
+program
+  .command("open [target]")
+  .description("Mở trình duyệt: keys | docs")
+  .action(async (target?: string) => {
+    const t = (target || "keys").toLowerCase();
+    const url =
+      t === "docs" || t === "doc"
+        ? STALI_DOCS_URL
+        : STALI_DASHBOARD_KEYS_URL;
+    const opened = openUrlInBrowser(url);
+    if (opened.ok) {
+      console.log(chalk.green(`\n✅ Đã mở: ${url}\n`));
+      process.exit(0);
+    }
+    console.log(chalk.yellow(`\n⚠️  Không mở được trình duyệt — truy cập thủ công:`));
+    console.log(chalk.cyan(`   ${url}\n`));
+    process.exit(1);
+  });
+
+program
+  .command("guide <app>")
+  .description("Hướng dẫn gắn Stali cho app không patch file (cursor, chatbox, n8n)")
+  .action((app: string) => {
+    const text = renderAppGuide(app);
+    if (!text) {
+      console.error(chalk.red(`❌ Không có guide cho: ${app}`));
+      console.log(chalk.gray(`Có sẵn: ${listGuideIds().join(", ")}\n`));
+      process.exit(1);
+    }
+    console.log(text);
     process.exit(0);
   });
 

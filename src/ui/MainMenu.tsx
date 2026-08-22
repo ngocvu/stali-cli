@@ -15,6 +15,7 @@ interface MainMenuProps {
       | "change-key"
       | "doctor"
       | "fix-all"
+      | "open-keys"
       | "update"
       | "exit"
   ) => void;
@@ -29,6 +30,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, onSelect }) => {
     { label: "🔧 Sửa tất cả tool chưa OK (doctor fix)", value: "fix-all" as const },
     { label: "⬆️  Cập nhật stali-cli (update)", value: "update" as const },
     { label: "🔑 Cài đặt API Token", value: "change-key" as const },
+    { label: "🔗 Mở Dashboard Keys (trình duyệt)", value: "open-keys" as const },
     { label: "🚪 Thoát", value: "exit" as const },
   ];
 
