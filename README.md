@@ -22,6 +22,10 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 📤 **Export**: `stali export-env <tool>` — copy env thủ công
 - 🩺 **Doctor fix**: `stali doctor --fix` — sửa tool chưa trỏ Stali
 - 🧩 **VS Code menu**: Cline / Roo / Kilo wizard riêng
+- 📄 **TOML menu**: DeepSeek / Grok / jcode wizard riêng
+- 🟢 **OpenCode menu**: wizard provider JSON riêng
+- 🗑️ **Uninstall**: `stali uninstall` gỡ wrapper an toàn
+- 🔧 **Wizard fix-all**: sửa hàng loạt từ menu chính / doctor
 
 ---
 
@@ -65,6 +69,8 @@ stali export-env claude -k sk-stali-...           # export ANTHROPIC_* (shell)
 stali export-env codex -f json -k sk-stali-...
 stali doctor --fix -k sk-stali-...                # sửa tool chưa OK
 stali doctor --fix --dry-run -k sk-stali-...
+stali uninstall                  # Gỡ wrapper (~/.stali/bin)
+stali uninstall --keep-config    # Giữ API key
 stali restore -t claude  # Khôi phục backup gần nhất
 stali --reset            # Xóa token ~/.stali
 ```

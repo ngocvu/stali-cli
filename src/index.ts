@@ -14,6 +14,7 @@ import { runConfigureBatch } from "./services/configure-batch";
 import { renderCompletion } from "./commands/completion";
 import { renderEnvExport, type ExportEnvFormat } from "./services/export-env";
 import { runDoctorFix } from "./services/doctor-fix";
+import { runUninstall } from "./services/uninstall";
 import { restoreFromBackup, listBackupsForFile } from "./utils/backup";
 import { getToolById, resolveToolId } from "./utils/tool-utils";
 import { resolveHomePath } from "./utils/file";
@@ -471,6 +472,34 @@ program
     }
     console.log(script);
     process.exit(0);
+  });
+
+program
+  .command("uninstall")
+  .description("Gỡ stali-cli (wrapper ~/.stali/bin, tùy chọn giữ config/source)")
+  .option("--keep-config", "Giữ ~/.stali/config.json (API key)")
+  .option("--keep-source", "Giữ ~/.stali/cli (source)")
+  .action(async (opts: { keepConfig?: boolean; keepSource?: boolean }) => {
+    console.log(chalk.bold.yellow("\n🗑️  STALI CLI — UNINSTALL\n"));
+    const result = await runUninstall({
+      keepConfig: opts.keepConfig,
+      keepSource: opts.keepSource,
+    });
+    if (result.removed.length > 0) {
+      console.log(chalk.green(`✅ ${result.message}\n`));
+      console.log(chalk.gray("Đã xóa:"));
+      result.removed.forEach((p) => console.log(chalk.gray(`  • ${p}`)));
+    } else {
+      console.log(chalk.yellow(result.message));
+    }
+    if (result.skipped.length > 0) {
+      console.log(chalk.gray("\nGiữ lại:"));
+      result.skipped.forEach((p) => console.log(chalk.gray(`  • ${p}`)));
+    }
+    if (result.pathNote) {
+      console.log(chalk.cyan(`\n💡 ${result.pathNote}\n`));
+    }
+    process.exit(result.success ? 0 : 1);
   });
 
 program

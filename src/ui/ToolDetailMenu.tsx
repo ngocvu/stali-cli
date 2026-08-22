@@ -13,14 +13,25 @@ import {
   VsCodeAgentDetailMenu,
   VsCodeAgentMenuAction,
 } from "./tools/VsCodeAgentDetailMenu";
+import {
+  OpenAiTomlDetailMenu,
+  OpenAiTomlMenuAction,
+} from "./tools/OpenAiTomlDetailMenu";
+import {
+  OpenCodeDetailMenu,
+  OpenCodeMenuAction,
+} from "./tools/OpenCodeDetailMenu";
 
 const VSCODE_AGENT_TOOLS = new Set(["cline", "roo", "kilo"]);
+const OPENAI_TOML_TOOLS = new Set(["deepseek-tui", "grok-build", "jcode"]);
 
 export type ToolMenuAction =
   | ClaudeMenuAction
   | CodexMenuAction
   | OpenClawMenuAction
   | VsCodeAgentMenuAction
+  | OpenAiTomlMenuAction
+  | OpenCodeMenuAction
   | GenericMenuAction;
 
 export interface ToolDetailMenuProps {
@@ -78,7 +89,25 @@ export const ToolDetailMenu: React.FC<ToolDetailMenuProps> = ({
           onSelectAction={onSelectAction}
         />
       );
+    case "opencode":
+      return (
+        <OpenCodeDetailMenu
+          model={genericModel}
+          apiKey={apiKey}
+          onSelectAction={onSelectAction}
+        />
+      );
     default:
+      if (OPENAI_TOML_TOOLS.has(toolId)) {
+        return (
+          <OpenAiTomlDetailMenu
+            toolId={toolId}
+            model={genericModel}
+            apiKey={apiKey}
+            onSelectAction={onSelectAction}
+          />
+        );
+      }
       if (VSCODE_AGENT_TOOLS.has(toolId)) {
         return (
           <VsCodeAgentDetailMenu

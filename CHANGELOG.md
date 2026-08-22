@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.0] — 2026-08-22
+
+### Added
+- **OpenAiTomlDetailMenu** — wizard riêng cho DeepSeek TUI, Grok Build, jcode
+- **OpenCodeDetailMenu** — wizard riêng cho OpenCode
+- **`stali uninstall`** — gỡ wrapper CLI (`--keep-config`, `--keep-source`)
+- **Wizard doctor fix** — menu «Sửa tất cả tool chưa OK» + nút fix trong DoctorView
+
 ## [1.7.0] — 2026-08-22
 
 ### Added

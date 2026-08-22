@@ -18,6 +18,7 @@ const SUBCOMMANDS = [
   "configure",
   "configure-all",
   "export-env",
+  "uninstall",
   "restore",
   "completion",
   "ls",

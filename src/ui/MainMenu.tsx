@@ -8,7 +8,14 @@ import { VERSION } from "../version";
 interface MainMenuProps {
   apiKey?: string;
   onSelect: (
-    action: "configure" | "models" | "change-key" | "doctor" | "update" | "exit"
+    action:
+      | "configure"
+      | "models"
+      | "change-key"
+      | "doctor"
+      | "fix-all"
+      | "update"
+      | "exit"
   ) => void;
 }
 
@@ -17,6 +24,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, onSelect }) => {
     { label: "⚡ Cấu hình ứng dụng AI", value: "configure" as const },
     { label: "📊 Xem bảng giá & danh sách Model Stali API", value: "models" as const },
     { label: "🩺 Kiểm tra trạng thái cấu hình (doctor)", value: "doctor" as const },
+    { label: "🔧 Sửa tất cả tool chưa OK (doctor fix)", value: "fix-all" as const },
     { label: "⬆️  Cập nhật stali-cli (update)", value: "update" as const },
     { label: "🔑 Cài đặt API Token", value: "change-key" as const },
     { label: "🚪 Thoát", value: "exit" as const },

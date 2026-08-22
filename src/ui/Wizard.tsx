@@ -29,6 +29,7 @@ import {
 } from "../services/syncers/codex";
 import { syncTool, resetTool, runDoctorScan } from "../services/syncers";
 import { buildToolConfigPreview } from "../services/syncers/preview";
+import { runDoctorFix } from "../services/doctor-fix";
 import { getToolById } from "../utils/tool-utils";
 import { resolveToolDefaultModel } from "../utils/tool-utils";
 
@@ -135,7 +136,14 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   };
 
   const handleMenuSelect = async (
-    action: "configure" | "models" | "change-key" | "doctor" | "update" | "exit"
+    action:
+      | "configure"
+      | "models"
+      | "change-key"
+      | "doctor"
+      | "fix-all"
+      | "update"
+      | "exit"
   ) => {
     switch (action) {
       case "configure":
@@ -149,6 +157,9 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         setDoctorStatuses(await runDoctorScan());
         setLoading(false);
         setStep("doctor");
+        break;
+      case "fix-all":
+        await handleDoctorFix();
         break;
       case "update": {
         setLoading(true);
@@ -180,6 +191,26 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         exit();
         break;
     }
+  };
+
+  const handleDoctorFix = async () => {
+    setLoading(true);
+    setError(undefined);
+    const fixRes = await runDoctorFix({ apiKey });
+    setResults(
+      fixRes.items.map((item) => ({
+        toolId: item.toolId || "fix",
+        toolName: item.toolName || "Doctor fix",
+        success: item.success,
+        message: item.message,
+        configPath: item.configPath,
+        backupPath: item.backupPath,
+        error: item.error,
+      }))
+    );
+    setSelectedModel("Doctor fix");
+    setLoading(false);
+    setStep("done");
   };
 
   const handlePriceContinue = () => {
@@ -553,7 +584,11 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       )}
 
       {step === "doctor" && (
-        <DoctorView statuses={doctorStatuses} onBack={() => setStep("menu")} />
+        <DoctorView
+          statuses={doctorStatuses}
+          onBack={() => setStep("menu")}
+          onFixAll={handleDoctorFix}
+        />
       )}
 
       {step === "app" && <AppSelect onSelect={handleAppSelect} />}
