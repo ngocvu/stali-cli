@@ -1,0 +1,68 @@
+{
+  "name": "stali-cli",
+  "version": "1.1.0",
+  "description": "Interactive CLI tool and configuration manager for Stali API (https://api.stali.vn)",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "stali": "./bin/stali.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun scripts/build.ts",
+    "postinstall": "node -e \"try{require('fs').accessSync('dist/index.js');}catch{console.log('[stali-cli] Chạy npm run build hoặc cài qua curl install script.');}\"",
+    "pack:cli": "bun run build && npm pack",
+    "publish:cli": "bun run build && npm publish",
+    "prepublishOnly": "bun run build",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "keywords": [
+    "stali",
+    "cli",
+    "ai",
+    "claude",
+    "codex",
+    "deepseek",
+    "llm",
+    "ink",
+    "bun"
+  ],
+  "author": "KietNT",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngocvu/stali-cli.git"
+  },
+  "homepage": "https://api.stali.vn/docs",
+  "dependencies": {
+    "chalk": "^6.0.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^15.0.0",
+    "confbox": "^0.2.4",
+    "ink": "^7.1.1",
+    "ink-select-input": "^6.2.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.0",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "react-devtools-core": "^7.0.1",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
