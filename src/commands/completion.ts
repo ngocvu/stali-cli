@@ -13,8 +13,9 @@ const TOOL_ALIASES = [
 const SUBCOMMANDS = [
   "paths",
   "tools",
+  "init",
+  "plugins",
   "check",
-  "config",
   "backups",
   "info",
   "doctor",
@@ -31,7 +32,7 @@ const SUBCOMMANDS = [
   "ls",
 ];
 
-const GLOBAL_FLAGS = ["-k", "--key", "-V", "--version", "-h", "--help", "--models", "--reset"];
+const GLOBAL_FLAGS = ["-k", "--key", "-V", "--version", "-h", "--help", "--models", "--reset", "--lang"];
 
 const CONFIGURE_FLAGS = ["-m", "--model", "--dry-run", "-k", "--key"];
 const CONFIGURE_ALL_FLAGS = [
@@ -45,7 +46,7 @@ const CONFIGURE_ALL_FLAGS = [
   "--skip-advanced",
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
-const DOCTOR_FLAGS = ["--json", "--fix", "--dry-run", "--force", "--tools", "--watch", "-i", "--interval"];
+const DOCTOR_FLAGS = ["--json", "--fix", "--dry-run", "--force", "--tools", "--watch", "--notify", "-i", "--interval"];
 
 function bashCompletion(): string {
   const tools = [...TOOL_IDS, ...TOOL_ALIASES].join(" ");
@@ -211,6 +212,14 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from restore' -s b -l backup",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l json",
+    "complete -c stali -n '__fish_seen_subcommand_from doctor' -l watch",
+    "complete -c stali -n '__fish_seen_subcommand_from doctor' -l notify",
+    "complete -c stali -n '__fish_seen_subcommand_from doctor' -s i -l interval",
+    "",
+    "complete -c stali -n '__fish_seen_subcommand_from init' -s k -l key",
+    "complete -c stali -n '__fish_seen_subcommand_from init' -l skip-configure",
+    "",
+    "complete -c stali -n '__fish_seen_subcommand_from plugins' -l init",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish'",
   ];

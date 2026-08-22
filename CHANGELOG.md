@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.2.0] — 2026-08-22
+
+### Added
+- **`stali init`** — khởi tạo nhanh: `auth login` + `configure-all` (11 tool) + `check` (`--skip-configure`)
+- **`stali plugins [--init]`** — stub plugin tùy chỉnh qua `~/.stali/plugins.json`
+- **i18n** — `--lang vi|en` hoặc `STALI_LANG` cho thông báo CLI
+- **`stali doctor --watch --notify`** — chuông terminal + desktop notify khi cấu hình đổi
+
+### Changed
+- `update --check`, `check`, `init`, `plugins` dùng chuỗi i18n
+- Shell completion: `init`, `plugins`, `--lang`, `--notify`
+
 ## [2.1.0] — 2026-08-22
 
 ### Added

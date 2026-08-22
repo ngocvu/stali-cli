@@ -35,6 +35,10 @@ import { resolveHomePath } from "./utils/file";
 import { VERSION } from "./version";
 import { getStaliBinDir, getStaliCliInstallDir, getStaliHome, getStaliConfigPath } from "./constants/paths";
 import { SUPPORTED_TOOLS } from "./constants/tools";
+import { setLocale, resolveLocale, t, getLocale } from "./i18n";
+import { runInit } from "./services/init-cli";
+import { loadPlugins, writePluginsExample, getPluginsPath } from "./services/plugins";
+import { doctorSnapshotHash, notifyChange } from "./services/notify";
 
 const program = new Command();
 
@@ -183,9 +187,10 @@ async function runDoctor(jsonOut?: boolean, fixOpts?: {
   console.log("");
 }
 
-async function runDoctorWatch(intervalSec: number, jsonOut?: boolean) {
+async function runDoctorWatch(intervalSec: number, jsonOut?: boolean, notify?: boolean) {
   const sec = Math.max(3, intervalSec);
   let running = true;
+  let prevHash = "";
   const stop = () => {
     running = false;
   };
@@ -194,13 +199,37 @@ async function runDoctorWatch(intervalSec: number, jsonOut?: boolean) {
 
   while (running) {
     if (!jsonOut) {
+      const locale = getLocale() === "en" ? "en-US" : "vi-VN";
       console.log(
         chalk.gray(
-          `\n[${new Date().toLocaleTimeString("vi-VN")}] doctor --watch (${sec}s) — Ctrl+C thoát`
+          `\n[${new Date().toLocaleTimeString(locale)}] ${t("doctor_watch_hint")} (${sec}s)`
         )
       );
     }
-    await runDoctor(jsonOut);
+    const statuses = await runDoctorScan();
+    const hash = doctorSnapshotHash(statuses);
+    if (notify && prevHash && hash !== prevHash) {
+      const configured = statuses.filter((s) => s.configuredForStali).length;
+      console.log(chalk.yellow(`\n${t("doctor_changed")}\n`));
+      notifyChange("stali-cli doctor", `${configured}/${statuses.length} tools → Stali`);
+    }
+    prevHash = hash;
+
+    if (jsonOut) {
+      console.log(JSON.stringify(statuses, null, 2));
+    } else {
+      const configured = statuses.filter((s) => s.configuredForStali);
+      console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR\n"));
+      console.log(
+        chalk.green(`✅ ${configured.length}/${statuses.length}\n`)
+      );
+      for (const s of statuses) {
+        const icon = s.configuredForStali ? chalk.green("✓") : chalk.yellow("○");
+        console.log(`${icon} ${chalk.white(s.toolName)}${s.model ? chalk.gray(` (${s.model})`) : ""}`);
+      }
+      console.log("");
+    }
+
     if (!running) break;
     await new Promise((r) => setTimeout(r, sec * 1000));
   }
@@ -329,10 +358,16 @@ program
     "Interactive CLI tool and configuration manager for Stali API (https://api.stali.vn)"
   )
   .version(VERSION)
+  .option("--lang <locale>", "Ngôn ngữ CLI: vi | en (hoặc STALI_LANG)")
   .option("-k, --key <token>", "Stali API Token để xác thực trực tiếp")
   .option("--models", "Xem nhanh danh sách và bảng giá model thời gian thực")
   .option("-r, --reset", "Xóa token đã lưu trong ~/.stali/config.json để đăng nhập lại")
   .option("--logout", "Đăng xuất / xóa token đã lưu")
+  .hook("preAction", (thisCommand, actionCommand) => {
+    const globals = actionCommand.optsWithGlobals?.() ?? thisCommand.opts();
+    const lang = globals.lang || process.env.STALI_LANG;
+    if (lang) setLocale(resolveLocale(String(lang)));
+  })
   .action(async (options) => {
     if (options.reset || options.logout) {
       await resetStaliConfig();
@@ -369,12 +404,63 @@ program
       console.log(JSON.stringify(result, null, 2));
       process.exit(result.ok ? 0 : 1);
     }
-    console.log(chalk.bold.cyan("\n✅ STALI CHECK\n"));
+    console.log(chalk.bold.cyan(`\n${t("check_title")}\n`));
     for (const msg of result.messages) {
       console.log(` • ${msg}`);
     }
-    console.log(result.ok ? chalk.green("\n✓ OK\n") : chalk.red("\n✗ Cần xử lý\n"));
+    console.log(result.ok ? chalk.green(`\n${t("check_ok")}\n`) : chalk.red(`\n${t("check_fail")}\n`));
     process.exit(result.ok ? 0 : 1);
+  });
+
+program
+  .command("init")
+  .description("Khởi tạo nhanh: auth login + configure-all (11 tool) + check")
+  .option("-k, --key <token>", "Stali API key")
+  .option("--skip-configure", "Chỉ lưu API key, không configure-all")
+  .action(async (opts: { key?: string; skipConfigure?: boolean }) => {
+    const globals = program.opts<{ key?: string }>();
+    const apiKey = opts.key || globals.key;
+    if (!apiKey?.trim()) {
+      console.error(chalk.red(`❌ ${t("missing_key")}`));
+      console.log(chalk.cyan(`\n${STALI_DASHBOARD_KEYS_URL}\n`));
+      process.exit(1);
+    }
+    console.log(chalk.bold.cyan(`\n${t("init_title")}\n`));
+    const result = await runInit({
+      apiKey: apiKey.trim(),
+      skipConfigure: opts.skipConfigure,
+    });
+    for (const step of result.steps) {
+      const icon = step.ok ? chalk.green("✓") : chalk.red("✗");
+      console.log(`${icon} ${step.name}${step.detail ? chalk.gray(` — ${step.detail}`) : ""}`);
+    }
+    console.log(result.success ? chalk.green(`\n✅ ${t("init_done")}\n`) : chalk.red("\n❌ Init incomplete\n"));
+    process.exit(result.success ? 0 : 1);
+  });
+
+program
+  .command("plugins")
+  .description("Plugin tùy chỉnh (~/.stali/plugins.json)")
+  .option("--init", "Tạo file plugins.json mẫu nếu chưa có")
+  .action(async (opts: { init?: boolean }) => {
+    if (opts.init) {
+      const p = await writePluginsExample();
+      console.log(chalk.green(`\n✅ Created: ${p}\n`));
+    }
+    const plugins = await loadPlugins();
+    console.log(chalk.bold.cyan(`\n${t("plugins_title")}\n`));
+    console.log(chalk.gray(`File: ${getPluginsPath()}\n`));
+    if (plugins.length === 0) {
+      console.log(chalk.yellow(`${t("plugins_empty")}\n`));
+      console.log(chalk.gray("Create sample: stali plugins --init\n"));
+      process.exit(0);
+    }
+    for (const p of plugins) {
+      console.log(`• ${chalk.white(p.name)} (${p.id}) — ${p.protocol}`);
+      console.log(chalk.gray(`  ${p.configFile}${p.description ? ` — ${p.description}` : ""}`));
+    }
+    console.log(chalk.gray("\n(Plugins have no auto-syncer yet — use export-env / guide)\n"));
+    process.exit(0);
   });
 
 const configCmd = program
@@ -615,6 +701,7 @@ program
   .option("--tools <list>", "Với --fix: chỉ các tool (cách nhau bởi dấu phẩy)")
   .option("-m, --model <model>", "Với --fix: model áp dụng")
   .option("--watch", "Theo dõi liên tục (Ctrl+C thoát)")
+  .option("--notify", "Với --watch: chuông + desktop notify khi thay đổi")
   .option("-i, --interval <seconds>", "Với --watch: chu kỳ giây (mặc định 10)", "10")
   .action(async (opts: {
     json?: boolean;
@@ -624,13 +711,14 @@ program
     tools?: string;
     model?: string;
     watch?: boolean;
+    notify?: boolean;
     interval?: string;
   }) => {
     const globals = program.opts<{ key?: string }>();
     const apiKey = await resolveApiKey(globals.key);
     if (opts.watch && !opts.fix) {
       const sec = parseInt(opts.interval || "10", 10) || 10;
-      await runDoctorWatch(sec, opts.json);
+      await runDoctorWatch(sec, opts.json, opts.notify);
       return;
     }
     await runDoctor(opts.json, {
@@ -655,10 +743,10 @@ program
       console.log(`Hiện tại: ${chalk.white(ver.current)}`);
       console.log(`Mới nhất:  ${chalk.white(ver.latest)}`);
       if (ver.updateAvailable) {
-        console.log(chalk.yellow("\nCó bản mới — chạy: stali update\n"));
+        console.log(chalk.yellow(`\n${t("update_available")}\n`));
         process.exit(1);
       }
-      console.log(chalk.green("\n✅ Đã dùng phiên bản mới nhất\n"));
+      console.log(chalk.green(`\n${t("update_latest")}\n`));
       process.exit(0);
     }
     console.log(chalk.cyan("\n⬇️  Đang cập nhật stali-cli…\n"));

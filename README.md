@@ -31,6 +31,10 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🔗 **Open**: `stali open keys` · **Guide**: `stali guide cursor`
 - ⚙️ **Wizard configure-all**: batch 11/13 tool từ menu chính
 - 🟣 **13/13 menu riêng**: Qwen, Droid, Cowork — không còn generic fallback
+- 🚀 **Init**: `stali init` — onboarding một lệnh (auth + configure-all + check)
+- 🔌 **Plugins**: `stali plugins [--init]` — registry stub `~/.stali/plugins.json`
+- 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
+- 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
 
 ---
 
@@ -79,10 +83,14 @@ stali auth login -k sk-stali-...     # Lưu API key
 stali auth status
 stali info --json
 stali open keys                      # Mở Dashboard tạo key
-stali check --strict              # Auth + 13/13 doctor
+stali init -k sk-stali-...              # Onboarding nhanh (auth + 11 tool + check)
+stali init --skip-configure -k sk-stali-...  # Chỉ lưu key
+stali plugins --init                  # Tạo ~/.stali/plugins.json mẫu
+stali --lang en check                 # Thông báo tiếng Anh
 stali config show
 stali backups -t claude
-stali doctor --watch -i 10        # Theo dõi liên tục
+stali check --strict              # Auth + 13/13 doctor
+stali doctor --watch --notify -i 10 # Theo dõi + cảnh báo desktop
 stali update --check              # Có bản mới?
 stali uninstall --purge-path    # Windows: gỡ khỏi User PATH
 stali restore -t claude  # Khôi phục backup gần nhất
