@@ -46,7 +46,7 @@ async function main() {
   assert("--help exit 0", help.ok, help.detail);
 
   const ver = spawnSync(BUN, [CLI, "--version"], { encoding: "utf8" });
-  assert("--version = 1.1.0", ver.stdout?.trim() === "1.1.0", ver.stdout?.trim());
+  assert("--version = 1.5.0", ver.stdout?.trim() === "1.5.0", ver.stdout?.trim());
 
   // 2. Token validation (no network)
   const badToken = run("models bad token", ["--models", "-k", "sk-openai-fake"]);
@@ -80,6 +80,10 @@ async function main() {
 
   const ls = run("ls -k", ["ls", "-k", rawKey]);
   assert("ls -k live OK", ls.ok);
+
+  const toolsCmd = run("tools", ["tools"]);
+  assert("tools exit 0", toolsCmd.ok);
+  assert("tools lists 13", /openclaw|jcode|claude/.test(toolsCmd.detail || ""));
 
   // 5. doctor
   const doctor = run("doctor", ["doctor"]);
@@ -116,13 +120,19 @@ async function main() {
   const codex = run("configure codex", ["configure", "codex", "-k", rawKey, "-m", "req/gpt-5.6-sol"], envHome);
   assert("configure codex", codex.ok, codex.detail?.slice(0, 150));
 
-  // Verify files created
+  // Verify files created (13/13)
   const checks = [
     [".openclaw/config.json", "api.stali.vn"],
     [".deepseek/config.toml", "api.stali.vn"],
     [".qwen/settings.json", "api.stali.vn"],
     [".opencode/config.json", "stali"],
+    [".kilo/config.json", "api.stali.vn"],
+    [".droid/config.json", "api.stali.vn"],
     [".vscode/cline_settings.json", "api.stali.vn"],
+    [".vscode/roo_settings.json", "api.stali.vn"],
+    [".grok/config.toml", "api.stali.vn"],
+    [".cowork/settings.json", "api.stali.vn"],
+    [".jcode/config.toml", "api.stali.vn"],
     [".claude/settings.json", "api.stali.vn"],
     [".codex/config.toml", "stali"],
   ];
@@ -161,7 +171,10 @@ async function main() {
     encoding: "utf8",
     env: process.env,
   });
-  assert("bin/stali.js chạy được", binCli.stdout?.trim() === "1.1.0");
+  assert("bin/stali.js chạy được", binCli.stdout?.trim() === "1.5.0");
+
+  const alias = run("configure claude-code alias", ["configure", "claude-code", "-k", rawKey, "-m", "claude-fable-5"], envHome);
+  assert("configure alias claude-code", alias.ok, alias.detail?.slice(0, 120));
 
   // Cleanup temp home
   await fs.rm(tmpHome, { recursive: true, force: true });

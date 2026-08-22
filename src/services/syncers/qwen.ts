@@ -4,6 +4,7 @@ import { SyncerResult } from "../../types";
 import { STALI_OPENAI_BASE_URL } from "../../constants/api";
 import { readJsonFile, writeJsonFile } from "../../utils/file";
 import { createTimestampBackup } from "../../utils/backup";
+import { restoreToolConfig } from "./common";
 
 export const QWEN_CONFIG_PATH = path.join(os.homedir(), ".qwen", "settings.json");
 
@@ -40,4 +41,8 @@ export async function patchQwenSettings(
       error: e?.message || String(e),
     };
   }
+}
+
+export async function resetQwenSettings(): Promise<SyncerResult> {
+  return restoreToolConfig(QWEN_CONFIG_PATH);
 }

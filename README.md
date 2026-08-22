@@ -14,7 +14,8 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
   - OpenCode, Kilo Code, Droid CLI, Cline, Roo Code
   - Grok Build, Cowork, jcode
 - 🛡️ **Backup timestamp**: `<file>.YYYYMMDD_HHmmss.bak` + `stali restore`
-- 🩺 **Doctor**: `stali doctor` — quét config đã trỏ Stali chưa
+- 🩺 **Doctor**: `stali doctor` — quét 13 tool với parser schema (không chỉ heuristic)
+- 📋 **Tools**: `stali tools` — liệt kê 13 công cụ + đường dẫn config
 
 ---
 
@@ -28,16 +29,30 @@ curl -fsSL https://api.stali.vn/install/stali-cli.sh | bash
 bun install -g stali-cli
 ```
 
----
+## 📁 Cấu trúc thư mục (~/.stali)
 
-## 📖 Sử dụng
+| Path | Mục đích |
+|------|----------|
+| `~/.stali/cli` | Source + build stali-cli |
+| `~/.stali/bin` | Lệnh `stali` (wrapper, không nằm trong `.bun`) |
+| `~/.stali/config.json` | API key đã lưu (wizard) |
+| `~/.bun` | Chỉ Bun runtime |
+
+```bash
+stali paths   # In đường dẫn trên máy bạn
+```
+
+---
 
 ```bash
 stali                    # Wizard tương tác
 stali --models           # Bảng giá model
 stali ls -k sk-stali-... # Bảng giá với token
-stali doctor             # Kiểm tra cấu hình
-stali configure claude -k sk-stali-...
+stali doctor             # Kiểm tra cấu hình (13 tool, schema-aware)
+stali paths              # ~/.stali/cli, bin, config
+stali tools              # Liệt kê 13 công cụ + file config
+stali update             # Cập nhật từ GitHub
+stali configure claude --dry-run -k sk-stali-...  # Xem preview, không ghi file
 stali configure codex -m req/gpt-5.6-sol -k sk-stali-...
 stali restore -t claude  # Khôi phục backup gần nhất
 stali --reset            # Xóa token ~/.stali

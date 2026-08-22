@@ -22,17 +22,25 @@ export const DoctorView: React.FC<DoctorViewProps> = ({ statuses, onBack }) => {
           ✅ Đã trỏ Stali API ({configured.length}/{statuses.length})
         </Text>
         {configured.map((s) => (
-          <Text key={s.toolId} color="green">
-            • {s.toolName} — {s.model || "OK"} ({s.configPath})
-          </Text>
+          <Box key={s.toolId} flexDirection="column" marginBottom={0}>
+            <Text color="green">
+              • {s.toolName}
+              {s.model ? ` — ${s.model}` : ""}
+            </Text>
+            {s.endpoint ? (
+              <Text color="gray">  ↳ {s.endpoint}</Text>
+            ) : null}
+            <Text color="gray">  ↳ {s.configPath}</Text>
+          </Box>
         ))}
 
         <Text bold color="yellow">
-          ⚠️ Chưa cấu hình / chưa phát hiện Stali ({missing.length})
+          ⚠️ Chưa cấu hình ({missing.length})
         </Text>
         {missing.map((s) => (
           <Text key={s.toolId} color="gray">
-            • {s.toolName} — {s.exists ? "file có, chưa trỏ Stali" : "chưa có file"} ({s.configPath})
+            • {s.toolName} —{" "}
+            {s.exists ? "file có, chưa trỏ Stali" : "chưa có file"} — {s.configPath}
           </Text>
         ))}
 

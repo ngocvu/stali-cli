@@ -8,10 +8,13 @@ import { loadStaliConfig, resetStaliConfig } from "./services/config";
 import { fetchRealtimeModels, validateApiKeyAndFetchModels } from "./services/api";
 import { formatPricingSummary, formatTokens } from "./utils/format";
 import { syncTool, resetTool, runDoctorScan } from "./services/syncers";
+import { buildToolConfigPreview } from "./services/syncers/preview";
+import { selfUpdate } from "./services/self-update";
 import { restoreFromBackup, listBackupsForFile } from "./utils/backup";
-import { getToolById } from "./utils/tool-utils";
+import { getToolById, resolveToolId } from "./utils/tool-utils";
 import { resolveHomePath } from "./utils/file";
 import { VERSION } from "./version";
+import { getStaliBinDir, getStaliCliInstallDir, getStaliHome, getStaliConfigPath } from "./constants/paths";
 import { SUPPORTED_TOOLS } from "./constants/tools";
 
 const program = new Command();
@@ -69,8 +72,36 @@ async function displayModelsTable(apiKey?: string) {
   );
 }
 
-async function runDoctor() {
+async function runPaths() {
+  console.log(chalk.bold.cyan("\n📁 STALI PATHS\n"));
+  console.log(`${chalk.white("Home")}     ${getStaliHome()}`);
+  console.log(`${chalk.white("CLI")}      ${getStaliCliInstallDir()}`);
+  console.log(`${chalk.white("Bin")}      ${getStaliBinDir()}`);
+  console.log(`${chalk.white("Config")}   ${getStaliConfigPath()}`);
+  console.log(chalk.gray("\nThêm vào PATH nếu lệnh stali chưa nhận:"));
+  console.log(chalk.yellow(`  export PATH="${getStaliBinDir()}:$PATH"`));
+  console.log("");
+}
+
+async function runToolsList() {
   const statuses = await runDoctorScan();
+  console.log(chalk.bold.cyan("\n🔧 STALI CLI — 13 công cụ hỗ trợ\n"));
+  for (const s of statuses) {
+    const icon = s.configuredForStali ? chalk.green("✓") : chalk.yellow("○");
+    console.log(
+      `${icon} ${chalk.white(s.toolId.padEnd(14))} ${chalk.gray(s.toolName)}`
+    );
+    console.log(chalk.gray(`     ${s.configPath}`));
+  }
+  console.log(chalk.gray("\nCấu hình: stali configure <toolId> -k sk-stali-...\n"));
+}
+
+async function runDoctor(jsonOut?: boolean) {
+  const statuses = await runDoctorScan();
+  if (jsonOut) {
+    console.log(JSON.stringify(statuses, null, 2));
+    return;
+  }
   const configured = statuses.filter((s) => s.configuredForStali);
 
   console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR\n"));
@@ -88,12 +119,21 @@ async function runDoctor() {
     console.log(
       `${icon} ${chalk.white(s.toolName)} — ${state}${s.model ? chalk.gray(` (${s.model})`) : ""}`
     );
+    if (s.endpoint) {
+      console.log(chalk.gray(`   ${s.endpoint}`));
+    }
     console.log(chalk.gray(`   ${s.configPath}`));
   }
   console.log("");
 }
 
-async function runConfigure(toolId: string, apiKey: string, model?: string) {
+async function runConfigure(
+  toolInput: string,
+  apiKey: string,
+  model?: string,
+  dryRun?: boolean
+) {
+  const toolId = resolveToolId(toolInput);
   const tool = getToolById(toolId);
   if (!tool) {
     console.error(chalk.red(`❌ Tool không hợp lệ: ${toolId}`));
@@ -101,16 +141,26 @@ async function runConfigure(toolId: string, apiKey: string, model?: string) {
     process.exit(1);
   }
 
-  const validation = await validateApiKeyAndFetchModels(apiKey);
+  const validation = dryRun
+    ? { valid: true, defaultModel: tool.defaultModel }
+    : await validateApiKeyAndFetchModels(apiKey);
   if (!validation.valid) {
-    console.error(chalk.red(`❌ ${validation.error || "Token không hợp lệ"}`));
+    console.error(chalk.red(`❌ ${(validation as { error?: string }).error || "Token không hợp lệ"}`));
     process.exit(1);
   }
 
   const resolvedModel =
     model ||
-    validation.defaultModel ||
+    (validation as { defaultModel?: string }).defaultModel ||
     tool.defaultModel;
+
+  if (dryRun) {
+    const preview = buildToolConfigPreview(toolId, apiKey, resolvedModel);
+    console.log(chalk.bold.cyan(`\n🔍 Dry-run: ${tool.name} → ${tool.configFile}\n`));
+    console.log(JSON.stringify(preview, null, 2));
+    console.log(chalk.gray("\n(Không ghi file — bỏ --dry-run để áp dụng)\n"));
+    process.exit(0);
+  }
 
   const result = await syncTool(toolId, apiKey, resolvedModel);
   if (result.success) {
@@ -128,7 +178,8 @@ async function runConfigure(toolId: string, apiKey: string, model?: string) {
   process.exit(1);
 }
 
-async function runRestore(toolId: string, backupPath?: string) {
+async function runRestore(toolInput: string, backupPath?: string) {
+  const toolId = resolveToolId(toolInput);
   const tool = getToolById(toolId);
   if (!tool) {
     console.error(chalk.red(`❌ Tool không hợp lệ: ${toolId}`));
@@ -195,25 +246,59 @@ program
   });
 
 program
+  .command("paths")
+  .description("Hiển thị thư mục ~/.stali (cli, bin, config)")
+  .action(async () => {
+    await runPaths();
+    process.exit(0);
+  });
+
+program
+  .command("tools")
+  .description("Liệt kê 13 công cụ AI và file config tương ứng")
+  .action(async () => {
+    await runToolsList();
+    process.exit(0);
+  });
+
+program
   .command("doctor")
   .description("Kiểm tra công cụ nào đã trỏ Stali API")
-  .action(async () => {
-    await runDoctor();
+  .option("--json", "Xuất JSON (cho script/automation)")
+  .action(async (opts: { json?: boolean }) => {
+    await runDoctor(opts.json);
     process.exit(0);
+  });
+
+program
+  .command("update")
+  .description("Cập nhật stali-cli từ GitHub (~/.stali/cli)")
+  .action(async () => {
+    console.log(chalk.cyan("\n⬇️  Đang cập nhật stali-cli…\n"));
+    const result = await selfUpdate();
+    if (result.success) {
+      console.log(chalk.green(`✅ ${result.message}`));
+      console.log(chalk.gray(`   Chạy lại: stali --version\n`));
+      process.exit(0);
+    }
+    console.error(chalk.red(`❌ ${result.message}`));
+    if (result.error) console.error(chalk.red(`   ${result.error}`));
+    process.exit(1);
   });
 
 program
   .command("configure <tool>")
   .description("Cấu hình non-interactive cho một công cụ AI")
   .option("-m, --model <model>", "Model Stali API")
-  .action(async (tool: string, opts: { model?: string }) => {
+  .option("--dry-run", "Xem preview config, không ghi file")
+  .action(async (tool: string, opts: { model?: string; dryRun?: boolean }) => {
     const globals = program.opts<{ key?: string }>();
     const apiKey = await resolveApiKey(globals.key);
     if (!apiKey) {
       console.error(chalk.red("❌ Thiếu API key. Dùng -k hoặc lưu token qua wizard trước."));
       process.exit(1);
     }
-    await runConfigure(tool, apiKey, opts.model);
+    await runConfigure(tool, apiKey, opts.model, opts.dryRun);
   });
 
 program

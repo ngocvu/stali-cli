@@ -1,20 +1,37 @@
-import { SyncerResult } from "../../types";
 import { getToolById } from "../../utils/tool-utils";
-import { readJsonFile, readTomlFile, resolveHomePath } from "../../utils/file";
+import { resolveHomePath } from "../../utils/file";
+import { SyncerResult } from "../../types";
 import { patchClaudeSettings, getClaudeStatus, resetClaudeSettings } from "./claude";
-import { patchCodexSettings, getCodexStatus, resetCodexSettings } from "./codex";
-import { patchOpenClawSettings, resetOpenClawSettings } from "./openclaw";
-import { patchDeepSeekSettings, resetDeepSeekSettings } from "./deepseek";
-import { patchQwenSettings } from "./qwen";
-import { patchOpenCodeSettings, resetOpenCodeSettings } from "./opencode";
-import { patchKiloSettings, resetKiloSettings } from "./kilo";
-import { patchDroidSettings, resetDroidSettings } from "./droid";
-import { patchClineSettings, resetClineSettings } from "./cline";
-import { patchRooSettings, resetRooSettings } from "./roo";
-import { patchGrokSettings, resetGrokSettings } from "./grok";
-import { patchCoworkSettings, resetCoworkSettings } from "./cowork";
-import { patchJcodeSettings, resetJcodeSettings } from "./jcode";
+import {
+  patchCodexSettings,
+  getCodexStatus,
+  resetCodexSettings,
+  CODEX_CONFIG_PATH,
+  CODEX_AUTH_PATH,
+} from "./codex";
+import { patchOpenClawSettings, resetOpenClawSettings, OPENCLAW_CONFIG_PATH } from "./openclaw";
+import { patchDeepSeekSettings, resetDeepSeekSettings, DEEPSEEK_CONFIG_PATH } from "./deepseek";
+import { patchQwenSettings, resetQwenSettings, QWEN_CONFIG_PATH } from "./qwen";
+import { patchOpenCodeSettings, resetOpenCodeSettings, OPENCODE_CONFIG_PATH } from "./opencode";
+import { patchKiloSettings, resetKiloSettings, KILO_CONFIG_PATH } from "./kilo";
+import { patchDroidSettings, resetDroidSettings, DROID_CONFIG_PATH } from "./droid";
+import { patchClineSettings, resetClineSettings, CLINE_CONFIG_PATH } from "./cline";
+import { patchRooSettings, resetRooSettings, ROO_CONFIG_PATH } from "./roo";
+import { patchGrokSettings, resetGrokSettings, GROK_CONFIG_PATH } from "./grok";
+import { patchCoworkSettings, resetCoworkSettings, COWORK_CONFIG_PATH } from "./cowork";
+import { patchJcodeSettings, resetJcodeSettings, JCODE_CONFIG_PATH } from "./jcode";
 import { restoreToolConfig } from "./common";
+import {
+  detectAnthropicEnvJsonStatus,
+  detectCodexTomlStatus,
+  detectCoworkJsonStatus,
+  detectDroidJsonStatus,
+  detectOpenAiProviderJsonStatus,
+  detectOpenAiTomlStatus,
+  detectQwenJsonStatus,
+  detectVsCodeAgentJsonStatus,
+  ToolSyncStatus,
+} from "./status";
 
 export {
   patchClaudeSettings,
@@ -43,6 +60,7 @@ export interface ToolHealthStatus {
   exists: boolean;
   configuredForStali: boolean;
   model?: string;
+  endpoint?: string;
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -55,8 +73,56 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-function looksLikeStaliContent(raw: string): boolean {
-  return raw.includes("api.stali.vn") || raw.includes("stali");
+type StatusDetector = (configPath: string) => Promise<ToolSyncStatus>;
+
+const STATUS_BY_TOOL: Record<string, StatusDetector | "claude" | "codex"> = {
+  claude: "claude",
+  codex: "codex",
+  openclaw: detectAnthropicEnvJsonStatus,
+  "deepseek-tui": detectOpenAiTomlStatus,
+  qwen: detectQwenJsonStatus,
+  opencode: detectOpenAiProviderJsonStatus,
+  kilo: detectVsCodeAgentJsonStatus,
+  droid: detectDroidJsonStatus,
+  cline: detectVsCodeAgentJsonStatus,
+  roo: detectVsCodeAgentJsonStatus,
+  "grok-build": detectOpenAiTomlStatus,
+  cowork: detectCoworkJsonStatus,
+  jcode: detectOpenAiTomlStatus,
+};
+
+export async function getToolSyncStatus(toolId: string): Promise<ToolSyncStatus | null> {
+  const tool = getToolById(toolId);
+  if (!tool) return null;
+
+  const configPath = resolveHomePath(tool.configFile);
+  if (!(await fileExists(configPath))) {
+    return { configured: false };
+  }
+
+  const detector = STATUS_BY_TOOL[toolId];
+  if (detector === "claude") {
+    const s = await getClaudeStatus();
+    return {
+      configured: s.configured,
+      endpoint: s.endpoint,
+      model: s.defaultModel,
+      apiKeyPresent: Boolean(s.apiKey),
+    };
+  }
+  if (detector === "codex") {
+    const s = await getCodexStatus();
+    return {
+      configured: s.configured,
+      endpoint: s.endpoint,
+      model: s.model,
+      apiKeyPresent: Boolean(s.apiKey),
+    };
+  }
+  if (typeof detector === "function") {
+    return detector(configPath);
+  }
+  return { configured: false };
 }
 
 export async function getToolHealthStatus(toolId: string): Promise<ToolHealthStatus | null> {
@@ -65,38 +131,16 @@ export async function getToolHealthStatus(toolId: string): Promise<ToolHealthSta
 
   const configPath = resolveHomePath(tool.configFile);
   const exists = await fileExists(configPath);
-  let configuredForStali = false;
-  let model: string | undefined;
-
-  if (toolId === "claude") {
-    const s = await getClaudeStatus();
-    configuredForStali = s.configured;
-    model = s.defaultModel;
-  } else if (toolId === "codex") {
-    const s = await getCodexStatus();
-    configuredForStali = s.configured;
-    model = s.model;
-  } else if (exists) {
-    const json = await readJsonFile(configPath);
-    const toml = json ? null : await readTomlFile(configPath);
-    const blob = JSON.stringify(json || toml || {});
-    configuredForStali = looksLikeStaliContent(blob);
-    model =
-      json?.model ||
-      json?.env?.ANTHROPIC_MODEL ||
-      json?.anthropicModelId ||
-      json?.openai?.model ||
-      json?.defaultModel ||
-      toml?.model;
-  }
+  const sync = await getToolSyncStatus(toolId);
 
   return {
     toolId,
     toolName: tool.name,
     configPath,
     exists,
-    configuredForStali,
-    model,
+    configuredForStali: sync?.configured ?? false,
+    model: sync?.model,
+    endpoint: sync?.endpoint,
   };
 }
 
@@ -110,9 +154,6 @@ export async function runDoctorScan(): Promise<ToolHealthStatus[]> {
   return results;
 }
 
-/**
- * Dispatch syncer by toolId
- */
 export async function syncTool(
   toolId: string,
   apiKey: string,
@@ -167,9 +208,7 @@ export async function resetTool(toolId: string): Promise<SyncerResult> {
     case "deepseek-tui":
       return resetDeepSeekSettings();
     case "qwen":
-      return restoreToolConfig(
-        (await import("./qwen")).QWEN_CONFIG_PATH
-      );
+      return resetQwenSettings();
     case "opencode":
       return resetOpenCodeSettings();
     case "kilo":
@@ -201,3 +240,21 @@ export async function resetTool(toolId: string): Promise<SyncerResult> {
     }
   }
 }
+
+export const TOOL_CONFIG_PATHS: Record<string, string> = {
+  claude: resolveHomePath("~/.claude/settings.json"),
+  codex: CODEX_CONFIG_PATH,
+  openclaw: OPENCLAW_CONFIG_PATH,
+  "deepseek-tui": DEEPSEEK_CONFIG_PATH,
+  qwen: QWEN_CONFIG_PATH,
+  opencode: OPENCODE_CONFIG_PATH,
+  kilo: KILO_CONFIG_PATH,
+  droid: DROID_CONFIG_PATH,
+  cline: CLINE_CONFIG_PATH,
+  roo: ROO_CONFIG_PATH,
+  "grok-build": GROK_CONFIG_PATH,
+  cowork: COWORK_CONFIG_PATH,
+  jcode: JCODE_CONFIG_PATH,
+};
+
+export { buildToolConfigPreview } from "./preview";

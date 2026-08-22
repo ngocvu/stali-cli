@@ -3,34 +3,23 @@ import { Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
 import { maskToken } from "../utils/token";
+import { VERSION } from "../version";
 
 interface MainMenuProps {
   apiKey?: string;
-  onSelect: (action: "configure" | "models" | "change-key" | "doctor" | "exit") => void;
+  onSelect: (
+    action: "configure" | "models" | "change-key" | "doctor" | "update" | "exit"
+  ) => void;
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, onSelect }) => {
   const items = [
-    {
-      label: "⚡ Cấu hình ứng dụng AI",
-      value: "configure" as const,
-    },
-    {
-      label: "📊 Xem bảng giá & danh sách Model Stali API",
-      value: "models" as const,
-    },
-    {
-      label: "🩺 Kiểm tra trạng thái cấu hình (doctor)",
-      value: "doctor" as const,
-    },
-    {
-      label: "🔑 Cài đặt API Token",
-      value: "change-key" as const,
-    },
-    {
-      label: "🚪 Thoát",
-      value: "exit" as const,
-    },
+    { label: "⚡ Cấu hình ứng dụng AI", value: "configure" as const },
+    { label: "📊 Xem bảng giá & danh sách Model Stali API", value: "models" as const },
+    { label: "🩺 Kiểm tra trạng thái cấu hình (doctor)", value: "doctor" as const },
+    { label: "⬆️  Cập nhật stali-cli (update)", value: "update" as const },
+    { label: "🔑 Cài đặt API Token", value: "change-key" as const },
+    { label: "🚪 Thoát", value: "exit" as const },
   ];
 
   return (
@@ -41,12 +30,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, onSelect }) => {
             Token hiện tại: <Text color="yellow">{maskToken(apiKey)}</Text>
           </Text>
         )}
+        <Text color="gray">stali-cli v{VERSION} · ~/.stali</Text>
         <SelectInput items={items} onSelect={(item) => onSelect(item.value)} />
 
         <Box justifyContent="center" marginTop={1}>
-          <Text color="gray">
-            💡 [ ↑ ][ ↓ ] Di chuyển | [ Enter ] Chọn
-          </Text>
+          <Text color="gray">💡 [ ↑ ][ ↓ ] Di chuyển | [ Enter ] Chọn</Text>
         </Box>
       </Box>
     </Card>

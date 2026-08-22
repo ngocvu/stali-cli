@@ -1,32 +1,26 @@
-import path from "path";
-import os from "os";
 import fs from "fs/promises";
 import { StaliConfigFile, StaliConfigFileSchema } from "../types";
 import { readJsonFile, writeJsonFile } from "../utils/file";
 import { STALI_OPENAI_BASE_URL } from "../constants/api";
+import {
+  getStaliConfigPath,
+  getStaliHome,
+} from "../constants/paths";
 
-const STALI_CONFIG_DIR = path.join(os.homedir(), ".stali");
-const STALI_CONFIG_PATH = path.join(STALI_CONFIG_DIR, "config.json");
+export { getStaliHome, getStaliConfigPath } from "../constants/paths";
+export { getStaliCliInstallDir, getStaliBinDir } from "../constants/paths";
 
-/**
- * Get config directory path (~/.stali)
- */
+/** @deprecated use getStaliHome() */
 export function getStaliConfigDir(): string {
-  return STALI_CONFIG_DIR;
-}
-
-/**
- * Get config file path (~/.stali/config.json)
- */
-export function getStaliConfigPath(): string {
-  return STALI_CONFIG_PATH;
+  return getStaliHome();
 }
 
 /**
  * Read Stali config file (~/.stali/config.json)
  */
 export async function loadStaliConfig(): Promise<StaliConfigFile | null> {
-  const data = await readJsonFile(STALI_CONFIG_PATH);
+  const configPath = getStaliConfigPath();
+  const data = await readJsonFile(configPath);
   if (!data) return null;
 
   const parsed = StaliConfigFileSchema.safeParse(data);
@@ -58,7 +52,7 @@ export async function saveStaliConfig(
     lastUpdated: new Date().toISOString(),
   };
 
-  await writeJsonFile(STALI_CONFIG_PATH, updated, { secure: true });
+  await writeJsonFile(getStaliConfigPath(), updated, { secure: true });
   return updated;
 }
 
@@ -69,10 +63,11 @@ export async function loadStaliConfigOrCorrupt(): Promise<{
   config: StaliConfigFile | null;
   corrupt: boolean;
 }> {
-  const data = await readJsonFile(STALI_CONFIG_PATH);
+  const configPath = getStaliConfigPath();
+  const data = await readJsonFile(configPath);
   if (!data) {
     try {
-      await fs.access(STALI_CONFIG_PATH);
+      await fs.access(configPath);
       return { config: null, corrupt: true };
     } catch {
       return { config: null, corrupt: false };
@@ -91,7 +86,7 @@ export async function loadStaliConfigOrCorrupt(): Promise<{
  */
 export async function resetStaliConfig(): Promise<boolean> {
   try {
-    await fs.unlink(STALI_CONFIG_PATH);
+    await fs.unlink(getStaliConfigPath());
     return true;
   } catch {
     return false;

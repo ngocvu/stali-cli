@@ -28,9 +28,9 @@ import {
   resetCodexSettings,
 } from "../services/syncers/codex";
 import { syncTool, resetTool, runDoctorScan } from "../services/syncers";
+import { buildToolConfigPreview } from "../services/syncers/preview";
 import { getToolById } from "../utils/tool-utils";
 import { resolveToolDefaultModel } from "../utils/tool-utils";
-import { STALI_DOCS_URL } from "../constants/api";
 
 interface WizardProps {
   initialKey?: string;
@@ -131,7 +131,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   };
 
   const handleMenuSelect = async (
-    action: "configure" | "models" | "change-key" | "doctor" | "exit"
+    action: "configure" | "models" | "change-key" | "doctor" | "update" | "exit"
   ) => {
     switch (action) {
       case "configure":
@@ -146,6 +146,29 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         setLoading(false);
         setStep("doctor");
         break;
+      case "update": {
+        setLoading(true);
+        setError(undefined);
+        const { selfUpdate } = await import("../services/self-update");
+        const res = await selfUpdate();
+        setLoading(false);
+        if (res.success) {
+          setResults([
+            {
+              toolId: "update",
+              toolName: "stali-cli",
+              success: true,
+              message: res.message,
+              configPath: res.installDir,
+            },
+          ]);
+          setStep("done");
+        } else {
+          setError(res.error || res.message);
+          setStep("menu");
+        }
+        break;
+      }
       case "change-key":
         setStep("token");
         break;
@@ -218,6 +241,11 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       if (action === "set-model") {
         setSelectedTier("all");
         setStep("model");
+        return;
+      }
+      if (typeof action === "string" && action.startsWith("use-model:")) {
+        setGenericModel(action.slice("use-model:".length));
+        setStep("tool-detail");
         return;
       }
       return;
@@ -480,12 +508,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     }
 
     const tool = getToolById(selectedTool);
-    return {
-      tool: tool?.name || selectedTool,
-      model: genericModel,
-      note: `Patch an toàn vào ${tool?.configFile || "config file"}`,
-      docs: STALI_DOCS_URL,
-    };
+    return buildToolConfigPreview(selectedTool, apiKey, genericModel);
   };
 
   const getReviewMeta = () => {
