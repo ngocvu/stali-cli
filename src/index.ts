@@ -10,6 +10,8 @@ import { formatPricingSummary, formatTokens } from "./utils/format";
 import { syncTool, resetTool, runDoctorScan } from "./services/syncers";
 import { buildToolConfigPreview } from "./services/syncers/preview";
 import { selfUpdate } from "./services/self-update";
+import { runConfigureBatch } from "./services/configure-batch";
+import { renderCompletion } from "./commands/completion";
 import { restoreFromBackup, listBackupsForFile } from "./utils/backup";
 import { getToolById, resolveToolId } from "./utils/tool-utils";
 import { resolveHomePath } from "./utils/file";
@@ -299,6 +301,84 @@ program
       process.exit(1);
     }
     await runConfigure(tool, apiKey, opts.model, opts.dryRun);
+  });
+
+program
+  .command("configure-all")
+  .description("Cấu hình hàng loạt nhiều công cụ AI (mặc định 11 tool, bỏ claude/codex)")
+  .option("-m, --model <model>", "Model áp dụng cho tất cả tool (mặc định: theo protocol từng tool)")
+  .option("--tools <list>", "Danh sách tool cách nhau bởi dấu phẩy (vd: openclaw,cline,codex)")
+  .option("--dry-run", "Xem preview, không ghi file")
+  .option("--continue-on-error", "Tiếp tục khi một tool lỗi")
+  .option("--skip-advanced", "Bỏ qua claude/codex (mặc định bật khi không chỉ định --tools)")
+  .action(
+    async (opts: {
+      model?: string;
+      tools?: string;
+      dryRun?: boolean;
+      continueOnError?: boolean;
+      skipAdvanced?: boolean;
+    }) => {
+      const globals = program.opts<{ key?: string }>();
+      const apiKey = await resolveApiKey(globals.key);
+      if (!apiKey) {
+        console.error(chalk.red("❌ Thiếu API key. Dùng -k hoặc lưu token qua wizard trước."));
+        process.exit(1);
+      }
+
+      const toolInputs = opts.tools
+        ? opts.tools.split(",").map((t) => t.trim()).filter(Boolean)
+        : undefined;
+      const skipAdvanced = toolInputs ? false : opts.skipAdvanced !== false;
+
+      const { items, allOk } = await runConfigureBatch({
+        apiKey,
+        model: opts.model,
+        toolInputs,
+        dryRun: opts.dryRun,
+        continueOnError: opts.continueOnError,
+        skipAdvanced,
+      });
+
+      if (opts.dryRun) {
+        console.log(chalk.bold.cyan("\n🔍 Dry-run configure-all\n"));
+        for (const item of items) {
+          const icon = item.success ? chalk.green("✓") : chalk.red("✗");
+          console.log(`${icon} ${chalk.white(item.toolName || item.toolId)} — ${item.message}`);
+          if (item.preview) {
+            console.log(chalk.gray(JSON.stringify(item.preview, null, 2).slice(0, 400) + "…"));
+          }
+        }
+        console.log(chalk.gray("\n(Không ghi file — bỏ --dry-run để áp dụng)\n"));
+        process.exit(allOk ? 0 : 1);
+      }
+
+      console.log(chalk.bold.cyan("\n⚙️  CONFIGURE-ALL\n"));
+      let ok = 0;
+      for (const item of items) {
+        const icon = item.success ? chalk.green("✓") : chalk.red("✗");
+        if (item.success) ok++;
+        console.log(`${icon} ${chalk.white(item.toolName)} — ${item.message}`);
+        if (item.configPath) console.log(chalk.gray(`   ${item.configPath}`));
+      }
+      console.log(
+        chalk.green(`\n✅ Thành công: ${ok}/${items.length}\n`)
+      );
+      process.exit(allOk ? 0 : 1);
+    }
+  );
+
+program
+  .command("completion <shell>")
+  .description("In script shell completion (bash | zsh | fish)")
+  .action((shell: string) => {
+    const script = renderCompletion(shell);
+    if (!script) {
+      console.error(chalk.red(`❌ Shell không hỗ trợ: ${shell}. Dùng: bash, zsh, fish`));
+      process.exit(1);
+    }
+    console.log(script);
+    process.exit(0);
   });
 
 program

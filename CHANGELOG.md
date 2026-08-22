@@ -1,0 +1,43 @@
+# Changelog
+
+## [1.6.0] — 2026-08-22
+
+### Added
+- **OpenClawDetailMenu** — menu wizard riêng cho OpenClaw (status live, shortcuts model Anthropic)
+- **`stali configure-all`** — cấu hình hàng loạt với `--tools`, `--dry-run`, `--continue-on-error`, `--skip-advanced`
+- **`stali completion bash|zsh|fish`** — shell completion cho subcommand và 13 tool id
+
+### Changed
+- Wizard: OpenClaw dùng menu chuyên biệt thay generic menu
+- Docs / connect-catalog: bổ sung lệnh mới vào cheatsheet
+
+## [1.5.0] — 2026-08-22
+
+### Added
+- Alias configure (`claude-code`, `vscode-cline`, `deepseek`, …)
+- Model shortcuts theo protocol trong wizard generic
+- `stali doctor --json`
+- Menu wizard **Cập nhật CLI**
+
+## [1.4.0] — 2026-08-22
+
+### Added
+- `stali update` (self-update từ GitHub)
+- `stali configure --dry-run`
+- DoctorView endpoint trong wizard
+- Windows PATH persistence (`~/.stali/bin`)
+
+## [1.3.0] — 2026-08-22
+
+### Added
+- Layout `~/.stali` (cli, bin, config)
+- `stali paths`
+- Install scripts cập nhật (Windows/macOS/Linux)
+
+## [1.2.0] — 2026-08-22
+
+### Added
+- Doctor schema-aware cho 13 tool
+- `stali tools`, preview/dry-run
+- GenericToolDetailMenu với status live
+- E2E verify 13/13

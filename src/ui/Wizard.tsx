@@ -78,7 +78,11 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   const [error, setError] = useState<string | undefined>();
   const [results, setResults] = useState<SyncerResult[]>([]);
 
-  const isAdvancedTool = (toolId: string) => toolId === "claude" || toolId === "codex";
+  const isAdvancedTool = (toolId: string) =>
+    toolId === "claude" || toolId === "codex";
+
+  const isGenericFlowTool = (toolId: string) =>
+    !isAdvancedTool(toolId);
 
   useEffect(() => {
     async function init() {
@@ -218,7 +222,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       return;
     }
 
-    if (!isAdvancedTool(selectedTool)) {
+    if (isGenericFlowTool(selectedTool)) {
       if (action === "reset") {
         setLoading(true);
         const res = await resetTool(selectedTool);
@@ -376,7 +380,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   };
 
   const handleManualModelSubmit = (customModel: string) => {
-    if (!isAdvancedTool(selectedTool)) {
+    if (isGenericFlowTool(selectedTool)) {
       setGenericModel(customModel);
       setStep("tool-detail");
       return;
@@ -426,7 +430,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       return;
     }
 
-    if (!isAdvancedTool(selectedTool)) {
+    if (isGenericFlowTool(selectedTool)) {
       setGenericModel(modelId);
       setStep("tool-detail");
       return;
@@ -601,14 +605,14 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
               ? selectedTier === "haiku"
                 ? "SUBAGENT MODEL"
                 : "MAIN MODEL"
-              : isAdvancedTool(selectedTool)
-              ? selectedTier.toUpperCase()
-              : "MODEL"
+              : isGenericFlowTool(selectedTool)
+              ? "MODEL"
+              : selectedTier.toUpperCase()
           })`}
           subtitle="Nhập tên hoặc mã model tùy chỉnh (ví dụ: req/gpt-5.6-sol, claude-fable-5, ...)"
           placeholder="Nhập mã model..."
           defaultValue={
-            !isAdvancedTool(selectedTool)
+            isGenericFlowTool(selectedTool)
               ? genericModel
               : selectedTool === "codex"
               ? selectedTier === "haiku"

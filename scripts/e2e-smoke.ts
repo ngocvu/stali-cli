@@ -46,7 +46,7 @@ async function main() {
   assert("--help exit 0", help.ok, help.detail);
 
   const ver = spawnSync(BUN, [CLI, "--version"], { encoding: "utf8" });
-  assert("--version = 1.5.0", ver.stdout?.trim() === "1.5.0", ver.stdout?.trim());
+  assert("--version = 1.6.0", ver.stdout?.trim() === "1.6.0", ver.stdout?.trim());
 
   // 2. Token validation (no network)
   const badToken = run("models bad token", ["--models", "-k", "sk-openai-fake"]);
@@ -171,7 +171,20 @@ async function main() {
     encoding: "utf8",
     env: process.env,
   });
-  assert("bin/stali.js chạy được", binCli.stdout?.trim() === "1.5.0");
+  assert("bin/stali.js chạy được", binCli.stdout?.trim() === "1.6.0");
+
+  const completion = run("completion bash", ["completion", "bash"]);
+  assert("completion bash", completion.ok && /_stali_completion/.test(completion.detail || ""));
+
+  const batchDry = run("configure-all dry-run", [
+    "configure-all",
+    "--dry-run",
+    "--tools",
+    "openclaw,cline",
+    "-k",
+    rawKey,
+  ], envHome);
+  assert("configure-all dry-run", batchDry.ok, batchDry.detail?.slice(0, 200));
 
   const alias = run("configure claude-code alias", ["configure", "claude-code", "-k", rawKey, "-m", "claude-fable-5"], envHome);
   assert("configure alias claude-code", alias.ok, alias.detail?.slice(0, 120));

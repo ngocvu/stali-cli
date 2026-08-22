@@ -16,6 +16,9 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🛡️ **Backup timestamp**: `<file>.YYYYMMDD_HHmmss.bak` + `stali restore`
 - 🩺 **Doctor**: `stali doctor` — quét 13 tool với parser schema (không chỉ heuristic)
 - 📋 **Tools**: `stali tools` — liệt kê 13 công cụ + đường dẫn config
+- ⚙️ **Batch**: `stali configure-all` — cấu hình hàng loạt (dry-run, filter tool)
+- 🐾 **OpenClaw menu**: wizard riêng với status live
+- ⌨️ **Completion**: `stali completion bash|zsh|fish`
 
 ---
 
@@ -53,7 +56,9 @@ stali paths              # ~/.stali/cli, bin, config
 stali tools              # Liệt kê 13 công cụ + file config
 stali update             # Cập nhật từ GitHub
 stali configure claude --dry-run -k sk-stali-...  # Xem preview, không ghi file
-stali configure codex -m req/gpt-5.6-sol -k sk-stali-...
+stali configure-all --skip-advanced -k sk-stali-... # 11 tool (bỏ claude/codex)
+stali configure-all --tools openclaw,cline -k sk-stali-...
+stali completion bash   # eval "$(stali completion bash)"
 stali restore -t claude  # Khôi phục backup gần nhất
 stali --reset            # Xóa token ~/.stali
 ```

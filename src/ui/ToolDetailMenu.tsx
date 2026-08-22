@@ -5,8 +5,16 @@ import {
   GenericToolDetailMenu,
   GenericMenuAction,
 } from "./tools/GenericToolDetailMenu";
+import {
+  OpenClawDetailMenu,
+  OpenClawMenuAction,
+} from "./tools/OpenClawDetailMenu";
 
-export type ToolMenuAction = ClaudeMenuAction | CodexMenuAction | GenericMenuAction;
+export type ToolMenuAction =
+  | ClaudeMenuAction
+  | CodexMenuAction
+  | OpenClawMenuAction
+  | GenericMenuAction;
 
 export interface ToolDetailMenuProps {
   toolId: string;
@@ -52,6 +60,14 @@ export const ToolDetailMenu: React.FC<ToolDetailMenuProps> = ({
         <CodexDetailMenu
           draftConfig={codexDraft}
           onDraftChange={onCodexDraftChange}
+          onSelectAction={onSelectAction}
+        />
+      );
+    case "openclaw":
+      return (
+        <OpenClawDetailMenu
+          model={genericModel}
+          apiKey={apiKey}
           onSelectAction={onSelectAction}
         />
       );
