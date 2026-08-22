@@ -13,6 +13,9 @@ const TOOL_ALIASES = [
 const SUBCOMMANDS = [
   "paths",
   "tools",
+  "check",
+  "config",
+  "backups",
   "info",
   "doctor",
   "update",
@@ -42,7 +45,7 @@ const CONFIGURE_ALL_FLAGS = [
   "--skip-advanced",
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
-const DOCTOR_FLAGS = ["--json", "--fix", "--dry-run", "--force", "--tools"];
+const DOCTOR_FLAGS = ["--json", "--fix", "--dry-run", "--force", "--tools", "--watch", "-i", "--interval"];
 
 function bashCompletion(): string {
   const tools = [...TOOL_IDS, ...TOOL_ALIASES].join(" ");

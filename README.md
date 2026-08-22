@@ -79,7 +79,11 @@ stali auth login -k sk-stali-...     # Lưu API key
 stali auth status
 stali info --json
 stali open keys                      # Mở Dashboard tạo key
-stali guide cursor                   # Hướng dẫn Cursor IDE
+stali check --strict              # Auth + 13/13 doctor
+stali config show
+stali backups -t claude
+stali doctor --watch -i 10        # Theo dõi liên tục
+stali update --check              # Có bản mới?
 stali uninstall --purge-path    # Windows: gỡ khỏi User PATH
 stali restore -t claude  # Khôi phục backup gần nhất
 stali --reset            # Xóa token ~/.stali

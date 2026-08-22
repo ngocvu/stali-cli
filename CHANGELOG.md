@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.1.0] — 2026-08-22
+
+### Added
+- **`stali check [--strict]`** — health check auth + doctor (JSON, exit code)
+- **`stali config show [--json]`** — xem ~/.stali/config.json (masked)
+- **`stali backups [-t tool]`** — liệt kê file .bak
+- **`stali doctor --watch [-i sec]`** — theo dõi cấu hình liên tục
+- **`stali update --check`** — kiểm tra phiên bản mới từ GitHub
+- **`stali info`** — hiển thị trạng thái update available
+
 ## [2.0.0] — 2026-08-22
 
 ### Added

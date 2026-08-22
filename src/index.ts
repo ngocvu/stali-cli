@@ -25,6 +25,10 @@ import { gatherCliInfo } from "./services/cli-info";
 import { openUrlInBrowser } from "./utils/open-url";
 import { renderAppGuide, listGuideIds } from "./constants/guides";
 import { STALI_DOCS_URL } from "./constants/api";
+import { runHealthCheck } from "./services/health-check";
+import { fetchLatestVersion } from "./services/version-check";
+import { loadStaliConfigOrCorrupt } from "./services/config";
+import { maskToken } from "./utils/token";
 import { restoreFromBackup, listBackupsForFile } from "./utils/backup";
 import { getToolById, resolveToolId } from "./utils/tool-utils";
 import { resolveHomePath } from "./utils/file";
@@ -179,6 +183,63 @@ async function runDoctor(jsonOut?: boolean, fixOpts?: {
   console.log("");
 }
 
+async function runDoctorWatch(intervalSec: number, jsonOut?: boolean) {
+  const sec = Math.max(3, intervalSec);
+  let running = true;
+  const stop = () => {
+    running = false;
+  };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+
+  while (running) {
+    if (!jsonOut) {
+      console.log(
+        chalk.gray(
+          `\n[${new Date().toLocaleTimeString("vi-VN")}] doctor --watch (${sec}s) — Ctrl+C thoát`
+        )
+      );
+    }
+    await runDoctor(jsonOut);
+    if (!running) break;
+    await new Promise((r) => setTimeout(r, sec * 1000));
+  }
+  process.exit(0);
+}
+
+async function runBackupsList(toolInput?: string) {
+  if (!toolInput) {
+    console.log(chalk.bold.cyan("\n📦 STALI BACKUPS\n"));
+    for (const tool of SUPPORTED_TOOLS) {
+      const target = resolveHomePath(tool.configFile);
+      const backups = await listBackupsForFile(target);
+      if (backups.length === 0) continue;
+      console.log(chalk.white(`${tool.name} (${tool.id})`));
+      backups.slice(0, 5).forEach((b) => console.log(chalk.gray(`  • ${b}`)));
+    }
+    console.log(chalk.gray("\nChi tiết: stali backups list -t <tool>\n"));
+    return;
+  }
+  const toolId = resolveToolId(toolInput);
+  const tool = getToolById(toolId);
+  if (!tool) {
+    console.error(chalk.red(`❌ Tool không hợp lệ: ${toolInput}`));
+    process.exit(1);
+  }
+  const target = resolveHomePath(tool.configFile);
+  const backups = await listBackupsForFile(target);
+  console.log(chalk.bold.cyan(`\n📦 Backups — ${tool.name}\n`));
+  console.log(chalk.gray(`File: ${target}\n`));
+  if (backups.length === 0) {
+    console.log(chalk.yellow("Không có backup .bak\n"));
+    return;
+  }
+  backups.forEach((b, i) => {
+    console.log(`${i === 0 ? chalk.green("→") : " "} ${b}${i === 0 ? chalk.green(" (mới nhất)") : ""}`);
+  });
+  console.log(chalk.gray("\nKhôi phục: stali restore -t " + toolId + "\n"));
+}
+
 async function runConfigure(
   toolInput: string,
   apiKey: string,
@@ -298,6 +359,63 @@ program
   });
 
 program
+  .command("check")
+  .description("Kiểm tra nhanh: auth + doctor (exit 1 nếu lỗi)")
+  .option("--strict", "Yêu cầu 13/13 tool đã trỏ Stali")
+  .option("--json", "Xuất JSON")
+  .action(async (opts: { strict?: boolean; json?: boolean }) => {
+    const result = await runHealthCheck(opts.strict);
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+      process.exit(result.ok ? 0 : 1);
+    }
+    console.log(chalk.bold.cyan("\n✅ STALI CHECK\n"));
+    for (const msg of result.messages) {
+      console.log(` • ${msg}`);
+    }
+    console.log(result.ok ? chalk.green("\n✓ OK\n") : chalk.red("\n✗ Cần xử lý\n"));
+    process.exit(result.ok ? 0 : 1);
+  });
+
+const configCmd = program
+  .command("config")
+  .description("Xem cấu hình ~/.stali/config.json (masked)");
+
+configCmd
+  .command("show")
+  .description("Hiển thị config đã lưu (API key masked)")
+  .option("--json", "Xuất JSON (key masked)")
+  .action(async (opts: { json?: boolean }) => {
+    const { config, corrupt } = await loadStaliConfigOrCorrupt();
+    if (corrupt) {
+      console.error(chalk.red("❌ ~/.stali/config.json bị lỗi định dạng"));
+      process.exit(1);
+    }
+    if (!config) {
+      console.log(chalk.yellow("\n○ Chưa có config — stali auth login -k sk-stali-...\n"));
+      process.exit(1);
+    }
+    const masked = { ...config, apiKey: maskToken(config.apiKey) };
+    if (opts.json) {
+      console.log(JSON.stringify(masked, null, 2));
+      process.exit(0);
+    }
+    console.log(chalk.bold.cyan("\n⚙️  STALI CONFIG\n"));
+    console.log(JSON.stringify(masked, null, 2));
+    console.log("");
+    process.exit(0);
+  });
+
+program
+  .command("backups")
+  .description("Liệt kê file backup .bak của tool")
+  .option("-t, --tool <toolId>", "Chỉ một tool")
+  .action(async (opts: { tool?: string }) => {
+    await runBackupsList(opts.tool);
+    process.exit(0);
+  });
+
+program
   .command("info")
   .description("Thông tin cài đặt stali-cli, auth và doctor tóm tắt")
   .option("--json", "Xuất JSON")
@@ -311,6 +429,14 @@ program
     console.log(`${chalk.white("Version")}     ${info.version}`);
     console.log(`${chalk.white("Platform")}    ${info.platform}`);
     if (info.bunVersion) console.log(`${chalk.white("Bun")}         ${info.bunVersion}`);
+    const ver = await fetchLatestVersion();
+    if (ver.updateAvailable) {
+      console.log(
+        `${chalk.white("Update")}     ${chalk.yellow(`${ver.current} → ${ver.latest} (stali update)`)}`
+      );
+    } else if (ver.source !== "error" && ver.source !== "unavailable") {
+      console.log(`${chalk.white("Update")}     ${chalk.green("đã mới nhất")} (${ver.latest})`);
+    }
     console.log(`${chalk.white("Home")}        ${info.staliHome}`);
     console.log(`${chalk.white("CLI")}         ${info.cliInstallDir}`);
     console.log(`${chalk.white("Bin")}         ${info.binDir}`);
@@ -488,6 +614,8 @@ program
   .option("--force", "Với --fix: cấu hình lại cả tool đã OK")
   .option("--tools <list>", "Với --fix: chỉ các tool (cách nhau bởi dấu phẩy)")
   .option("-m, --model <model>", "Với --fix: model áp dụng")
+  .option("--watch", "Theo dõi liên tục (Ctrl+C thoát)")
+  .option("-i, --interval <seconds>", "Với --watch: chu kỳ giây (mặc định 10)", "10")
   .action(async (opts: {
     json?: boolean;
     fix?: boolean;
@@ -495,9 +623,16 @@ program
     force?: boolean;
     tools?: string;
     model?: string;
+    watch?: boolean;
+    interval?: string;
   }) => {
     const globals = program.opts<{ key?: string }>();
     const apiKey = await resolveApiKey(globals.key);
+    if (opts.watch && !opts.fix) {
+      const sec = parseInt(opts.interval || "10", 10) || 10;
+      await runDoctorWatch(sec, opts.json);
+      return;
+    }
     await runDoctor(opts.json, {
       apiKey,
       fix: opts.fix,
@@ -512,7 +647,20 @@ program
 program
   .command("update")
   .description("Cập nhật stali-cli từ GitHub (~/.stali/cli)")
-  .action(async () => {
+  .option("--check", "Chỉ kiểm tra phiên bản mới (không cập nhật)")
+  .action(async (opts: { check?: boolean }) => {
+    if (opts.check) {
+      const ver = await fetchLatestVersion();
+      console.log(chalk.bold.cyan("\n⬆️  STALI CLI VERSION CHECK\n"));
+      console.log(`Hiện tại: ${chalk.white(ver.current)}`);
+      console.log(`Mới nhất:  ${chalk.white(ver.latest)}`);
+      if (ver.updateAvailable) {
+        console.log(chalk.yellow("\nCó bản mới — chạy: stali update\n"));
+        process.exit(1);
+      }
+      console.log(chalk.green("\n✅ Đã dùng phiên bản mới nhất\n"));
+      process.exit(0);
+    }
     console.log(chalk.cyan("\n⬇️  Đang cập nhật stali-cli…\n"));
     const result = await selfUpdate();
     if (result.success) {

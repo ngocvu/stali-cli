@@ -46,7 +46,7 @@ async function main() {
   assert("--help exit 0", help.ok, help.detail);
 
   const ver = spawnSync(BUN, [CLI, "--version"], { encoding: "utf8" });
-  assert("--version = 2.0.0", ver.stdout?.trim() === "2.0.0", ver.stdout?.trim());
+  assert("--version = 2.1.0", ver.stdout?.trim() === "2.1.0", ver.stdout?.trim());
 
   // 2. Token validation (no network)
   const badToken = run("models bad token", ["--models", "-k", "sk-openai-fake"]);
@@ -171,10 +171,16 @@ async function main() {
     encoding: "utf8",
     env: process.env,
   });
-  assert("bin/stali.js chạy được", binCli.stdout?.trim() === "2.0.0");
+  assert("bin/stali.js chạy được", binCli.stdout?.trim() === "2.1.0");
+
+  const updateCheck = run("update --check", ["update", "--check"]);
+  assert("update --check", updateCheck.ok || updateCheck.detail?.includes("Mới nhất") || updateCheck.detail?.includes("mới nhất"));
+
+  const checkCmd = run("check --json", ["check", "--json"], envHome);
+  assert("check --json", checkCmd.ok || /authOk/.test(checkCmd.detail || ""));
 
   const info = run("info --json", ["info", "--json"], envHome);
-  assert("info --json", info.ok && /"version"\s*:\s*"2.0.0"/.test(info.detail || ""));
+  assert("info --json", info.ok && /"version"\s*:\s*"2.1.0"/.test(info.detail || ""));
 
   const guide = run("guide cursor", ["guide", "cursor"]);
   assert("guide cursor", guide.ok && /Cursor/.test(guide.detail || ""));
