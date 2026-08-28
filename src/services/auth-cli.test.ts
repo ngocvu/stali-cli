@@ -11,6 +11,13 @@ describe("guides", () => {
 
   test("listGuideIds", () => {
     expect(listGuideIds()).toContain("chatbox");
+    expect(listGuideIds()[0]).toBe("onboarding");
+  });
+
+  test("renderOnboardingGuide", () => {
+    const text = renderAppGuide("onboarding");
+    expect(text).toContain("Onboarding stali-cli");
+    expect(text).toContain("stali setup");
   });
 
   test("unknown guide null", () => {

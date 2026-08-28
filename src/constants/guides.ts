@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import {
   STALI_ANTHROPIC_BASE_URL,
   STALI_DOCS_URL,
@@ -52,7 +55,30 @@ export const APP_GUIDES: Record<string, AppGuide> = {
   },
 };
 
+const ONBOARDING_ALIASES = new Set(["onboarding", "onboard", "start"]);
+
+export function loadOnboardingMarkdown(): string | null {
+  try {
+    const docPath = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../docs/ONBOARDING.md"
+    );
+    return fs.readFileSync(docPath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+export function renderOnboardingGuide(): string | null {
+  const md = loadOnboardingMarkdown();
+  if (!md) return null;
+  return md.endsWith("\n") ? md : `${md}\n`;
+}
+
 export function renderAppGuide(appId: string): string | null {
+  if (ONBOARDING_ALIASES.has(appId.toLowerCase())) {
+    return renderOnboardingGuide();
+  }
   const guide = APP_GUIDES[appId.toLowerCase()];
   if (!guide) return null;
 
@@ -71,5 +97,5 @@ export function renderAppGuide(appId: string): string | null {
 }
 
 export function listGuideIds(): string[] {
-  return Object.keys(APP_GUIDES);
+  return ["onboarding", ...Object.keys(APP_GUIDES)];
 }

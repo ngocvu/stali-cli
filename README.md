@@ -51,7 +51,7 @@ Lấy API key: [api.stali.vn/dashboard/keys](https://api.stali.vn/dashboard/keys
 - 🔧 **Wizard fix-all**: sửa hàng loạt từ menu chính / doctor
 - 🔑 **Auth**: `stali auth login|status|logout`
 - 📋 **Info**: `stali info --json`
-- 🔗 **Open**: `stali open keys` · **Guide**: `stali guide cursor`
+- 🔗 **Open**: `stali open keys` · **Guide**: `stali guide onboarding` · `stali guide cursor`
 - ⚙️ **Wizard configure-all**: batch 11/13 tool từ menu chính
 - 🟣 **13/13 menu riêng**: Qwen, Droid, Cowork — không còn generic fallback
 - 🚀 **Setup**: `stali setup -k sk-stali-...` hoặc chỉ `stali -k sk-stali-...` — **lệnh khuyến nghị**

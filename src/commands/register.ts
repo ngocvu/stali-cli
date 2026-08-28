@@ -737,9 +737,19 @@ export function registerCommands(program: Command): void {
     });
 
   program
-    .command("guide <app>")
-    .description("Hướng dẫn gắn Stali cho app không patch file (cursor, chatbox, n8n)")
-    .action((app: string) => {
+    .command("guide [app]")
+    .description("Hướng dẫn gắn Stali (onboarding, cursor, chatbox, n8n)")
+    .action((app?: string) => {
+      if (!app?.trim()) {
+        console.log(chalk.bold.cyan("\n📖 STALI GUIDE\n"));
+        console.log(chalk.white("Có sẵn:"));
+        for (const id of listGuideIds()) {
+          const hint = id === "onboarding" ? chalk.gray(" — hướng dẫn đầy đủ (~2 phút)") : "";
+          console.log(`  ${chalk.cyan(`stali guide ${id}`)}${hint}`);
+        }
+        console.log("");
+        process.exit(0);
+      }
       const text = renderAppGuide(app);
       if (!text) {
         console.error(chalk.red(`❌ Không có guide cho: ${app}`));

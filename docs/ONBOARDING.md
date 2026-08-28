@@ -32,7 +32,8 @@ Setup sẽ: lưu key → `stali gw auto` (cài gateway app đã phát hiện) �
 | `stali status --json` | Auth + gateway + `pendingGateway` |
 | `stali setup --json` | Setup một lệnh (`schemaVersion: 2`, `pendingGateway`) |
 | `stali ready --json` | Giống status (`command: "ready"`) |
-| `stali scan --json` | Quét app AI đang dùng |
+| `stali scan --json` | Quét app AI (`schemaVersion: 2`, `pendingGateway`) |
+| `stali guide onboarding` | In toàn bộ hướng dẫn này trong terminal |
 | `stali doctor --json` | Chi tiết 13 tool + plugin |
 | `stali doctor --strict` | CI: exit 1 nếu còn gateway chờ |
 
@@ -73,4 +74,4 @@ stali doctor --strict --tools-only --json
 stali status → stali doctor → stali gw (nếu pending) → mở app AI
 ```
 
-Trợ giúp: `stali user` · `stali help advanced` · `stali info --json`
+Trợ giúp: `stali user` · `stali guide onboarding` · `stali help advanced` · `stali info --json`

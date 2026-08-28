@@ -12,6 +12,7 @@ describe("user-cli", () => {
       printUserQuickReference();
       const out = lines.join("\n");
       expect(out).toContain(ONBOARDING_DOC_URL);
+      expect(out).toContain("stali guide onboarding");
       expect(out).toContain("stali status");
     } finally {
       console.log = orig;

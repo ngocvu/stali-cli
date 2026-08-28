@@ -25,7 +25,7 @@ export async function runGatewayCommand(
   const action = resolveGatewayAction(sub, apiKey);
 
   if (action === "scan") {
-    await runGatewayScan({ json: opts.json });
+    await runGatewayScan({ json: opts.json, command: "gateway-scan" });
     process.exit(0);
   }
 

@@ -4,6 +4,7 @@ import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
 import { maskToken } from "../utils/token";
 import { VERSION } from "../version";
+import { ONBOARDING_DOC_URL } from "../services/user-cli";
 
 interface MainMenuProps {
   apiKey?: string;
@@ -88,6 +89,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         <Box justifyContent="center" marginTop={1}>
           <Text color="gray">💡 [ ↑ ][ ↓ ] Di chuyển | [ Enter ] Chọn</Text>
         </Box>
+        <Text color="gray">
+          Hướng dẫn: <Text color="cyan">stali guide onboarding</Text>
+          {" · "}
+          <Text color="cyan">{ONBOARDING_DOC_URL}</Text>
+        </Text>
       </Box>
     </Card>
   );

@@ -216,6 +216,9 @@ async function main() {
     try {
       const parsed = JSON.parse(scanTop.stdout || "{}");
       assert("scan JSON has tools", Array.isArray(parsed.tools));
+      assert("scan JSON schemaVersion", parsed.schemaVersion === 2);
+      assert("scan JSON command", parsed.command === "scan");
+      assert("scan JSON pendingGateway", Array.isArray(parsed.pendingGateway));
     } catch {
       assert("scan JSON parseable", false);
     }
@@ -224,12 +227,24 @@ async function main() {
   const configGet = run(["config", "get", "base-url"]);
   assert("config get base-url exit 0|1", configGet.status === 0 || configGet.status === 1);
 
+  const guideOnboard = run(["guide", "onboarding"]);
+  assert("guide onboarding exit 0", guideOnboard.status === 0);
+  if (guideOnboard.status === 0) {
+    assert("guide onboarding content", (guideOnboard.stdout || "").includes("Onboarding stali-cli"));
+  }
+
+  const guideList = run(["guide"]);
+  assert("guide list exit 0", guideList.status === 0);
+  assert("guide list mentions onboarding", (guideList.stdout || "").includes("onboarding"));
+
   const gatewayScan = run(["gateway", "scan", "--json"]);
   assert("gateway scan --json exit 0", gatewayScan.status === 0);
   if (gatewayScan.status === 0) {
     try {
       const parsed = JSON.parse(gatewayScan.stdout || "{}");
       assert("gateway JSON has tools array", Array.isArray(parsed.tools));
+      assert("gateway scan JSON command", parsed.command === "gateway-scan");
+      assert("gateway scan JSON schemaVersion", parsed.schemaVersion === 2);
     } catch {
       assert("gateway JSON parseable", false);
     }
@@ -257,6 +272,8 @@ async function main() {
       const parsed = JSON.parse(gatewayPlan.stdout || "{}");
       assert("gateway plan JSON has targets", Array.isArray(parsed.targets));
       assert("gateway plan JSON has summary", typeof parsed.summary === "object");
+      assert("gateway plan JSON schemaVersion", parsed.schemaVersion === 2);
+      assert("gateway plan JSON command", parsed.command === "gateway-plan");
     } catch {
       assert("gateway plan JSON parseable", false);
     }

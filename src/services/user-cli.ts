@@ -21,6 +21,7 @@ export function printUserQuickReference(): void {
   console.log(chalk.cyan("  stali scan                    # quét app AI đang dùng"));
   console.log(chalk.cyan("  stali gw                      # auto cài gateway app đã quét\n"));
   console.log(chalk.white("Hướng dẫn đầy đủ"));
+  console.log(chalk.cyan(`  stali guide onboarding`));
   console.log(chalk.cyan(`  ${ONBOARDING_DOC_URL}`));
   console.log(chalk.gray("  (file cục bộ sau npm i: node_modules/stali-cli/docs/ONBOARDING.md)\n"));
   console.log(chalk.gray(`API key: ${STALI_DASHBOARD_KEYS_URL}\n`));

@@ -8,9 +8,12 @@ import {
   type ToolDiscoveryEntry,
 } from "./tool-discovery";
 import { SUPPORTED_TOOLS } from "../constants/tools";
+import { formatGatewayPlanJson, formatGatewayScanJson, type ScanCommand } from "./scan-json";
 
 export interface GatewayScanOptions {
   json?: boolean;
+  /** Phân biệt `stali scan` vs `stali gateway scan` trong JSON. */
+  command?: ScanCommand;
 }
 
 export interface GatewayInstallOptions {
@@ -140,7 +143,9 @@ export function buildGatewayPlan(
 export async function runGatewayScan(opts?: GatewayScanOptions): Promise<ToolDiscoveryEntry[]> {
   const entries = await discoverInstalledTools();
   if (opts?.json) {
-    console.log(JSON.stringify({ tools: entries }, null, 2));
+    console.log(
+      JSON.stringify(formatGatewayScanJson(entries, opts.command ?? "scan"), null, 2)
+    );
     return entries;
   }
 
@@ -194,7 +199,7 @@ export async function runGatewayPlan(opts?: {
   const plan = await planGatewayInstall({ all: opts?.all, force: opts?.force });
 
   if (opts?.json) {
-    console.log(JSON.stringify(plan, null, 2));
+    console.log(JSON.stringify(formatGatewayPlanJson(plan), null, 2));
     return plan;
   }
 

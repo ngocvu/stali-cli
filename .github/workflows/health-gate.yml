@@ -19,6 +19,7 @@ jobs:
       - run: bun run typecheck
       - run: bun test
       - run: bun run build
+      - run: bun scripts/verify-npm-pack.ts
       - run: bun scripts/e2e-smoke-offline.ts
 
       - name: Subcommand bundle must not reference wizard

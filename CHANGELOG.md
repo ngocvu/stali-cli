@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.44.0] — 2026-08-28
+
+### Added
+- **`scan --json` / `gateway scan --json`** — `schemaVersion: 2`, `command`, `pendingGateway`, `summary`
+- **`gateway plan --json`** — `schemaVersion: 2`, `command: "gateway-plan"`, top-level `pendingGateway`
+- **`stali guide onboarding`** — in nội dung `docs/ONBOARDING.md` trong terminal (`onboard` alias)
+- **`stali guide`** — không tham số: liệt kê guide có sẵn
+- **Wizard MainMenu** — gợi ý `stali guide onboarding` + link ONBOARDING
+- **Health Gate CI** — chạy `verify-npm-pack` (bảo vệ tarball npm)
+
+### Changed
+- `stali user` — gợi ý `stali guide onboarding`
+- ONBOARDING: bảng lệnh scan/guide schema v2
+
 ## [3.43.0] — 2026-08-28
 
 ### Added
