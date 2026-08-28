@@ -15,11 +15,34 @@ export const TOOL_BINARY_NAMES: Record<string, string[]> = {
   jcode: ["jcode"],
 };
 
-/** VS Code / Cursor extension folder markers (substring match). */
+/** VS Code / Cursor / Windsurf extension folder markers (substring match). */
 export const TOOL_VSCODE_EXTENSIONS: Record<string, string[]> = {
+  claude: ["anthropic.claude-code", "claude-dev", "anthropic.claude"],
+  codex: ["openai.chatgpt", "openai.codex", "chatgpt"],
   cline: ["saoudrizwan.claude-dev", "cline"],
-  roo: ["rooveterinaryinc.roo-cline", "roo-cline"],
+  roo: ["rooveterinaryinc.roo-cline", "roo-cline", "roocode"],
   kilo: ["kilocode.kilo-code", "kilo-code", "kilocode"],
+  opencode: ["opencode", "sst.opencode"],
+  qwen: ["qwen", "alibaba.qwen"],
+  "deepseek-tui": ["deepseek"],
+  droid: ["factory.factory", "factory-droid", "droid"],
+};
+
+/** Thư mục extensions IDE (dưới ~) — quét tất cả roots. */
+export const IDE_EXTENSION_ROOTS = [
+  ".vscode/extensions",
+  ".cursor/extensions",
+  ".windsurf/extensions",
+  ".vscode-oss/extensions",
+  ".config/Code/User/globalStorage",
+  ".config/Cursor/User/globalStorage",
+  ".config/Windsurf/User/globalStorage",
+];
+
+/** JetBrains config markers (dir/file under ~) */
+export const TOOL_JETBRAINS_MARKERS: Record<string, string[]> = {
+  claude: [".jetbrains", "JetBrains/Claude"],
+  codex: [".jetbrains"],
 };
 
 /** Extra home markers (dir name under ~) besides config file parent. */

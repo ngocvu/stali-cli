@@ -4,15 +4,17 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { SUPPORTED_TOOLS } from "../constants/tools";
 import {
+  IDE_EXTENSION_ROOTS,
   TOOL_BINARY_NAMES,
   TOOL_HOME_MARKERS,
+  TOOL_JETBRAINS_MARKERS,
   TOOL_VSCODE_EXTENSIONS,
 } from "../constants/tool-binaries";
 import { resolveHomePath } from "../utils/file";
 import { getToolById } from "../utils/tool-utils";
 import { runDoctorScan, type ToolHealthStatus } from "./syncers";
 
-export type DiscoverySignal = "binary" | "config" | "vscode" | "home" | "process";
+export type DiscoverySignal = "binary" | "config" | "vscode" | "home" | "process" | "jetbrains";
 
 export interface ToolDiscoveryEntry {
   toolId: string;
@@ -55,11 +57,9 @@ async function dirHasEntries(dir: string): Promise<boolean> {
 }
 
 async function hasVsCodeExtension(markers: string[]): Promise<boolean> {
-  const roots = [
-    path.join(os.homedir(), ".vscode", "extensions"),
-    path.join(os.homedir(), ".cursor", "extensions"),
-  ];
-  for (const root of roots) {
+  const home = os.homedir();
+  for (const rel of IDE_EXTENSION_ROOTS) {
+    const root = path.join(home, rel);
     try {
       const entries = await readdir(root);
       const lower = entries.map((e) => e.toLowerCase());
@@ -69,6 +69,16 @@ async function hasVsCodeExtension(markers: string[]): Promise<boolean> {
     } catch {
       /* skip */
     }
+  }
+  return false;
+}
+
+async function probeJetBrainsMarkers(toolId: string): Promise<boolean> {
+  const markers = TOOL_JETBRAINS_MARKERS[toolId] || [];
+  if (markers.length === 0) return false;
+  const home = os.homedir();
+  for (const marker of markers) {
+    if (await pathExists(path.join(home, marker))) return true;
   }
   return false;
 }
@@ -151,6 +161,7 @@ export async function discoverTool(
   const vscode = vscodeMarkers ? await hasVsCodeExtension(vscodeMarkers) : false;
   const home = await probeHomeMarkers(toolId);
   const running = probeRunningProcess(toolId);
+  const jetbrains = await probeJetBrainsMarkers(toolId);
 
   const signals: Partial<Record<DiscoverySignal, boolean>> = {};
   if (binary.found) signals.binary = true;
@@ -158,8 +169,9 @@ export async function discoverTool(
   if (vscode) signals.vscode = true;
   if (home) signals.home = true;
   if (running) signals.process = true;
+  if (jetbrains) signals.jetbrains = true;
 
-  const installed = Boolean(binary.found || config || vscode || home || running);
+  const installed = Boolean(binary.found || config || vscode || home || running || jetbrains);
 
   return {
     toolId: tool.id,
@@ -195,5 +207,6 @@ export function formatDiscoverySignal(signals: Partial<Record<DiscoverySignal, b
   if (signals.vscode) parts.push("vscode");
   if (signals.home) parts.push("home");
   if (signals.process) parts.push("process");
+  if (signals.jetbrains) parts.push("jetbrains");
   return parts.length > 0 ? parts.join("+") : "—";
 }

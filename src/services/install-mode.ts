@@ -101,11 +101,16 @@ async function pathExists(p: string): Promise<boolean> {
   }
 }
 
-/** Phát hiện cách cài hiện tại (standalone / git / source). */
+/** Phát hiện cách cài hiện tại (standalone / git / source / npm-global). */
 export async function detectInstallMode(): Promise<InstallModeInfo> {
   const marker = await readInstallModeMarker();
   if (marker?.mode) {
     return { mode: marker.mode, detail: marker.asset, version: marker.version };
+  }
+
+  const entry = (process.argv[1] || "").replace(/\\/g, "/");
+  if (entry.includes("/node_modules/stali-cli/")) {
+    return { mode: "npm-global", detail: "node_modules" };
   }
 
   const binPath = path.join(getStaliBinDir(), "stali");

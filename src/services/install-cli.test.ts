@@ -15,6 +15,11 @@ describe("install-cli", () => {
     expect(plan.methods.find((m) => m.method === "npm")?.command).toContain("stali-cli@3.13.0");
   });
 
+  test("buildInstallPlan beta channel", () => {
+    const plan = buildInstallPlan("latest", "beta");
+    expect(plan.methods.find((m) => m.method === "npm")?.command).toContain("stali-cli@beta");
+  });
+
   test("buildInstallPlan has curl one-liner", () => {
     const plan = buildInstallPlan();
     expect(plan.methods.some((m) => m.method === "curl")).toBe(true);

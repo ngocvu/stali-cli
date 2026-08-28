@@ -52,18 +52,26 @@ export async function fetchLatestVersion(
   }
 }
 
-const NPM_LATEST_URL = "https://registry.npmjs.org/stali-cli/latest";
 
 /** Phiên bản mới nhất trên npm registry (ưu tiên cho `npm install -g`). */
 export async function fetchNpmLatestVersion(): Promise<VersionCheckResult> {
+  return fetchNpmVersionForChannel("stable");
+}
+
+/** Phiên bản theo npm dist-tag (latest | beta). */
+export async function fetchNpmVersionForChannel(
+  channel: "stable" | "beta" | string = "stable"
+): Promise<VersionCheckResult> {
   const current = VERSION;
+  const tag = channel.toLowerCase() === "beta" ? "beta" : "latest";
+  const url = `https://registry.npmjs.org/stali-cli/${tag}`;
   try {
-    const res = await fetch(NPM_LATEST_URL, {
+    const res = await fetch(url, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
-      return { current, latest: current, updateAvailable: false, source: "npm-unavailable" };
+      return { current, latest: current, updateAvailable: false, source: `npm-${tag}-unavailable` };
     }
     const data = (await res.json()) as { version?: string };
     const latest = data.version?.trim() || current;
@@ -71,9 +79,9 @@ export async function fetchNpmLatestVersion(): Promise<VersionCheckResult> {
       current,
       latest,
       updateAvailable: isNewerVersion(current, latest),
-      source: "npm",
+      source: `npm:${tag}`,
     };
   } catch {
-    return { current, latest: current, updateAvailable: false, source: "npm-error" };
+    return { current, latest: current, updateAvailable: false, source: `npm-${tag}-error` };
   }
 }

@@ -36,6 +36,8 @@ function bench(name: string, args: string[]): Bench {
 const results = [
   bench("--version", ["--version"]),
   bench("--help", ["--help"]),
+  bench("info --json", ["info", "--json"]),
+  bench("gateway scan --json", ["gateway", "scan", "--json"]),
   bench("doctor --json", ["doctor", "--json"]),
   bench("doctor --plugins-only --json", ["doctor", "--plugins-only", "--json"]),
   bench("doctor --tools-only --json", ["doctor", "--tools-only", "--json"]),
@@ -43,8 +45,20 @@ const results = [
   bench("check --plugins-only --json", ["check", "--plugins-only", "--json"]),
 ];
 
+const limits: Record<string, number> = {
+  "--version": Number(process.env.STALI_BENCH_MAX_VERSION_MS || 120),
+  "--help": Number(process.env.STALI_BENCH_MAX_HELP_MS || 150),
+};
+let failed = false;
 console.log(`\n📊 stali-cli cold-start benchmark (${RUNS} runs, median ms)\n`);
 for (const r of results) {
-  console.log(`${r.name.padEnd(24)} ${String(r.ms).padStart(6)} ms`);
+  const limit = limits[r.name];
+  const warn = limit && r.ms > limit ? " ⚠️" : "";
+  if (limit && r.ms > limit) failed = true;
+  console.log(`${r.name.padEnd(28)} ${String(r.ms).padStart(6)} ms${warn}`);
 }
 console.log("");
+if (failed && process.env.STALI_BENCH_STRICT === "1") {
+  console.error("❌ Benchmark vượt ngưỡng STALI_BENCH_MAX_*_MS");
+  process.exit(1);
+}

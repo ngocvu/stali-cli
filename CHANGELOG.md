@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.16.0] — 2026-08-28
+
+### Added
+- **`stali update` qua npm** — tự nhận `npm-global` và chạy `npm i -g stali-cli@latest|@beta`
+- **`stali install --channel beta`** — cài npm dist-tag `beta`
+- **IDE discovery sâu** — quét Windsurf/Cursor/VSCodium globalStorage + JetBrains markers; signal `jetbrains`
+- **Fast `--version`** — `bin/stali.js` và `index.ts` thoát sớm, không load full bundle
+- **Benchmark gate** — `STALI_BENCH_STRICT=1` + `STALI_BENCH_MAX_VERSION_MS`
+
+### Changed
+- `update --check` dùng npm registry khi cài qua npm hoặc `--channel beta`
+- `init --upgrade-cli` so sánh phiên bản qua npm registry
+- Release CI: bỏ qua npm publish nếu version đã tồn tại trên registry
+- Alias `gw` được route đúng trong `cli-route`
+
 ## [3.15.1] — 2026-08-28
 
 ### Added

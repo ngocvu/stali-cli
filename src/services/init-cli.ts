@@ -59,10 +59,8 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
 
   if (!opts.skipCliCheck) {
     try {
-      const { fetchLatestVersion } = await import("./version-check");
-      const { resolveUpdateChannelResolved } = await import("./update-channel");
-      const channelCfg = await resolveUpdateChannelResolved("stable");
-      const ver = await fetchLatestVersion(channelCfg.versionUrl);
+      const { fetchNpmLatestVersion } = await import("./version-check");
+      const ver = await fetchNpmLatestVersion();
       if (opts.upgradeCli && ver.updateAvailable) {
         const { runInstallCli } = await import("./install-cli");
         const code = await runInstallCli({ npm: true });

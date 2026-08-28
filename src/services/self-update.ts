@@ -225,6 +225,17 @@ export async function planSelfUpdate(options?: {
   const tag = channelCfg.releaseTag || branch;
   const releaseTag = /^v?\d/.test(tag) ? (tag.startsWith("v") ? tag : `v${tag}`) : tag;
 
+  if (installInfo.mode === "npm-global") {
+    const { resolveNpmInstallSpec } = await import("./npm-update");
+    const spec = resolveNpmInstallSpec({ channel: channelCfg.channel });
+    return {
+      mode: "npm-global",
+      action: "npm-install-global",
+      ref: spec,
+      channel: channelCfg.label,
+    };
+  }
+
   if (installInfo.mode === "standalone") {
     const resolved = /^v?\d/.test(releaseTag)
       ? await resolveStandaloneDownloadUrl(releaseTag)
@@ -277,6 +288,11 @@ export async function selfUpdate(options?: {
         installDir: plan.installDir,
         error: plan.assetName ? `asset=${plan.assetName}` : undefined,
       };
+    }
+
+    if (installInfo.mode === "npm-global") {
+      const { updateCliViaNpm } = await import("./npm-update");
+      return updateCliViaNpm(channelCfg.channel);
     }
 
     if (installInfo.mode === "standalone" || options?.forceStandalone) {

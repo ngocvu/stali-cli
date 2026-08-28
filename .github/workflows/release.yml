@@ -116,6 +116,10 @@ jobs:
             exit 0
           fi
           VER=$(node -p "require('./package.json').version")
+          if npm view "stali-cli@${VER}" version 2>/dev/null | grep -qx "${VER}"; then
+            echo "stali-cli@${VER} đã có trên registry — bỏ qua publish"
+            exit 0
+          fi
           if echo "$VER" | grep -qE '-(beta|alpha|rc)(\.|$|-)'; then
             DIST_TAG=beta
           else

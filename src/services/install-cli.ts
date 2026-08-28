@@ -1,6 +1,7 @@
 import { spawnSync } from "child_process";
 import { platform } from "os";
 import { VERSION } from "../version";
+import { resolveNpmInstallSpec } from "./npm-update";
 
 export type InstallMethod = "npm" | "standalone" | "git" | "curl";
 
@@ -24,9 +25,15 @@ function resolveTargetVersion(version?: string): string {
   return v.startsWith("v") ? v : `v${v}`;
 }
 
-export function buildInstallPlan(version?: string): InstallPlan {
+export function buildInstallPlan(version?: string, channel = "stable"): InstallPlan {
   const target = resolveTargetVersion(version);
-  const npmSpec = target === "latest" ? "stali-cli@latest" : `stali-cli@${target.replace(/^v/, "")}`;
+  const ch = channel.toLowerCase();
+  const npmSpec =
+    target === "latest"
+      ? ch === "beta"
+        ? "stali-cli@beta"
+        : "stali-cli@latest"
+      : `stali-cli@${target.replace(/^v/, "")}`;
   const isWin = platform() === "win32";
   const standaloneVersion = target === "latest" ? `v${VERSION}` : target;
 
@@ -94,13 +101,12 @@ export function printInstallPlan(plan: InstallPlan): void {
   }
 }
 
-function runNpmInstall(version?: string): number {
+function runNpmInstall(version?: string, channel = "stable"): number {
   if (!spawnSync("npm", ["--version"], { encoding: "utf8" }).stdout?.trim()) {
     console.error("❌ Không tìm thấy npm. Cài Node.js >= 18: https://nodejs.org");
     return 1;
   }
-  const target = resolveTargetVersion(version);
-  const spec = target === "latest" ? "stali-cli@latest" : `stali-cli@${target.replace(/^v/, "")}`;
+  const spec = resolveNpmInstallSpec({ version, channel });
   const result = spawnSync(
     "npm",
     ["install", "-g", spec, "--no-fund", "--no-audit"],
@@ -128,9 +134,11 @@ export async function runInstallCli(options?: {
   git?: boolean;
   json?: boolean;
   version?: string;
+  channel?: string;
   dryRun?: boolean;
 }): Promise<number> {
-  const plan = buildInstallPlan(options?.version);
+  const channel = options?.channel || "stable";
+  const plan = buildInstallPlan(options?.version, channel);
 
   if (options?.json) {
     console.log(JSON.stringify(plan, null, 2));
@@ -162,7 +170,7 @@ export async function runInstallCli(options?: {
   }
 
   if (method === "npm") {
-    return runNpmInstall(options?.version);
+    return runNpmInstall(options?.version, channel);
   }
 
   return runShellCommand(info.command);

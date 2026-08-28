@@ -656,6 +656,7 @@ export function registerCommands(program: Command): void {
     .option("--npm", "Cài qua npm global (Node >= 18)")
     .option("--standalone", "Cài binary từ GitHub Release")
     .option("--git", "Cài từ GitHub source + build")
+    .option("--channel <name>", "Kênh npm: stable | beta", "stable")
     .option("--version <ver>", "Phiên bản (vd. 3.13.0 hoặc latest)")
     .option("--dry-run", "Chỉ in lệnh, không thực hiện")
     .option("--json", "JSON install plan")
@@ -663,6 +664,7 @@ export function registerCommands(program: Command): void {
       npm?: boolean;
       standalone?: boolean;
       git?: boolean;
+      channel?: string;
       version?: string;
       dryRun?: boolean;
       json?: boolean;
@@ -674,7 +676,7 @@ export function registerCommands(program: Command): void {
 
   program
     .command("update")
-    .description("Cập nhật stali-cli từ GitHub (~/.stali/cli)")
+    .description("Cập nhật stali-cli (npm global / git / standalone)")
     .option("--check", "Chỉ kiểm tra phiên bản mới (không cập nhật)")
     .option("--json", "JSON output (với --check hoặc --dry-run)")
     .option("--channel <name>", "Kênh cập nhật: stable | beta", "stable")
@@ -791,9 +793,18 @@ export function registerCommands(program: Command): void {
       }
       const channelCfg = await resolveUpdateChannelResolved(opts.channel);
       if (opts.check) {
-        const ver = await fetchLatestVersion(channelCfg.versionUrl);
         const { detectInstallMode } = await import("../services/install-mode");
         const installInfo = await detectInstallMode();
+        const useNpm =
+          installInfo.mode === "npm-global" ||
+          opts.channel === "beta";
+        let ver;
+        if (useNpm) {
+          const { fetchNpmVersionForChannel } = await import("../services/version-check");
+          ver = await fetchNpmVersionForChannel(opts.channel || "stable");
+        } else {
+          ver = await fetchLatestVersion(channelCfg.versionUrl);
+        }
         if (opts.json) {
           console.log(
             JSON.stringify(
@@ -805,6 +816,7 @@ export function registerCommands(program: Command): void {
                 current: ver.current,
                 latest: ver.latest,
                 updateAvailable: ver.updateAvailable,
+                versionSource: ver.source,
               },
               null,
               2
