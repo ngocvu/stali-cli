@@ -3,7 +3,7 @@ import { Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
 
-export type PluginsMenuAction = "sync" | "doctor" | "back";
+export type PluginsMenuAction = "sync" | "preview" | "suggest" | "doctor" | "back";
 
 interface PluginsMenuProps {
   pluginCount: number;
@@ -13,8 +13,18 @@ interface PluginsMenuProps {
 export const PluginsMenu: React.FC<PluginsMenuProps> = ({ pluginCount, onSelect }) => {
   const items = [
     {
+      label: `🔍 Preview sync (${pluginCount})`,
+      value: "preview" as const,
+      disabled: pluginCount === 0,
+    },
+    {
       label: `⚡ Sync tất cả plugin (${pluginCount})`,
       value: "sync" as const,
+      disabled: pluginCount === 0,
+    },
+    {
+      label: "💡 Gợi ý patchStyle (suggest)",
+      value: "suggest" as const,
       disabled: pluginCount === 0,
     },
     {

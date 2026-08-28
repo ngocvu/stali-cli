@@ -6,6 +6,8 @@ import {
   combinedDoctorHash,
   configuredScore,
   formatDoctorPrometheus,
+  formatPendingGatewayLines,
+  printPendingGatewaySection,
   scopedDoctorHash,
   toLegacyPluginsDoctorJson,
 } from "../commands/doctor";
@@ -13,6 +15,48 @@ import {
 const DOCTOR_TEST_TIMEOUT = process.platform === "win32" ? 30_000 : 15_000;
 
 describe("doctor unified JSON", () => {
+  test("formatPendingGatewayLines maps installed tool names", () => {
+    const lines = formatPendingGatewayLines(
+      [
+        {
+          toolId: "claude",
+          toolName: "Claude Code",
+          configuredForStali: false,
+          signals: ["binary", "config"],
+        },
+      ],
+      ["claude", "missing-id"]
+    );
+    expect(lines).toEqual(["Claude Code (binary+config)", "missing-id"]);
+  });
+
+  test("printPendingGatewaySection no-op when empty", () => {
+    const logs: string[] = [];
+    const prev = console.log;
+    console.log = (...args: unknown[]) => {
+      logs.push(args.map(String).join(" "));
+    };
+    try {
+      printPendingGatewaySection([], []);
+      expect(logs).toHaveLength(0);
+      printPendingGatewaySection(
+        [
+          {
+            toolId: "opencode",
+            toolName: "OpenCode",
+            configuredForStali: false,
+            signals: ["home"],
+          },
+        ],
+        ["opencode"]
+      );
+      expect(logs.some((l) => l.includes("Gateway chờ"))).toBe(true);
+      expect(logs.some((l) => l.includes("OpenCode"))).toBe(true);
+    } finally {
+      console.log = prev;
+    }
+  });
+
   test(
     "buildDoctorJsonOutput có tools + plugins + meta",
     async () => {

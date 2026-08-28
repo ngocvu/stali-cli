@@ -93,6 +93,12 @@ jobs:
             exit 1
           fi
 
+      - name: Standalone smoke (offline)
+        shell: bash
+        env:
+          STALI_STANDALONE_BIN: dist/${{ matrix.asset }}
+        run: bun scripts/e2e-standalone-smoke.ts
+
       - name: Upload standalone artifact
         uses: actions/upload-artifact@v4
         with:

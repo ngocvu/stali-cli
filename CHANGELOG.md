@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.38.0] — 2026-08-28
+
+### Added
+- **`doctor` human** — section `Gateway chờ` (app đã cài, chưa trỏ Stali) + gợi ý `stali gw auto`
+- **Wizard plugins** — Preview sync (xác nhận trước khi ghi), Gợi ý patchStyle, Doctor hiện pending gateway + Gateway auto
+- **Release CI** — `scripts/e2e-standalone-smoke.ts` chạy trên mỗi standalone artifact (matrix)
+
+### Changed
+- Wizard doctor dùng `buildDoctorJsonOutput` (đồng bộ JSON v2 / `pendingGateway`)
+
 ## [3.37.3] — 2026-08-28
 
 ### Fixed

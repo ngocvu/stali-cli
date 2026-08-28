@@ -14,6 +14,8 @@ import { ManualInput } from "./ManualInput";
 import { ConfigReview } from "./ConfigReview";
 import { SetupDone } from "./SetupDone";
 import { DoctorView } from "./DoctorView";
+import { PluginPreviewView } from "./PluginPreviewView";
+import { PluginSuggestView } from "./PluginSuggestView";
 import { StaliModel, SyncerResult } from "../types";
 import { loadStaliConfig, saveStaliConfig, loadStaliConfigOrCorrupt } from "../services/config";
 import { validateApiKeyAndFetchModels } from "../services/api";
@@ -35,8 +37,10 @@ import { ConfigureAllMenu, ConfigureAllAction } from "./ConfigureAllMenu";
 import { InstallMenu, InstallMenuAction } from "./InstallMenu";
 import { GatewayMenu, GatewayMenuAction } from "./GatewayMenu";
 import { PluginsMenu, PluginsMenuAction } from "./PluginsMenu";
-import { runPluginsDoctor, type PluginHealthStatus } from "../services/plugin-doctor";
-import { runPluginsSync } from "../services/plugin-sync";
+import { type PluginHealthStatus } from "../services/plugin-doctor";
+import { runPluginsSync, type PluginSyncItem } from "../services/plugin-sync";
+import { suggestPluginPatchStyles, type PluginPatchSuggestion } from "../services/plugin-suggest";
+import { buildDoctorJsonOutput, type DoctorInstalledToolSummary } from "../commands/doctor";
 import { loadPlugins } from "../services/plugins";
 import { getToolById } from "../utils/tool-utils";
 import { resolveToolDefaultModel } from "../utils/tool-utils";
@@ -54,6 +58,8 @@ type WizardStep =
   | "install"
   | "gateway"
   | "plugins"
+  | "plugin-preview"
+  | "plugin-suggest"
   | "app"
   | "tool-detail"
   | "model"
@@ -89,6 +95,10 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   const [doctorStatuses, setDoctorStatuses] = useState<Awaited<ReturnType<typeof runDoctorScan>>>([]);
   const [pluginStatuses, setPluginStatuses] = useState<PluginHealthStatus[]>([]);
   const [pluginCount, setPluginCount] = useState(0);
+  const [pluginPreviewItems, setPluginPreviewItems] = useState<PluginSyncItem[]>([]);
+  const [pluginSuggestions, setPluginSuggestions] = useState<PluginPatchSuggestion[]>([]);
+  const [doctorInstalledTools, setDoctorInstalledTools] = useState<DoctorInstalledToolSummary[]>([]);
+  const [pendingGatewayIds, setPendingGatewayIds] = useState<string[]>([]);
   const [doctorReturnStep, setDoctorReturnStep] = useState<"menu" | "plugins">("menu");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | undefined>();
@@ -126,12 +136,11 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     !isAdvancedTool(toolId);
 
   const loadUnifiedDoctor = async () => {
-    const [tools, pluginReport] = await Promise.all([
-      runDoctorScan(),
-      runPluginsDoctor(),
-    ]);
-    setDoctorStatuses(tools);
-    setPluginStatuses(pluginReport.plugins);
+    const payload = await buildDoctorJsonOutput();
+    setDoctorStatuses(payload.tools);
+    setPluginStatuses(payload.plugins);
+    setDoctorInstalledTools(payload.installedTools);
+    setPendingGatewayIds(payload.pendingGateway);
   };
 
   useEffect(() => {
@@ -596,6 +605,25 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       setStep("doctor");
       return;
     }
+    if (action === "preview") {
+      setLoading(true);
+      setError(undefined);
+      const previewKey = apiKey || "sk-stali-preview-only-" + "0".repeat(24);
+      const { items } = await runPluginsSync({ apiKey: previewKey, preview: true });
+      setPluginPreviewItems(items);
+      setLoading(false);
+      setStep("plugin-preview");
+      return;
+    }
+    if (action === "suggest") {
+      setLoading(true);
+      setError(undefined);
+      const suggestions = await suggestPluginPatchStyles();
+      setPluginSuggestions(suggestions);
+      setLoading(false);
+      setStep("plugin-suggest");
+      return;
+    }
     if (action === "sync") {
       setLoading(true);
       setError(undefined);
@@ -614,6 +642,47 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       setSelectedModel("Plugins sync");
       setLoading(false);
       setStep("done");
+    }
+  };
+
+  const handlePluginPreviewConfirm = async () => {
+    setLoading(true);
+    setError(undefined);
+    const syncRes = await runPluginsSync({ apiKey });
+    setResults(
+      syncRes.items.map((item) => ({
+        toolId: item.pluginId || "plugin",
+        toolName: item.pluginName || "Plugin",
+        success: item.success,
+        message: item.message,
+        configPath: item.configPath,
+        backupPath: item.backupPath,
+        error: item.error,
+      }))
+    );
+    setSelectedModel("Plugins sync");
+    setLoading(false);
+    setStep("done");
+  };
+
+  const handleDoctorGatewayAuto = async () => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const gw = await import("../services/gateway-install");
+      const { mapGatewayItemsToSyncerResults } = await import("../services/wizard-gateway");
+      const batch = await gw.runGatewayAuto({ apiKey, continueOnError: true });
+      const { items, allOk } = batch.install ?? { items: [], allOk: true };
+      setResults(mapGatewayItemsToSyncerResults(items));
+      setSelectedModel("Gateway auto");
+      setStep("done");
+      if (!allOk) setError("Một số app chưa cài gateway thành công");
+      await refreshGatewayPending();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+      setStep("doctor");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1015,14 +1084,32 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         <DoctorView
           toolStatuses={doctorStatuses}
           pluginStatuses={pluginStatuses}
+          pendingGateway={doctorInstalledTools}
+          pendingGatewayIds={pendingGatewayIds}
           onBack={() => setStep(doctorReturnStep)}
           onFixAllTools={handleDoctorFix}
           onSyncAllPlugins={handlePluginsSyncAll}
+          onGatewayAuto={pendingGatewayIds.length > 0 ? handleDoctorGatewayAuto : undefined}
           backLabel={
             doctorReturnStep === "plugins"
               ? "⬅️  Quay lại Menu Plugin"
               : "⬅️  Quay lại Menu chính"
           }
+        />
+      )}
+
+      {step === "plugin-preview" && (
+        <PluginPreviewView
+          items={pluginPreviewItems}
+          onConfirm={handlePluginPreviewConfirm}
+          onBack={() => setStep("plugins")}
+        />
+      )}
+
+      {step === "plugin-suggest" && (
+        <PluginSuggestView
+          suggestions={pluginSuggestions}
+          onBack={() => setStep("plugins")}
         />
       )}
 

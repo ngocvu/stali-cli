@@ -4,30 +4,45 @@ import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
 import type { ToolHealthStatus } from "../services/syncers";
 import type { PluginHealthStatus } from "../services/plugin-doctor";
+import type { DoctorInstalledToolSummary } from "../commands/doctor";
 
 export interface DoctorViewProps {
   toolStatuses: ToolHealthStatus[];
   pluginStatuses?: PluginHealthStatus[];
+  pendingGateway?: DoctorInstalledToolSummary[];
+  pendingGatewayIds?: string[];
   onBack: () => void;
   onFixAllTools?: () => void;
   onSyncAllPlugins?: () => void;
+  onGatewayAuto?: () => void;
   backLabel?: string;
 }
 
 export const DoctorView: React.FC<DoctorViewProps> = ({
   toolStatuses,
   pluginStatuses = [],
+  pendingGateway = [],
+  pendingGatewayIds = [],
   onBack,
   onFixAllTools,
   onSyncAllPlugins,
+  onGatewayAuto,
   backLabel = "⬅️  Quay lại Menu chính",
 }) => {
   const toolsConfigured = toolStatuses.filter((s) => s.configuredForStali);
   const toolsMissing = toolStatuses.filter((s) => !s.configuredForStali);
   const pluginsConfigured = pluginStatuses.filter((s) => s.configuredForStali);
   const pluginsMissing = pluginStatuses.filter((s) => !s.configuredForStali);
+  const pendingById = new Map(pendingGateway.map((t) => [t.toolId, t]));
+  const pendingLines = pendingGatewayIds.map((id) => pendingById.get(id));
 
   const items: { label: string; value: string }[] = [];
+  if (pendingGatewayIds.length > 0 && onGatewayAuto) {
+    items.push({
+      label: `🌐 Gateway auto — ${pendingGatewayIds.length} app đã cài, chưa trỏ Stali`,
+      value: "gateway-auto",
+    });
+  }
   if (toolsMissing.length > 0 && onFixAllTools) {
     items.push({
       label: `🔧 Sửa ${toolsMissing.length} tool chưa trỏ Stali (doctor fix)`,
@@ -73,6 +88,26 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
           </>
         ) : null}
 
+        {pendingGatewayIds.length > 0 ? (
+          <>
+            <Text bold color="yellow">
+              ⏳ Gateway chờ ({pendingGatewayIds.length} app đã cài)
+            </Text>
+            {pendingLines.map((entry, i) =>
+              entry ? (
+                <Text key={entry.toolId} color="gray">
+                  • {entry.toolName}
+                  {entry.signals.length > 0 ? ` — ${entry.signals.join("+")}` : ""}
+                </Text>
+              ) : (
+                <Text key={pendingGatewayIds[i]} color="gray">
+                  • {pendingGatewayIds[i]}
+                </Text>
+              )
+            )}
+          </>
+        ) : null}
+
         {pluginStatuses.length > 0 ? (
           <>
             <Text bold color="magenta">
@@ -107,7 +142,8 @@ export const DoctorView: React.FC<DoctorViewProps> = ({
         <SelectInput
           items={items}
           onSelect={(item) => {
-            if (item.value === "fix-tools" && onFixAllTools) onFixAllTools();
+            if (item.value === "gateway-auto" && onGatewayAuto) onGatewayAuto();
+            else if (item.value === "fix-tools" && onFixAllTools) onFixAllTools();
             else if (item.value === "sync-plugins" && onSyncAllPlugins) onSyncAllPlugins();
             else onBack();
           }}

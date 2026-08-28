@@ -57,6 +57,35 @@ function summarizeInstalledTools(discovery: ToolDiscoveryEntry[]): DoctorInstall
     }));
 }
 
+/** Dòng hiển thị app đã cài nhưng chưa gateway (human + wizard). */
+export function formatPendingGatewayLines(
+  installedTools: DoctorInstalledToolSummary[],
+  pendingGateway: string[]
+): string[] {
+  if (pendingGateway.length === 0) return [];
+  const byId = new Map(installedTools.map((t) => [t.toolId, t]));
+  return pendingGateway.map((id) => {
+    const entry = byId.get(id);
+    const signals = entry?.signals?.length ? ` (${entry.signals.join("+")})` : "";
+    return `${entry?.toolName || id}${signals}`;
+  });
+}
+
+export function printPendingGatewaySection(
+  installedTools: DoctorInstalledToolSummary[],
+  pendingGateway: string[]
+) {
+  const lines = formatPendingGatewayLines(installedTools, pendingGateway);
+  if (lines.length === 0) return;
+  console.log(
+    chalk.yellow(`\n⏳ Gateway chờ: ${lines.length} app đã cài, chưa trỏ Stali\n`)
+  );
+  for (const line of lines) {
+    console.log(`${chalk.yellow("○")} ${chalk.white(line)}`);
+  }
+  console.log(chalk.gray("\nGợi ý: stali gw auto   hoặc   stali doctor --fix\n"));
+}
+
 function withInstalledMeta(
   payload: Omit<DoctorJsonOutput, "installedTools" | "pendingGateway"> & {
     installedTools?: DoctorInstalledToolSummary[];
@@ -377,11 +406,13 @@ export async function runDoctor(
 
   if (view?.toolsOnly) {
     printToolSection(payload.tools, payload.meta.modelsEndpoint);
+    printPendingGatewaySection(payload.installedTools, payload.pendingGateway);
     console.log(chalk.gray("\nXem plugins: stali doctor --plugins-only\n"));
     return 0;
   }
 
   printToolSection(payload.tools, payload.meta.modelsEndpoint);
+  printPendingGatewaySection(payload.installedTools, payload.pendingGateway);
   printPluginSection(payload.plugins);
   console.log("");
   return 0;
