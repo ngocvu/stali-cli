@@ -17,6 +17,8 @@ export interface GatewayInstallOptions {
   model?: string;
   baseUrl?: string;
   dryRun?: boolean;
+  /** Không in banner kế hoạch — chạy ngay (CI/script). */
+  yes?: boolean;
   /** Cấu hình cả 13 tool (bỏ qua quét) */
   all?: boolean;
   /** Ghi đè cả tool đã trỏ Stali */
@@ -260,7 +262,7 @@ export async function runGatewayAuto(opts: GatewayAutoOptions): Promise<GatewayA
     throw new Error("missing_api_key");
   }
 
-  if (!opts.json) {
+  if (!opts.json && !opts.yes) {
     console.log(chalk.bold.cyan("\n⚡ STALI GATEWAY AUTO\n"));
     console.log(
       `Phát hiện ${chalk.white(String(plan.summary.installed))} app · ` +
@@ -272,6 +274,12 @@ export async function runGatewayAuto(opts: GatewayAutoOptions): Promise<GatewayA
       console.log(`  • ${e?.toolName || id} ${chalk.gray(`(${sig})`)}`);
     }
     console.log("");
+  } else if (!opts.json && opts.yes) {
+    console.log(
+      chalk.gray(
+        `⚡ Gateway auto: ${plan.targets.length} target(s) — ${plan.targets.join(", ")}\n`
+      )
+    );
   }
 
   const install = await runGatewayInstall(opts);

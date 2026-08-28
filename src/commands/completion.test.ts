@@ -13,6 +13,7 @@ describe("renderCompletion", () => {
     const bash = renderCompletion("bash");
     expect(bash).toContain("gateway|gw)");
     expect(bash).toContain("plan");
+    expect(bash).toContain("--yes");
     expect(bash).toContain("bench)");
     expect(bash).toContain("telemetry)");
   });

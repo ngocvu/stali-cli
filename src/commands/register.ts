@@ -654,6 +654,7 @@ export function registerCommands(program: Command): void {
     .option("--continue-on-error", "Tiếp tục khi một tool lỗi")
     .option("--include-plugins", "Đồng bộ plugin khi install")
     .option("--no-plugins", "Bỏ qua plugin khi install")
+    .option("-y, --yes", "Không in banner kế hoạch — chạy ngay (CI/script)")
     .action(async (action: string | undefined, opts: {
       json?: boolean;
       dryRun?: boolean;
@@ -663,6 +664,7 @@ export function registerCommands(program: Command): void {
       continueOnError?: boolean;
       includePlugins?: boolean;
       noPlugins?: boolean;
+      yes?: boolean;
     }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = await resolveApiKey(globals.key);
@@ -721,11 +723,13 @@ export function registerCommands(program: Command): void {
     .description("Trạng thái telemetry")
     .option("--json", "JSON output")
     .action(async (opts: { json?: boolean }) => {
-      const { readTelemetryConfig, fetchTelemetryEndpointHealth } = await import("../services/telemetry");
+      const { readTelemetryConfig, fetchTelemetryEndpointHealth, readTelemetryQueueDepth } =
+        await import("../services/telemetry");
       const cfg = await readTelemetryConfig();
       const endpoint = await fetchTelemetryEndpointHealth();
+      const queueDepth = await readTelemetryQueueDepth();
       if (opts.json) {
-        console.log(JSON.stringify({ ...cfg, endpoint }, null, 2));
+        console.log(JSON.stringify({ ...cfg, endpoint, queueDepth }, null, 2));
         process.exit(0);
       }
       console.log(chalk.bold.cyan("\n📡 STALI TELEMETRY\n"));
@@ -738,6 +742,9 @@ export function registerCommands(program: Command): void {
           endpoint.status ? chalk.gray(` (HTTP ${endpoint.status})`) : ""
         }`
       );
+      if (queueDepth > 0) {
+        console.log(`Hàng đợi:    ${chalk.yellow(String(queueDepth))} event chờ gửi lại`);
+      }
       console.log(chalk.gray("\nChỉ gửi: tên lệnh, phiên bản CLI, platform. Không gửi API key.\n"));
       process.exit(0);
     });

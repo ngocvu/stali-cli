@@ -18,6 +18,7 @@ export async function runGatewayCommand(
     continueOnError?: boolean;
     includePlugins?: boolean;
     noPlugins?: boolean;
+    yes?: boolean;
   },
   apiKey?: string
 ): Promise<void> {
@@ -53,6 +54,7 @@ export async function runGatewayCommand(
         continueOnError: opts.continueOnError,
         includePlugins,
         json: opts.json,
+        yes: opts.yes,
       });
       const ok = result.install ? result.install.allOk : true;
       process.exit(ok ? 0 : 1);
@@ -87,6 +89,7 @@ export async function runGatewayCommand(
       force: opts.force,
       continueOnError: opts.continueOnError,
       includePlugins,
+      yes: opts.yes,
     });
 
     if (opts.json) {

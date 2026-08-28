@@ -57,8 +57,8 @@ const CONFIGURE_ALL_FLAGS = [
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
 const DOCTOR_FLAGS = ["--json", "--plugins-only", "--tools-only", "--fix", "--dry-run", "--force", "--tools", "--ids", "--watch", "--notify", "-i", "--interval"];
-const GATEWAY_ACTIONS = ["scan", "plan", "auto", "install"];
-const GATEWAY_FLAGS = ["--json", "--dry-run", "--all", "--force", "-m", "--model", "--continue-on-error", "--include-plugins", "--no-plugins"];
+const GATEWAY_ACTIONS = ["auto", "scan", "plan", "install"];
+const GATEWAY_FLAGS = ["--json", "--dry-run", "--all", "--force", "-y", "--yes", "-m", "--model", "--continue-on-error", "--include-plugins", "--no-plugins"];
 const INFO_FLAGS = ["--json", "--offline", "--online"];
 const BENCH_FLAGS = ["--json", "--strict", "--runs"];
 const TELEMETRY_SUB = ["status", "on", "off"];
@@ -240,11 +240,12 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
           ;;
         gateway|gw)
           _arguments \\
-            '1:action:(scan plan install)' \\
+            '1:action:(scan plan auto install)' \\
             '--json[JSON output]' \\
             '--dry-run[Preview install]' \\
             '--all[Cả 13 tool]' \\
             '--force[Ghi đè đã gateway]' \\
+            '(-y --yes)'{-y,--yes}'[Chạy ngay, không banner — mặc định action=auto khi có key]' \\
             '(-m --model)'{-m,--model}'[Model]'
           ;;
         info)
@@ -336,12 +337,13 @@ function fishCompletion(): string {
     "",
     "complete -c stali -n '__fish_seen_subcommand_from plugins' -l init",
     "",
-    "complete -c stali -n '__fish_seen_subcommand_from gateway' -a 'scan plan auto install'",
-    "complete -c stali -n '__fish_seen_subcommand_from gw' -a 'scan plan install'",
+    "complete -c stali -n '__fish_seen_subcommand_from gateway' -a 'auto scan plan install'",
+    "complete -c stali -n '__fish_seen_subcommand_from gw' -a 'auto scan plan install'",
     "complete -c stali -n '__fish_seen_subcommand_from gateway' -l json",
     "complete -c stali -n '__fish_seen_subcommand_from gateway' -l dry-run",
     "complete -c stali -n '__fish_seen_subcommand_from gateway' -l all",
     "complete -c stali -n '__fish_seen_subcommand_from gateway' -l force",
+    "complete -c stali -n '__fish_seen_subcommand_from gateway' -s y -l yes -d 'Chạy ngay (mặc định auto khi có key)'",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from info' -l json",
     "complete -c stali -n '__fish_seen_subcommand_from info' -l offline",

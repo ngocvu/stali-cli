@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.26.0] — 2026-08-28
+
+### Added
+- **`stali gw -y|--yes`** — chạy gateway ngay, không in banner kế hoạch (CI/script)
+- **Telemetry retry + queue** — backoff 3 lần; lưu `~/.stali/telemetry-queue.jsonl`, flush lần sau
+- **`telemetry status`** — hiển thị độ sâu hàng đợi
+- **Admin SSE** — `/api/admin/cli-telemetry/stream` + badge Trực tiếp trên dashboard
+
+### Changed
+- Shell completion: `auto` đầu tiên, `-y/--yes`, zsh/fish đồng bộ
+- `fetchWithRetry` utility cho POST telemetry
+
 ## [3.25.0] — 2026-08-28
 
 ### Added
