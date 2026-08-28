@@ -112,12 +112,16 @@ export function registerCommands(program: Command): void {
 
   program
     .command("check")
-    .description("Kiểm tra nhanh: auth + doctor (exit 1 nếu lỗi)")
+    .description("Kiểm tra setup (mặc định nhanh như status; --full = auth + doctor đầy đủ)")
+    .option("--quick", "Giống stali status (mặc định khi không --full/--json)")
+    .option("--full", "Kiểm tra đầy đủ: auth validate + doctor (+ plugin)")
     .option("--strict", "Yêu cầu tất cả tool (và plugin nếu có) đã trỏ Stali")
     .option("--tools-only", "Chỉ kiểm tra 13 tool (bỏ plugin)")
     .option("--plugins-only", "Chỉ kiểm tra plugin (~/.stali/plugins.json)")
     .option("--json", "Xuất JSON")
     .action(async (opts: {
+      quick?: boolean;
+      full?: boolean;
       strict?: boolean;
       json?: boolean;
       toolsOnly?: boolean;
@@ -127,9 +131,15 @@ export function registerCommands(program: Command): void {
         console.error(chalk.red("❌ --tools-only và --plugins-only không dùng cùng lúc"));
         process.exit(1);
       }
+      const useQuick =
+        opts.quick ?? (!opts.json && !opts.strict && !opts.full && !opts.pluginsOnly);
+      if (useQuick && !opts.json) {
+        const { runUserStatus } = await import("../services/status-cli");
+        process.exit(await runUserStatus({ validateAuth: false }));
+      }
       const result = await runHealthCheck({
         strict: opts.strict,
-        toolsOnly: opts.toolsOnly,
+        toolsOnly: opts.pluginsOnly ? false : (opts.toolsOnly ?? true),
         pluginsOnly: opts.pluginsOnly,
       });
       if (opts.json) {
@@ -168,21 +178,71 @@ export function registerCommands(program: Command): void {
         console.log(chalk.cyan(`\nVí dụ: stali setup -k sk-stali-...\n${STALI_DASHBOARD_KEYS_URL}\n`));
         process.exit(1);
       }
-      const { runUserSetup } = await import("../services/init-cli");
-      const { printSetupResult, formatSetupJson } = await import("../services/setup-cli");
-      const result = await runUserSetup({
-        apiKey: apiKey.trim(),
-        skipConfigure: opts.skipConfigure,
-        includePlugins: opts.includePlugins,
-        noPlugins: opts.noPlugins,
-        installedOnly: !opts.allApps,
-      });
-      if (opts.json) {
-        console.log(JSON.stringify(formatSetupJson(result), null, 2));
-      } else {
-        printSetupResult(result);
+      const { runSetupCommand } = await import("../services/setup-cli");
+      process.exit(
+        await runSetupCommand(apiKey, {
+          skipConfigure: opts.skipConfigure,
+          includePlugins: opts.includePlugins,
+          noPlugins: opts.noPlugins,
+          allApps: opts.allApps,
+          json: opts.json,
+        })
+      );
+    });
+
+  const onboardOpts = {
+    key: { flags: "-k, --key <token>", description: "Stali API key (sk-stali-...)" },
+    includePlugins: { flags: "--include-plugins", description: "Đồng bộ plugin nếu có plugins.json" },
+    noPlugins: { flags: "--no-plugins", description: "Bỏ qua plugin" },
+    allApps: { flags: "--all-apps", description: "Cài gateway cả 13 tool" },
+    skipConfigure: { flags: "--skip-configure", description: "Chỉ lưu API key" },
+    json: { flags: "--json", description: "JSON output (CI/script)" },
+  };
+
+  program
+    .command("onboard")
+    .description("Alias stali setup — onboarding user nhanh")
+    .option(onboardOpts.key.flags, onboardOpts.key.description)
+    .option(onboardOpts.includePlugins.flags, onboardOpts.includePlugins.description)
+    .option(onboardOpts.noPlugins.flags, onboardOpts.noPlugins.description)
+    .option(onboardOpts.allApps.flags, onboardOpts.allApps.description)
+    .option(onboardOpts.skipConfigure.flags, onboardOpts.skipConfigure.description)
+    .option(onboardOpts.json.flags, onboardOpts.json.description)
+    .action(async (opts: {
+      key?: string;
+      includePlugins?: boolean;
+      noPlugins?: boolean;
+      allApps?: boolean;
+      skipConfigure?: boolean;
+      json?: boolean;
+    }) => {
+      const globals = program.opts<{ key?: string }>();
+      const apiKey = opts.key || globals.key;
+      if (!apiKey?.trim()) {
+        console.error(chalk.red(`❌ ${t("missing_key")}`));
+        console.log(chalk.cyan(`\nVí dụ: stali onboard -k sk-stali-...\n${STALI_DASHBOARD_KEYS_URL}\n`));
+        process.exit(1);
       }
-      process.exit(result.success ? 0 : 1);
+      const { runSetupCommand } = await import("../services/setup-cli");
+      process.exit(
+        await runSetupCommand(apiKey, {
+          skipConfigure: opts.skipConfigure,
+          includePlugins: opts.includePlugins,
+          noPlugins: opts.noPlugins,
+          allApps: opts.allApps,
+          json: opts.json,
+          title: "⚡ STALI ONBOARD",
+        })
+      );
+    });
+
+  program
+    .command("user")
+    .description("Hướng dẫn nhanh cho user (không phải admin)")
+    .action(async () => {
+      const { printUserQuickReference } = await import("../services/user-cli");
+      printUserQuickReference();
+      process.exit(0);
     });
 
   program

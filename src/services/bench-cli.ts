@@ -57,6 +57,8 @@ function benchCase(
     "doctor --tools-only --json": Number(process.env.STALI_BENCH_MAX_DOCTOR_MS || 250),
     "check --tools-only --json": Number(process.env.STALI_BENCH_MAX_CHECK_MS || 200),
     "status --json": Number(process.env.STALI_BENCH_MAX_STATUS_MS || 200),
+    "ready --json": Number(process.env.STALI_BENCH_MAX_STATUS_MS || 200),
+    check: Number(process.env.STALI_BENCH_MAX_CHECK_QUICK_MS || 220),
     "setup --skip-configure --json": Number(process.env.STALI_BENCH_MAX_SETUP_MS || 500),
   };
   const limit = limits[name];
@@ -92,6 +94,8 @@ export function runColdStartBench(options?: {
     { name: "doctor --tools-only --json", args: ["doctor", "--tools-only", "--json"] },
     { name: "check --tools-only --json", args: ["check", "--tools-only", "--json"] },
     { name: "status --json", args: ["status", "--json"] },
+    { name: "ready --json", args: ["ready", "--json"] },
+    { name: "check", args: ["check"] },
     {
       name: "setup --skip-configure --json",
       args: [

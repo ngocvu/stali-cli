@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.33.0] — 2026-08-28
+
+### Added
+- **`stali onboard`** — alias `stali setup` (onboarding user)
+- **`stali user`** — quick reference lệnh user (không admin)
+- **`stali check --full`** — kiểm tra đầy đủ; mặc định `check` nhanh như `status`
+- **Setup JSON** — field `nextCommand` gợi ý bước tiếp theo
+
+### Changed
+- **`stali check`** — mặc định quick/offline; `--full` cho hành vi cũ
+- Bench thêm `ready --json`, `check` (quick)
+
 ## [3.32.0] — 2026-08-28
 
 ### Added

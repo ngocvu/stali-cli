@@ -259,6 +259,8 @@ async function main() {
   }
 
   assert("setup --help exit 0", run(["setup", "--help"]).status === 0);
+  assert("onboard --help exit 0", run(["onboard", "--help"]).status === 0);
+  assert("user exit 0", run(["user"]).status === 0);
   assert("status --json exit 0|1", [0, 1].includes(run(["status", "--json"]).status));
   assert("ready --json exit 0|1", [0, 1].includes(run(["ready", "--json"]).status));
   const setupJson = run(["setup", "--json", "-k", "sk-stali-" + "x".repeat(40), "--skip-configure"]);
