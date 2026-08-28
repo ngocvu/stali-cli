@@ -12,6 +12,7 @@ describe("cli-info", () => {
       expect(info.installMode).toBeDefined();
       expect(["standalone", "git", "source", "npm-global", "unknown"]).toContain(info.installMode);
       expect(info.version).toMatch(/^\d+\.\d+\.\d+/);
+      expect(info.setup?.nextCommand).toMatch(/^stali /);
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;

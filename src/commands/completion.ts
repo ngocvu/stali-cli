@@ -243,7 +243,8 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
             '--skip-configure[Chỉ lưu key]' \\
             '--include-plugins[Đồng bộ plugin]' \\
             '--no-plugins[Bỏ plugin]' \\
-            '--all-apps[Cả 13 tool]'
+            '--all-apps[Cả 13 tool]' \\
+            '--json[JSON output]'
           ;;
         wizard)
           _arguments '(-k --key)'{-k,--key}'[API key khởi tạo wizard]'

@@ -146,12 +146,14 @@ export function registerCommands(program: Command): void {
     .option("--no-plugins", "Bỏ qua plugin")
     .option("--all-apps", "Cài gateway cả 13 tool (không chỉ app đang dùng)")
     .option("--skip-configure", "Chỉ lưu API key")
+    .option("--json", "JSON output (CI/script)")
     .action(async (opts: {
       key?: string;
       includePlugins?: boolean;
       noPlugins?: boolean;
       allApps?: boolean;
       skipConfigure?: boolean;
+      json?: boolean;
     }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = opts.key || globals.key;
@@ -161,7 +163,7 @@ export function registerCommands(program: Command): void {
         process.exit(1);
       }
       const { runUserSetup } = await import("../services/init-cli");
-      const { printSetupResult } = await import("../services/setup-cli");
+      const { printSetupResult, formatSetupJson } = await import("../services/setup-cli");
       const result = await runUserSetup({
         apiKey: apiKey.trim(),
         skipConfigure: opts.skipConfigure,
@@ -169,7 +171,11 @@ export function registerCommands(program: Command): void {
         noPlugins: opts.noPlugins,
         installedOnly: !opts.allApps,
       });
-      printSetupResult(result);
+      if (opts.json) {
+        console.log(JSON.stringify(formatSetupJson(result), null, 2));
+      } else {
+        printSetupResult(result);
+      }
       process.exit(result.success ? 0 : 1);
     });
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { planGatewayInstall, resolveGatewayTargets } from "./gateway-install";
+import { planGatewayInstall, resolveGatewayTargets, buildGatewayPlan } from "./gateway-install";
 import type { ToolDiscoveryEntry } from "./tool-discovery";
 
 function entry(
@@ -31,6 +31,14 @@ describe("gateway plan", () => {
     const discovery = [entry("claude", true, true)];
     const { targets } = resolveGatewayTargets(discovery, { force: true });
     expect(targets).toEqual(["claude"]);
+  });
+
+  test("buildGatewayPlan from discovery", () => {
+    const discovery = [entry("claude", true, true), entry("codex", true, false)];
+    const plan = buildGatewayPlan(discovery, {});
+    expect(plan.targets).toEqual(["codex"]);
+    expect(plan.summary.installed).toBe(2);
+    expect(plan.summary.configured).toBe(1);
   });
 
   test("planGatewayInstall returns summary", async () => {

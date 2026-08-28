@@ -1,6 +1,6 @@
 {
   "name": "stali-cli",
-  "version": "3.29.0",
+  "version": "3.30.0",
   "description": "Interactive CLI tool and configuration manager for Stali API (https://api.stali.vn)",
   "type": "module",
   "main": "dist/index.js",

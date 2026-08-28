@@ -8,6 +8,8 @@ export interface HealthCheckOptions {
   strict?: boolean;
   toolsOnly?: boolean;
   pluginsOnly?: boolean;
+  /** Sau auth vừa lưu — bỏ validate API lần 2 (setup nhanh hơn). */
+  authLocalOnly?: boolean;
 }
 
 export interface HealthCheckResult {
@@ -44,8 +46,12 @@ export async function runHealthCheck(
   const scope = resolveScope(options);
   const messages: string[] = [];
 
-  const auth = await authStatus();
-  const authOk = Boolean(auth.hasKey && auth.valid);
+  const auth = options.authLocalOnly
+    ? await authStatus({ localOnly: true })
+    : await authStatus();
+  const authOk = options.authLocalOnly
+    ? Boolean(auth.hasKey)
+    : Boolean(auth.hasKey && auth.valid);
 
   if (!auth.hasKey) {
     messages.push("Chưa lưu API key — chạy: stali auth login -k sk-stali-...");

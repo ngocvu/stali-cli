@@ -259,6 +259,17 @@ async function main() {
   }
 
   assert("setup --help exit 0", run(["setup", "--help"]).status === 0);
+  const setupJson = run(["setup", "--json", "-k", "sk-stali-" + "x".repeat(40), "--skip-configure"]);
+  assert("setup --json exit 0|1", setupJson.status === 0 || setupJson.status === 1);
+  if (setupJson.stdout) {
+    try {
+      const parsed = JSON.parse(setupJson.stdout);
+      assert("setup JSON has ok", typeof parsed.ok === "boolean");
+      assert("setup JSON has steps", Array.isArray(parsed.steps));
+    } catch {
+      assert("setup JSON parseable", false);
+    }
+  }
 
   const telemetryStatus = run(["telemetry", "status", "--json"]);
   assert("telemetry status --json exit 0", telemetryStatus.status === 0);

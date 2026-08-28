@@ -2,6 +2,23 @@
 
 Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho **Stali API** (`https://api.stali.vn`), xây dựng bằng **TypeScript**, **Bun** và **React trong Terminal (Ink)** với validation an toàn bằng **Zod**.
 
+## ⚡ Quickstart (user — ~30 giây)
+
+```bash
+npm install -g stali-cli@latest
+
+# Cách nhanh nhất — một lệnh (auth + gateway + check)
+stali -k sk-stali-xxxxxxxx
+# hoặc
+stali setup -k sk-stali-xxxxxxxx
+
+# Kiểm tra
+stali doctor
+stali info --json    # xem setup.ready + nextCommand
+```
+
+Lấy API key: [api.stali.vn/dashboard/keys](https://api.stali.vn/dashboard/keys)
+
 ---
 
 ## ✨ Tính năng

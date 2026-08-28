@@ -25,6 +25,8 @@ export interface GatewayInstallOptions {
   force?: boolean;
   continueOnError?: boolean;
   includePlugins?: boolean;
+  /** Discovery đã quét (setup song song auth + scan). */
+  discovery?: ToolDiscoveryEntry[];
 }
 
 export interface GatewayPlanOptions {
@@ -103,8 +105,18 @@ export function resolveGatewayTargets(
   return { targets, skipped };
 }
 
-export async function planGatewayInstall(opts?: GatewayPlanOptions): Promise<GatewayPlan> {
-  const discovery = await discoverInstalledTools();
+export async function planGatewayInstall(
+  opts?: GatewayPlanOptions & { discovery?: ToolDiscoveryEntry[] }
+): Promise<GatewayPlan> {
+  const discovery = opts?.discovery ?? (await discoverInstalledTools());
+  return buildGatewayPlan(discovery, opts);
+}
+
+/** Tạo kế hoạch gateway từ discovery đã quét (tránh quét lại). */
+export function buildGatewayPlan(
+  discovery: ToolDiscoveryEntry[],
+  opts?: GatewayPlanOptions
+): GatewayPlan {
   const installed = discovery.filter((e) => e.installed);
   const configured = installed.filter((e) => e.configuredForStali);
   const { targets, skipped } = resolveGatewayTargets(discovery, opts ?? {});
@@ -216,7 +228,9 @@ export interface GatewayAutoResult {
 
 /** Quét app đang dùng → cài gateway cho mọi target (một lệnh). */
 export async function runGatewayAuto(opts: GatewayAutoOptions): Promise<GatewayAutoResult> {
-  const plan = await planGatewayInstall({ all: opts.all, force: opts.force });
+  const plan = opts.discovery
+    ? buildGatewayPlan(opts.discovery, { all: opts.all, force: opts.force })
+    : await planGatewayInstall({ all: opts.all, force: opts.force });
 
   if (plan.targets.length === 0) {
     if (opts.json) {
@@ -282,7 +296,7 @@ export async function runGatewayAuto(opts: GatewayAutoOptions): Promise<GatewayA
     );
   }
 
-  const install = await runGatewayInstall(opts);
+  const install = await runGatewayInstall({ ...opts, discovery: opts.discovery ?? plan.tools });
 
   if (opts.json) {
     console.log(
@@ -320,7 +334,7 @@ export async function runGatewayAuto(opts: GatewayAutoOptions): Promise<GatewayA
 export async function runGatewayInstall(
   opts: GatewayInstallOptions
 ): Promise<{ items: ConfigureBatchItem[]; allOk: boolean; targets: string[] }> {
-  const discovery = await discoverInstalledTools();
+  const discovery = opts.discovery ?? (await discoverInstalledTools());
   const { targets } = resolveGatewayTargets(discovery, opts);
 
   if (targets.length === 0) {

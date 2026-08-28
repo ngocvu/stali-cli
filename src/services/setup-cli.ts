@@ -2,6 +2,13 @@ import chalk from "chalk";
 import type { InitResult } from "./init-cli";
 import { STALI_DASHBOARD_KEYS_URL } from "./auth-cli";
 
+export function formatSetupJson(result: InitResult): Record<string, unknown> {
+  return {
+    ok: result.success,
+    steps: result.steps,
+  };
+}
+
 export function printSetupResult(result: InitResult, opts?: { title?: string; done?: string }): void {
   const title = opts?.title ?? "⚡ STALI SETUP";
   const done = opts?.done ?? "Stali API đã sẵn sàng — mở app AI và dùng ngay.";

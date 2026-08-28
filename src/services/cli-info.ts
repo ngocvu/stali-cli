@@ -61,6 +61,13 @@ export interface CliInfoSnapshot {
     enabled: boolean;
     queueDepth: number;
   };
+  /** Gợi ý bước tiếp theo cho user (không phải admin). */
+  setup?: {
+    ready: boolean;
+    authOk: boolean;
+    gatewayPending: number;
+    nextCommand: string;
+  };
   /** true khi không validate auth / npm (stali info --json mặc định) */
   offline?: boolean;
 }
@@ -145,6 +152,14 @@ export async function gatherCliInfo(options?: GatherCliInfoOptions): Promise<Cli
     import("./telemetry").then((m) => m.readTelemetryQueueDepth()),
   ]);
   const configured = gatewayEntries.filter((e) => e.configuredForStali).length;
+  const gatewaySummary = summarizeGateway(gatewayEntries);
+  const authOk = Boolean(auth.hasKey && (auth.valid ?? offline));
+  const setupReady = authOk && gatewaySummary.pending === 0;
+  const nextCommand = !auth.hasKey
+    ? "stali setup -k sk-stali-..."
+    : gatewaySummary.pending > 0
+      ? "stali gw"
+      : "stali doctor";
 
   return {
     version: VERSION,
@@ -173,7 +188,13 @@ export async function gatherCliInfo(options?: GatherCliInfoOptions): Promise<Cli
       total: pluginSummary.total,
     },
     npm: npm ?? undefined,
-    gateway: summarizeGateway(gatewayEntries),
+    gateway: gatewaySummary,
+    setup: {
+      ready: setupReady,
+      authOk,
+      gatewayPending: gatewaySummary.pending,
+      nextCommand,
+    },
     telemetry: {
       enabled: telemetryCfg.enabled,
       queueDepth: telemetryQueue,

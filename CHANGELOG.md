@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.30.0] — 2026-08-28
+
+### Added
+- **`stali setup --json`** — output JSON cho CI/script
+- **`stali info --json`** — field `setup` (`ready`, `gatewayPending`, `nextCommand`)
+
+### Changed
+- **Setup song song** — validate API key + quét app AI đồng thời; tái dùng discovery (không quét 2–3 lần)
+- **Health check sau setup** — `authLocalOnly` bỏ validate API lần 2
+- README Quickstart + postinstall gợi ý `stali -k`
+
 ## [3.29.0] — 2026-08-28
 
 ### Changed

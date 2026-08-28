@@ -1,7 +1,8 @@
-import { authLogin } from "./auth-cli";
+import { validateApiKeyAndFetchModels } from "./api";
 import { runHealthCheck } from "./health-check";
-import { loadStaliConfig } from "./config";
+import { loadStaliConfig, saveStaliConfig } from "./config";
 import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
+import { discoverInstalledTools, type ToolDiscoveryEntry } from "./tool-discovery";
 
 export interface InitOptions {
   apiKey: string;
@@ -47,8 +48,39 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   const steps: InitResult["steps"] = [];
   const config = await loadStaliConfig();
   const baseUrl = opts.baseUrl ?? config?.baseUrl;
+  const trimmedKey = opts.apiKey.trim();
 
-  const login = await authLogin(opts.apiKey, { baseUrl });
+  const discoveryPromise: Promise<ToolDiscoveryEntry[] | null> = opts.skipConfigure
+    ? Promise.resolve(null)
+    : discoverInstalledTools();
+
+  const login = await (async () => {
+    if (!trimmedKey) {
+      return { success: false as const, message: "API key trống", preDiscovery: null as ToolDiscoveryEntry[] | null };
+    }
+    const [validation, preDiscovery] = await Promise.all([
+      validateApiKeyAndFetchModels(trimmedKey, { baseUrl }),
+      discoveryPromise,
+    ]);
+    if (!validation.valid) {
+      return {
+        success: false as const,
+        message: validation.error || "Token không hợp lệ",
+        preDiscovery,
+      };
+    }
+    await saveStaliConfig({
+      apiKey: trimmedKey,
+      currentModel: validation.defaultModel,
+      ...(baseUrl ? { baseUrl } : {}),
+    });
+    return {
+      success: true as const,
+      message: "Đã lưu API key vào ~/.stali/config.json",
+      preDiscovery,
+    };
+  })();
+
   steps.push({
     name: "auth login",
     ok: login.success,
@@ -57,6 +89,8 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   if (!login.success) {
     return { success: false, steps };
   }
+
+  const preDiscovery = "preDiscovery" in login ? login.preDiscovery : null;
 
   if (!opts.skipCliCheck) {
     try {
@@ -102,6 +136,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
       continueOnError: true,
       includePlugins,
       yes: opts.yes,
+      discovery: preDiscovery ?? undefined,
     });
     const gw = batch.install ?? { items: [], allOk: true, targets: [] as string[] };
     const okCount = gw.items.filter((i) => i.success).length;
@@ -118,7 +153,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
     steps.push({ name: "gateway auto", ok: true, detail: "skipped" });
   }
 
-  const health = await runHealthCheck(false);
+  const health = await runHealthCheck({ authLocalOnly: true });
   steps.push({
     name: "check",
     ok: health.authOk,
