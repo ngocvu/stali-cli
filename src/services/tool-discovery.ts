@@ -15,6 +15,7 @@ import {
 import { resolveHomePath } from "../utils/file";
 import { getToolById } from "../utils/tool-utils";
 import { runDoctorScan, type ToolHealthStatus } from "./syncers";
+import { loadProcessLines } from "./process-lines";
 
 export type DiscoverySignal =
   | "binary"
@@ -76,31 +77,6 @@ async function dirHasEntries(dir: string): Promise<boolean> {
   }
 }
 
-function loadProcessLines(): string[] {
-  if (process.platform === "win32") {
-    const r = spawnSync("tasklist", [], {
-      encoding: "utf8",
-      shell: true,
-      windowsHide: true,
-      timeout: 5000,
-    });
-    return (r.stdout || "").toLowerCase().split(/\r?\n/);
-  }
-  const r = spawnSync("ps", ["-ax", "-o", "args="], { encoding: "utf8", timeout: 8000 });
-  if (r.status !== 0) {
-    const fallback = spawnSync("ps", ["-A", "-o", "comm="], { encoding: "utf8", timeout: 5000 });
-    if (fallback.status !== 0) return [];
-    return (fallback.stdout || "")
-      .split(/\r?\n/)
-      .map((l) => l.trim().toLowerCase())
-      .filter(Boolean);
-  }
-  return (r.stdout || "")
-    .split(/\r?\n/)
-    .map((l) => l.trim().toLowerCase())
-    .filter(Boolean);
-}
-
 export async function buildDiscoveryScanContext(): Promise<DiscoveryScanContext> {
   const home = os.homedir();
   const ideEntries = new Set<string>();
@@ -128,7 +104,7 @@ export function hasIdeExtensionFromIndex(index: Set<string>, markers: string[]):
   });
 }
 
-function probeRunningProcessFromList(lines: string[], toolId: string): boolean {
+export function probeRunningProcessFromList(lines: string[], toolId: string): boolean {
   const names = TOOL_BINARY_NAMES[toolId] || [];
   const tool = getToolById(toolId);
   const candidates = [

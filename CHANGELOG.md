@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.22.0] — 2026-08-28
+
+### Added
+- **Windows process discovery** — PowerShell `Win32_Process.CommandLine` + WMIC fallback
+- **`stali init`** — dùng `gateway auto` (quét + cài app phát hiện) thay configure-all riêng
+- **Telemetry endpoint** — `POST/GET https://api.stali.vn/v1/telemetry/cli` (opt-in, JSONL aggregate)
+- **`stali telemetry status`** — hiển thị trạng thái endpoint
+
+### Changed
+- Release CI: verify + normalize Windows standalone artifact trước upload
+- `probeRunningProcessFromList` export cho unit test
+
 ## [3.21.0] — 2026-08-28
 
 ### Added

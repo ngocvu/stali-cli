@@ -56,6 +56,18 @@ export async function setTelemetryEnabled(enabled: boolean): Promise<TelemetryCo
   return cfg;
 }
 
+export async function fetchTelemetryEndpointHealth(): Promise<{ ok: boolean; status?: number }> {
+  try {
+    const r = await fetch(DEFAULT_URL, {
+      method: "GET",
+      signal: AbortSignal.timeout(2500),
+    });
+    return { ok: r.ok, status: r.status };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export async function recordCliTelemetry(command: string): Promise<void> {
   if (process.env.STALI_TELEMETRY === "0") return;
   if (SKIP_COMMANDS.has(command)) return;

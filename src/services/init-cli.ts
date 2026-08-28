@@ -1,5 +1,4 @@
 import { authLogin } from "./auth-cli";
-import { runConfigureBatch } from "./configure-batch";
 import { runHealthCheck } from "./health-check";
 import { loadStaliConfig } from "./config";
 import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
@@ -28,10 +27,10 @@ export function evaluateInitSuccess(
   opts: { skipConfigure?: boolean }
 ): boolean {
   const login = steps.find((s) => s.name === "auth login");
-  const configure = steps.find((s) => s.name === "configure-all");
+  const gateway = steps.find((s) => s.name === "gateway auto" || s.name === "configure-all");
   const check = steps.find((s) => s.name === "check");
-  const configureOk = opts.skipConfigure ? true : (configure?.ok ?? false);
-  return Boolean(login?.ok && configureOk && check?.ok);
+  const gatewayOk = opts.skipConfigure ? true : (gateway?.ok ?? false);
+  return Boolean(login?.ok && gatewayOk && check?.ok);
 }
 
 function formatHealthDetail(health: Awaited<ReturnType<typeof runHealthCheck>>): string {
@@ -93,32 +92,26 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
       noPlugins: opts.noPlugins,
     });
     const useInstalledOnly = opts.installedOnly !== false;
-    let installedIds: string[] = [];
-    if (useInstalledOnly) {
-      const { discoverInstalledToolIds } = await import("./tool-discovery");
-      installedIds = await discoverInstalledToolIds();
-    }
-    const skipAdvanced =
-      installedIds.length > 0
-        ? !installedIds.includes("claude") && !installedIds.includes("codex")
-        : true;
-    const batch = await runConfigureBatch({
+    const { runGatewayInstall } = await import("./gateway-install");
+    const gw = await runGatewayInstall({
       apiKey: opts.apiKey,
       baseUrl,
-      skipAdvanced,
+      all: !useInstalledOnly,
       continueOnError: true,
       includePlugins,
-      toolInputs: installedIds.length > 0 ? installedIds : undefined,
     });
-    const okCount = batch.items.filter((i) => i.success).length;
-    const label = includePlugins ? "tools+plugins" : "tools";
+    const okCount = gw.items.filter((i) => i.success).length;
+    const label = includePlugins ? "apps+plugins" : "apps";
     steps.push({
-      name: "configure-all",
-      ok: batch.allOk,
-      detail: `${okCount}/${batch.items.length} ${label}`,
+      name: "gateway auto",
+      ok: gw.allOk,
+      detail:
+        gw.targets.length === 0
+          ? "không có app cần cài"
+          : `${okCount}/${gw.items.length} ${label}`,
     });
   } else {
-    steps.push({ name: "configure-all", ok: true, detail: "skipped" });
+    steps.push({ name: "gateway auto", ok: true, detail: "skipped" });
   }
 
   const health = await runHealthCheck(false);

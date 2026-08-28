@@ -14,13 +14,23 @@ describe("init-cli", () => {
       expect(result.success).toBe(false);
       expect(result.steps.some((s) => s.name === "auth login" && !s.ok)).toBe(true);
       expect(result.steps.some((s) => s.name === "configure-all")).toBe(false);
+      expect(result.steps.some((s) => s.name === "gateway auto")).toBe(false);
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
   });
 
-  test("evaluateInitSuccess — configure-all fail → false", () => {
+  test("evaluateInitSuccess — gateway auto fail → false", () => {
+    const steps = [
+      { name: "auth login", ok: true },
+      { name: "gateway auto", ok: false, detail: "8/11 apps" },
+      { name: "check", ok: true },
+    ];
+    expect(evaluateInitSuccess(steps, {})).toBe(false);
+  });
+
+  test("evaluateInitSuccess — configure-all fail → false (legacy step name)", () => {
     const steps = [
       { name: "auth login", ok: true },
       { name: "configure-all", ok: false, detail: "8/11 tools" },
@@ -32,7 +42,7 @@ describe("init-cli", () => {
   test("evaluateInitSuccess — skip configure vẫn OK khi auth+check OK", () => {
     const steps = [
       { name: "auth login", ok: true },
-      { name: "configure-all", ok: true, detail: "skipped" },
+      { name: "gateway auto", ok: true, detail: "skipped" },
       { name: "check", ok: true },
     ];
     expect(evaluateInitSuccess(steps, { skipConfigure: true })).toBe(true);

@@ -78,6 +78,21 @@ jobs:
           STALI_COMPILE_TARGET=${{ matrix.target }} \
           bun run build
 
+      - name: Verify standalone artifact exists
+        shell: bash
+        run: |
+          ASSET="${{ matrix.asset }}"
+          if [ -f "dist/${ASSET}" ]; then
+            ls -la "dist/${ASSET}"
+          elif [ -f "dist/${ASSET}.exe" ]; then
+            cp "dist/${ASSET}.exe" "dist/${ASSET}"
+            ls -la "dist/${ASSET}"
+          else
+            echo "::error::Standalone artifact missing for ${ASSET}"
+            ls -la dist/ || true
+            exit 1
+          fi
+
       - name: Upload standalone artifact
         uses: actions/upload-artifact@v4
         with:

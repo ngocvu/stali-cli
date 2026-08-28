@@ -140,7 +140,7 @@ export function registerCommands(program: Command): void {
 
   program
     .command("init")
-    .description("Khởi tạo nhanh: auth + configure app đang dùng + check")
+    .description("Khởi tạo nhanh: auth + gateway auto + check")
     .option("-k, --key <token>", "Stali API key")
     .option("--skip-configure", "Chỉ lưu API key, không configure-all")
     .option("--include-plugins", "Đồng bộ plugin (mặc định: bật nếu plugins.json có entry)")
@@ -721,10 +721,11 @@ export function registerCommands(program: Command): void {
     .description("Trạng thái telemetry")
     .option("--json", "JSON output")
     .action(async (opts: { json?: boolean }) => {
-      const { readTelemetryConfig } = await import("../services/telemetry");
+      const { readTelemetryConfig, fetchTelemetryEndpointHealth } = await import("../services/telemetry");
       const cfg = await readTelemetryConfig();
+      const endpoint = await fetchTelemetryEndpointHealth();
       if (opts.json) {
-        console.log(JSON.stringify(cfg, null, 2));
+        console.log(JSON.stringify({ ...cfg, endpoint }, null, 2));
         process.exit(0);
       }
       console.log(chalk.bold.cyan("\n📡 STALI TELEMETRY\n"));
@@ -732,6 +733,11 @@ export function registerCommands(program: Command): void {
         `Trạng thái: ${cfg.enabled ? chalk.green("bật") : chalk.gray("tắt (mặc định)")}`
       );
       if (cfg.consentAt) console.log(`Đồng ý lúc: ${cfg.consentAt}`);
+      console.log(
+        `Endpoint:    ${endpoint.ok ? chalk.green("sẵn sàng") : chalk.yellow("không phản hồi")}${
+          endpoint.status ? chalk.gray(` (HTTP ${endpoint.status})`) : ""
+        }`
+      );
       console.log(chalk.gray("\nChỉ gửi: tên lệnh, phiên bản CLI, platform. Không gửi API key.\n"));
       process.exit(0);
     });
