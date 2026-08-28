@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import os from "os";
 import path from "path";
-import { readAutoUpdateConfig, writeAutoUpdateConfig } from "./auto-update";
+import {
+  readAutoUpdateConfig,
+  writeAutoUpdateConfig,
+  getTaskSchedulerStatus,
+  resolveStaliExecutableForScheduler,
+  WINDOWS_TASK_NAME,
+} from "./auto-update";
 
 describe("auto-update config", () => {
   test("writeAutoUpdateConfig roundtrip", async () => {
@@ -16,5 +22,17 @@ describe("auto-update config", () => {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
+  });
+
+  test("getTaskSchedulerStatus on non-Windows", () => {
+    if (process.platform === "win32") return;
+    const s = getTaskSchedulerStatus();
+    expect(s.installed).toBe(false);
+    expect(s.taskName).toBe(WINDOWS_TASK_NAME);
+  });
+
+  test("resolveStaliExecutableForScheduler returns path", () => {
+    const p = resolveStaliExecutableForScheduler();
+    expect(p.length).toBeGreaterThan(0);
   });
 });

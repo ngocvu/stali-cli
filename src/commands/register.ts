@@ -618,11 +618,13 @@ export function registerCommands(program: Command): void {
     .option("--check", "Chỉ kiểm tra phiên bản mới (không cập nhật)")
     .option("--json", "JSON output (với --check hoặc --dry-run)")
     .option("--channel <name>", "Kênh cập nhật: stable | beta", "stable")
-    .option("--install-cron", "Cài cron 04:00 tự update (Linux/macOS)")
-    .option("--uninstall-cron", "Gỡ cron auto-update")
-    .option("--cron-status", "Trạng thái cron auto-update")
+    .option("--install-cron", "Cài cron 04:00 tự update (Linux/macOS; Windows → Task Scheduler)")
+    .option("--uninstall-cron", "Gỡ cron / Task Scheduler auto-update")
+    .option("--cron-status", "Trạng thái auto-update (cron / systemd / Task Scheduler)")
     .option("--install-systemd", "Cài systemd user timer 04:00 (Linux)")
     .option("--uninstall-systemd", "Gỡ systemd user timer")
+    .option("--install-task", "Cài Windows Task Scheduler 04:00 (alias cron trên Windows)")
+    .option("--uninstall-task", "Gỡ Windows Task Scheduler auto-update")
     .option("--dry-run", "Chỉ xem kế hoạch update (không thực hiện)")
     .action(async (opts: {
       check?: boolean;
@@ -632,25 +634,50 @@ export function registerCommands(program: Command): void {
       cronStatus?: boolean;
       installSystemd?: boolean;
       uninstallSystemd?: boolean;
+      installTask?: boolean;
+      uninstallTask?: boolean;
       dryRun?: boolean;
       json?: boolean;
     }) => {
       if (opts.cronStatus) {
-        const { getAutoUpdateCronStatus, readAutoUpdateConfig, getSystemdTimerStatus } = await import(
-          "../services/auto-update"
-        );
+        const {
+          getAutoUpdateCronStatus,
+          readAutoUpdateConfig,
+          getSystemdTimerStatus,
+          getTaskSchedulerStatus,
+        } = await import("../services/auto-update");
         const status = getAutoUpdateCronStatus();
         const systemd = getSystemdTimerStatus();
+        const task = getTaskSchedulerStatus();
         const cfg = await readAutoUpdateConfig();
         console.log(chalk.bold.cyan("\n⏰ STALI AUTO-UPDATE\n"));
-        console.log(`Cron:      ${status.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")}`);
-        if (status.line) console.log(chalk.gray(`  ${status.line}`));
-        console.log(
-          `Systemd:   ${systemd.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")} (${systemd.unitDir})`
-        );
+        if (process.platform === "win32") {
+          console.log(
+            `Task:      ${task.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")} (${task.taskName})`
+          );
+        } else {
+          console.log(`Cron:      ${status.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")}`);
+          if (status.line) console.log(chalk.gray(`  ${status.line}`));
+          console.log(
+            `Systemd:   ${systemd.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")} (${systemd.unitDir})`
+          );
+        }
         console.log(`Log:       ${status.logPath}`);
         if (cfg) console.log(`Config:    channel=${cfg.channel || "stable"} enabled=${cfg.enabled}`);
         console.log("");
+        process.exit(0);
+      }
+      if (opts.installTask) {
+        const { installAutoUpdateTaskScheduler } = await import("../services/auto-update");
+        const r = await installAutoUpdateTaskScheduler(opts.channel);
+        console.log(r.ok ? chalk.green(`✅ ${r.message}`) : chalk.red(`❌ ${r.message}`));
+        if (r.error) console.error(chalk.red(r.error));
+        process.exit(r.ok ? 0 : 1);
+      }
+      if (opts.uninstallTask) {
+        const { uninstallAutoUpdateTaskScheduler } = await import("../services/auto-update");
+        const r = await uninstallAutoUpdateTaskScheduler();
+        console.log(chalk.green(`✅ ${r.message}`));
         process.exit(0);
       }
       if (opts.installSystemd) {

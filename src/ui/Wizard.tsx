@@ -32,6 +32,7 @@ import { buildToolConfigPreview } from "../services/syncers/preview";
 import { runDoctorFix } from "../services/doctor-fix";
 import { runConfigureBatch } from "../services/configure-batch";
 import { ConfigureAllMenu, ConfigureAllAction } from "./ConfigureAllMenu";
+import { InstallMenu, InstallMenuAction } from "./InstallMenu";
 import { PluginsMenu, PluginsMenuAction } from "./PluginsMenu";
 import { runPluginsDoctor, type PluginHealthStatus } from "../services/plugin-doctor";
 import { runPluginsSync } from "../services/plugin-sync";
@@ -49,6 +50,7 @@ type WizardStep =
   | "pricing"
   | "doctor"
   | "configure-all"
+  | "install"
   | "plugins"
   | "app"
   | "tool-detail"
@@ -176,6 +178,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       | "fix-all"
       | "open-keys"
       | "update"
+      | "install"
       | "completion"
       | "plugins"
       | "exit"
@@ -207,6 +210,10 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         setStep("plugins");
         break;
       }
+      case "install":
+        await refreshInstallMode();
+        setStep("install");
+        break;
       case "update": {
         setLoading(true);
         setError(undefined);
@@ -339,6 +346,96 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     );
     setLoading(false);
     setStep("done");
+  };
+
+  const handleInstallMenuSelect = async (action: InstallMenuAction) => {
+    if (action === "back") {
+      setStep("menu");
+      return;
+    }
+    setLoading(true);
+    setError(undefined);
+    try {
+      if (action === "check-update") {
+        const { fetchLatestVersion } = await import("../services/version-check");
+        const { resolveUpdateChannelResolved } = await import("../services/update-channel");
+        const channelCfg = await resolveUpdateChannelResolved("stable");
+        const ver = await fetchLatestVersion(channelCfg.versionUrl);
+        setResults([
+          {
+            toolId: "install",
+            toolName: "Version check",
+            success: !ver.updateAvailable,
+            message: ver.updateAvailable
+              ? `Có bản mới: ${ver.latest} (hiện tại ${ver.current})`
+              : `Đã là bản mới nhất (${ver.current})`,
+            configPath: channelCfg.label,
+          },
+        ]);
+        setSelectedModel("Kiểm tra phiên bản");
+        setStep("done");
+        return;
+      }
+      if (action === "npm-upgrade") {
+        const { runInstallCli } = await import("../services/install-cli");
+        const code = await runInstallCli({ npm: true });
+        if (code !== 0) {
+          setError("npm install -g thất bại — thử: stali install --json");
+          setStep("install");
+          return;
+        }
+        setResults([
+          {
+            toolId: "install",
+            toolName: "npm global",
+            success: true,
+            message: "Đã nâng cấp qua npm. Mở terminal mới nếu PATH chưa cập nhật.",
+            configPath: "npm install -g stali-cli@latest",
+          },
+        ]);
+        setSelectedModel("Nâng cấp npm");
+        setStep("done");
+        return;
+      }
+      if (action === "auto-update") {
+        const { installAutoUpdateCron } = await import("../services/auto-update");
+        const r = await installAutoUpdateCron("stable");
+        setResults([
+          {
+            toolId: "install",
+            toolName: "auto-update",
+            success: r.ok,
+            message: r.message,
+            configPath: "~/.stali/auto-update.log",
+            error: r.error,
+          },
+        ]);
+        setSelectedModel("Auto-update 04:00");
+        setStep("done");
+        return;
+      }
+      if (action === "guide") {
+        const { buildInstallPlan } = await import("../services/install-cli");
+        const plan = buildInstallPlan();
+        const lines = plan.methods.map((m) => `${m.label}: ${m.command}`).join("\n");
+        setResults([
+          {
+            toolId: "install",
+            toolName: "Hướng dẫn",
+            success: true,
+            message: lines,
+            configPath: "stali install",
+          },
+        ]);
+        setSelectedModel("Hướng dẫn cài đặt");
+        setStep("done");
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+      setStep("install");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePluginsMenuSelect = async (action: PluginsMenuAction) => {
@@ -781,6 +878,10 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
       {step === "configure-all" && (
         <ConfigureAllMenu pluginCount={pluginCount} onSelect={handleConfigureAllSelect} />
+      )}
+
+      {step === "install" && (
+        <InstallMenu installMode={installModeLabel} onSelect={handleInstallMenuSelect} />
       )}
 
       {step === "plugins" && (

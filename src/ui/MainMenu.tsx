@@ -18,6 +18,7 @@ interface MainMenuProps {
       | "fix-all"
       | "open-keys"
       | "update"
+      | "install"
       | "completion"
       | "plugins"
       | "exit"
@@ -33,6 +34,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, installMode, onSelec
     { label: "🔧 Sửa tất cả tool chưa OK (doctor fix)", value: "fix-all" as const },
     { label: "🔌 Plugin tùy chỉnh (sync / doctor)", value: "plugins" as const },
     { label: "⬆️  Cập nhật stali-cli (update)", value: "update" as const },
+    { label: "📦 Cài đặt / nâng cấp CLI (install)", value: "install" as const },
     { label: "⌨️  Cài shell completion (bash/fish/zsh)", value: "completion" as const },
     { label: "🔑 Cài đặt API Token", value: "change-key" as const },
     { label: "🔗 Mở Dashboard Keys (trình duyệt)", value: "open-keys" as const },

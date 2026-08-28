@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.14.0] — 2026-08-28
+
+### Added
+- **Windows Task Scheduler** — `stali update --install-cron` / `--install-task` tạo task 04:00 trên Windows
+- **`update --install-task` / `--uninstall-task`** — quản lý Task Scheduler riêng
+- **Wizard menu: Cài đặt / nâng cấp CLI** — kiểm tra version, npm upgrade, auto-update, hướng dẫn
+- **`--cron-status`** hiển thị Task Scheduler trên Windows
+
+### Changed
+- `installAutoUpdateCron` trên Windows thực sự cài schtasks (không chỉ ghi JSON)
+- Publish npm registry với provenance (khi có `NPM_TOKEN`)
+
 ## [3.13.0] — 2026-08-28
 
 ### Added

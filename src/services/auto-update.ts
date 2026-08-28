@@ -7,6 +7,7 @@ import { getStaliBinDir, getStaliHome } from "../constants/paths";
 
 const CRON_MARKER = "stali-cli auto-update";
 const SYSTEMD_MARKER = "stali-cli";
+export const WINDOWS_TASK_NAME = "stali-cli-auto-update";
 const LOG_FILE = "auto-update.log";
 
 export interface AutoUpdateCronStatus {
@@ -44,6 +45,98 @@ export function getAutoUpdateCronStatus(): AutoUpdateCronStatus {
   };
 }
 
+export interface TaskSchedulerStatus {
+  installed: boolean;
+  taskName: string;
+}
+
+export function getTaskSchedulerStatus(): TaskSchedulerStatus {
+  const taskName = WINDOWS_TASK_NAME;
+  if (process.platform !== "win32") {
+    return { installed: false, taskName };
+  }
+  const r = spawnSync("schtasks", ["/Query", "/TN", taskName], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  return { installed: r.status === 0, taskName };
+}
+
+/** Resolve stali executable for scheduled tasks (Windows/Linux/macOS). */
+export function resolveStaliExecutableForScheduler(): string {
+  if (process.platform === "win32") {
+    const candidates = [
+      path.join(getStaliBinDir(), "stali.cmd"),
+      path.join(getStaliBinDir(), "stali.exe"),
+    ];
+    for (const c of candidates) {
+      if (existsSync(c)) return c;
+    }
+    const r = spawnSync("where", ["stali"], { encoding: "utf8", shell: true, windowsHide: true });
+    if (r.status === 0) {
+      const line = (r.stdout || "").split(/\r?\n/).find((l) => l.trim())?.trim();
+      if (line) return line;
+    }
+    return path.join(getStaliBinDir(), "stali.cmd");
+  }
+  const stali = path.join(getStaliBinDir(), "stali");
+  if (existsSync(stali)) return stali;
+  const r = spawnSync("which", ["stali"], { encoding: "utf8" });
+  if (r.status === 0) return (r.stdout || "").trim();
+  return stali;
+}
+
+/** Windows Task Scheduler — daily 04:00 `stali update`. */
+export async function installAutoUpdateTaskScheduler(channel = "stable"): Promise<{
+  ok: boolean;
+  message: string;
+  error?: string;
+}> {
+  if (process.platform !== "win32") {
+    return { ok: false, message: "Task Scheduler chỉ hỗ trợ Windows" };
+  }
+  const existing = getTaskSchedulerStatus();
+  const stali = resolveStaliExecutableForScheduler();
+  const logPath = path.join(getStaliHome(), LOG_FILE);
+  await fs.mkdir(getStaliHome(), { recursive: true });
+  const tr = `cmd /c "\\"${stali.replace(/"/g, '\\"')}\\" update --channel ${channel} >> \\"${logPath.replace(/\\/g, "\\\\")}\\" 2>&1"`;
+  const r = spawnSync(
+    "schtasks",
+    ["/Create", "/TN", WINDOWS_TASK_NAME, "/SC", "DAILY", "/ST", "04:00", "/TR", tr, "/F"],
+    { encoding: "utf8", windowsHide: true }
+  );
+  if (r.status !== 0) {
+    return {
+      ok: false,
+      message: "schtasks /Create failed",
+      error: (r.stderr || r.stdout || "").trim(),
+    };
+  }
+  await writeAutoUpdateConfig({ channel, enabled: true });
+  return {
+    ok: true,
+    message: existing.installed
+      ? `Task Scheduler đã cập nhật (${WINDOWS_TASK_NAME}, 04:00)`
+      : `Đã cài Task Scheduler 04:00 — log ${logPath}`,
+  };
+}
+
+export async function uninstallAutoUpdateTaskScheduler(): Promise<{ ok: boolean; message: string }> {
+  if (process.platform !== "win32") {
+    return { ok: true, message: "Không có Task Scheduler" };
+  }
+  if (!getTaskSchedulerStatus().installed) {
+    await writeAutoUpdateConfig({ enabled: false });
+    return { ok: true, message: "Task Scheduler auto-update chưa cài" };
+  }
+  spawnSync("schtasks", ["/Delete", "/TN", WINDOWS_TASK_NAME, "/F"], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  await writeAutoUpdateConfig({ enabled: false });
+  return { ok: true, message: "Đã gỡ Task Scheduler auto-update" };
+}
+
 /** Cài cron 04:00 hàng ngày — `stali update` (ưu tiên standalone). */
 export async function installAutoUpdateCron(channel = "stable"): Promise<{
   ok: boolean;
@@ -51,12 +144,7 @@ export async function installAutoUpdateCron(channel = "stable"): Promise<{
   error?: string;
 }> {
   if (process.platform === "win32") {
-    await writeAutoUpdateConfig({ channel, enabled: true });
-    return {
-      ok: true,
-      message:
-        "Windows: đã ghi ~/.stali/auto-update.json — dùng Task Scheduler hoặc `stali update` thủ công",
-    };
+    return installAutoUpdateTaskScheduler(channel);
   }
 
   const stali = path.join(getStaliBinDir(), "stali");
@@ -81,8 +169,7 @@ export async function installAutoUpdateCron(channel = "stable"): Promise<{
 
 export async function uninstallAutoUpdateCron(): Promise<{ ok: boolean; message: string }> {
   if (process.platform === "win32") {
-    await writeAutoUpdateConfig({ enabled: false });
-    return { ok: true, message: "Đã tắt auto-update config (Windows)" };
+    return uninstallAutoUpdateTaskScheduler();
   }
 
   const existing = readCrontab();
