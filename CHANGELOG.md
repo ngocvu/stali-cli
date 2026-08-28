@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.15.1] — 2026-08-28
+
+### Added
+- **Process discovery** — `gateway scan` phát hiện app AI đang chạy (signal `process`) kể cả khi không có binary trong PATH
+- **`stali info`** — tóm tắt gateway (app phát hiện / đã cấu hình / chờ cài) + phiên bản npm registry
+- **Alias `stali gw`** — viết tắt cho `stali gateway`
+
+### Changed
+- **Release CI** — npm publish chạy ngay sau verify, không chờ matrix standalone (macOS queue)
+
 ## [3.15.0] — 2026-08-28
 
 ### Added

@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { discoverTool, formatDiscoverySignal } from "./tool-discovery";
+import { discoverTool, formatDiscoverySignal, probeRunningProcess } from "./tool-discovery";
 
 describe("tool-discovery", () => {
   test("formatDiscoverySignal joins signals", () => {
     expect(formatDiscoverySignal({ binary: true, config: true })).toBe("binary+config");
+    expect(formatDiscoverySignal({ process: true, vscode: true })).toBe("vscode+process");
     expect(formatDiscoverySignal({})).toBe("—");
+  });
+
+  test("probeRunningProcess returns boolean", () => {
+    expect(typeof probeRunningProcess("cursor")).toBe("boolean");
   });
 
   test("discoverTool marks installed when health says config exists", async () => {

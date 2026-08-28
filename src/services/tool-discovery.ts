@@ -12,7 +12,7 @@ import { resolveHomePath } from "../utils/file";
 import { getToolById } from "../utils/tool-utils";
 import { runDoctorScan, type ToolHealthStatus } from "./syncers";
 
-export type DiscoverySignal = "binary" | "config" | "vscode" | "home";
+export type DiscoverySignal = "binary" | "config" | "vscode" | "home" | "process";
 
 export interface ToolDiscoveryEntry {
   toolId: string;
@@ -94,6 +94,40 @@ async function probeHomeMarkers(toolId: string): Promise<boolean> {
   return false;
 }
 
+/** Phát hiện process đang chạy (Cursor, Claude Code, v.v.) — không cần binary trong PATH. */
+export function probeRunningProcess(toolId: string): boolean {
+  const names = TOOL_BINARY_NAMES[toolId] || [];
+  const tool = getToolById(toolId);
+  const candidates = [
+    ...new Set([...(names || []), tool?.command].filter(Boolean) as string[]),
+  ].map((n) => n.toLowerCase());
+  if (candidates.length === 0) return false;
+
+  if (process.platform === "win32") {
+    const r = spawnSync("tasklist", [], {
+      encoding: "utf8",
+      shell: true,
+      windowsHide: true,
+      timeout: 5000,
+    });
+    const out = (r.stdout || "").toLowerCase();
+    return candidates.some((n) => out.includes(`${n}.exe`) || out.includes(n));
+  }
+
+  const r = spawnSync("ps", ["-A", "-o", "comm="], { encoding: "utf8", timeout: 5000 });
+  if (r.status !== 0) return false;
+  const lines = (r.stdout || "")
+    .split(/\r?\n/)
+    .map((l) => l.trim().toLowerCase())
+    .filter(Boolean);
+  return candidates.some(
+    (name) =>
+      lines.some(
+        (line) => line === name || line.endsWith(`/${name}`) || line.includes(name)
+      )
+  );
+}
+
 export async function discoverTool(
   toolId: string,
   health?: ToolHealthStatus
@@ -116,14 +150,16 @@ export async function discoverTool(
   const vscodeMarkers = TOOL_VSCODE_EXTENSIONS[toolId];
   const vscode = vscodeMarkers ? await hasVsCodeExtension(vscodeMarkers) : false;
   const home = await probeHomeMarkers(toolId);
+  const running = probeRunningProcess(toolId);
 
   const signals: Partial<Record<DiscoverySignal, boolean>> = {};
   if (binary.found) signals.binary = true;
   if (config) signals.config = true;
   if (vscode) signals.vscode = true;
   if (home) signals.home = true;
+  if (running) signals.process = true;
 
-  const installed = Boolean(binary.found || config || vscode || home);
+  const installed = Boolean(binary.found || config || vscode || home || running);
 
   return {
     toolId: tool.id,
@@ -158,5 +194,6 @@ export function formatDiscoverySignal(signals: Partial<Record<DiscoverySignal, b
   if (signals.config) parts.push("config");
   if (signals.vscode) parts.push("vscode");
   if (signals.home) parts.push("home");
+  if (signals.process) parts.push("process");
   return parts.length > 0 ? parts.join("+") : "—";
 }

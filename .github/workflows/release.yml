@@ -85,8 +85,9 @@ jobs:
           path: dist/${{ matrix.asset }}
           if-no-files-found: warn
 
-  publish:
-    needs: [verify, build-standalone]
+  # npm publish ngay sau verify — không chờ matrix standalone (macOS queue có thể >30 phút)
+  publish-npm:
+    needs: verify
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -107,31 +108,21 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: npm pack
-        run: npm pack
-
-      - name: Download standalone artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: stali-standalone-*
-          merge-multiple: true
-          path: release-assets
-
       - name: Publish to npm
         run: |
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
             echo "::warning::NPM_TOKEN secret chưa cấu hình — bỏ qua npm publish"
             echo "Thêm NPM_TOKEN trong GitHub → Secrets → Actions"
-          else
-            VER=$(node -p "require('./package.json').version")
-            if echo "$VER" | grep -qE '-(beta|alpha|rc)(\.|$|-)'; then
-              DIST_TAG=beta
-            else
-              DIST_TAG=latest
-            fi
-            echo "Publishing stali-cli@${VER} with dist-tag=${DIST_TAG}"
-            npm publish --access public --provenance --tag "$DIST_TAG"
+            exit 0
           fi
+          VER=$(node -p "require('./package.json').version")
+          if echo "$VER" | grep -qE '-(beta|alpha|rc)(\.|$|-)'; then
+            DIST_TAG=beta
+          else
+            DIST_TAG=latest
+          fi
+          echo "Publishing stali-cli@${VER} with dist-tag=${DIST_TAG}"
+          npm publish --access public --provenance --tag "$DIST_TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -146,6 +137,33 @@ jobs:
           VER=$(node -p "require('./package.json').version")
           npm view "stali-cli@${VER}" version
           test "$(npm view stali-cli@${VER} version)" = "$VER"
+
+  publish-release:
+    needs: [verify, build-standalone]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build
+        run: bun run build
+
+      - name: npm pack
+        run: npm pack
+
+      - name: Download standalone artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: stali-standalone-*
+          merge-multiple: true
+          path: release-assets
 
       - name: Create GitHub Release + assets
         uses: softprops/action-gh-release@v2

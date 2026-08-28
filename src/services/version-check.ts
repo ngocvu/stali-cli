@@ -51,3 +51,29 @@ export async function fetchLatestVersion(
     return { current, latest: current, updateAvailable: false, source: "error" };
   }
 }
+
+const NPM_LATEST_URL = "https://registry.npmjs.org/stali-cli/latest";
+
+/** Phiên bản mới nhất trên npm registry (ưu tiên cho `npm install -g`). */
+export async function fetchNpmLatestVersion(): Promise<VersionCheckResult> {
+  const current = VERSION;
+  try {
+    const res = await fetch(NPM_LATEST_URL, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      return { current, latest: current, updateAvailable: false, source: "npm-unavailable" };
+    }
+    const data = (await res.json()) as { version?: string };
+    const latest = data.version?.trim() || current;
+    return {
+      current,
+      latest,
+      updateAvailable: isNewerVersion(current, latest),
+      source: "npm",
+    };
+  } catch {
+    return { current, latest: current, updateAvailable: false, source: "npm-error" };
+  }
+}

@@ -11,6 +11,24 @@ import { runDoctorScan } from "./syncers";
 import { authStatus } from "./auth-cli";
 import { runPluginsDoctor } from "./plugin-doctor";
 import { detectInstallMode, type InstallMode } from "./install-mode";
+import {
+  discoverInstalledTools,
+  formatDiscoverySignal,
+  type ToolDiscoveryEntry,
+} from "./tool-discovery";
+import { fetchNpmLatestVersion, type VersionCheckResult } from "./version-check";
+
+export interface CliGatewaySummary {
+  installed: number;
+  configured: number;
+  pending: number;
+  tools: Array<{
+    id: string;
+    name: string;
+    signals: string;
+    configured: boolean;
+  }>;
+}
 
 export interface CliInfoSnapshot {
   version: string;
@@ -38,12 +56,30 @@ export interface CliInfoSnapshot {
     configured: number;
     total: number;
   };
+  npm?: VersionCheckResult;
+  gateway: CliGatewaySummary;
 }
 
 function detectBunVersion(): string | undefined {
   const bun = process.env.BUN_BIN || "bun";
   const r = spawnSync(bun, ["--version"], { encoding: "utf8", timeout: 5000 });
   return r.stdout?.trim() || undefined;
+}
+
+function summarizeGateway(entries: ToolDiscoveryEntry[]): CliGatewaySummary {
+  const installedEntries = entries.filter((e) => e.installed);
+  const configured = installedEntries.filter((e) => e.configuredForStali).length;
+  return {
+    installed: installedEntries.length,
+    configured,
+    pending: installedEntries.length - configured,
+    tools: installedEntries.map((e) => ({
+      id: e.toolId,
+      name: e.toolName,
+      signals: formatDiscoverySignal(e.signals),
+      configured: e.configuredForStali,
+    })),
+  };
 }
 
 export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
@@ -53,12 +89,15 @@ export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
     .then(() => true)
     .catch(() => false);
 
-  const [auth, doctorStatuses, pluginReport, installInfo] = await Promise.all([
-    authStatus(),
-    runDoctorScan(),
-    runPluginsDoctor(),
-    detectInstallMode(),
-  ]);
+  const [auth, doctorStatuses, pluginReport, installInfo, gatewayEntries, npm] =
+    await Promise.all([
+      authStatus(),
+      runDoctorScan(),
+      runPluginsDoctor(),
+      detectInstallMode(),
+      discoverInstalledTools(),
+      fetchNpmLatestVersion(),
+    ]);
   const configured = doctorStatuses.filter((s) => s.configuredForStali).length;
   const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
 
@@ -88,5 +127,7 @@ export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
       configured: pluginsConfigured,
       total: pluginReport.plugins.length,
     },
+    npm,
+    gateway: summarizeGateway(gatewayEntries),
   };
 }

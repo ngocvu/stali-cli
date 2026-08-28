@@ -326,13 +326,13 @@ export function registerCommands(program: Command): void {
         `${chalk.white("Install")}     ${info.installMode}${info.installVersion ? chalk.gray(` (${info.installVersion})`) : ""}`
       );
       if (info.bunVersion) console.log(`${chalk.white("Bun")}         ${info.bunVersion}`);
-      const ver = await fetchLatestVersion();
+      const ver = info.npm ?? (await fetchLatestVersion());
       if (ver.updateAvailable) {
         console.log(
-          `${chalk.white("Update")}     ${chalk.yellow(`${ver.current} → ${ver.latest} (stali update)`)}`
+          `${chalk.white("npm")}         ${chalk.yellow(`${ver.current} → ${ver.latest}`)} ${chalk.gray("(npm i -g stali-cli@latest)")}`
         );
-      } else if (ver.source !== "error" && ver.source !== "unavailable") {
-        console.log(`${chalk.white("Update")}     ${chalk.green("đã mới nhất")} (${ver.latest})`);
+      } else if (ver.source !== "error" && ver.source !== "unavailable" && ver.source !== "npm-error") {
+        console.log(`${chalk.white("npm")}         ${chalk.green("đã mới nhất")} (${ver.latest})`);
       }
       console.log(`${chalk.white("Home")}        ${info.staliHome}`);
       console.log(`${chalk.white("CLI")}         ${info.cliInstallDir}`);
@@ -347,6 +347,25 @@ export function registerCommands(program: Command): void {
       console.log(
         `${chalk.white("Doctor")}      ${chalk.green(info.doctor.configured)}/${info.doctor.total} tool trỏ Stali`
       );
+      const gw = info.gateway;
+      const gwLine =
+        gw.installed === 0
+          ? chalk.gray("không phát hiện app AI")
+          : `${chalk.green(gw.configured)}/${gw.installed} đã gateway` +
+            (gw.pending > 0
+              ? chalk.yellow(` · ${gw.pending} chờ cài (stali gateway install)`)
+              : "");
+      console.log(`${chalk.white("Gateway")}     ${gwLine}`);
+      if (gw.tools.length > 0 && gw.tools.length <= 6) {
+        for (const t of gw.tools) {
+          const mark = t.configured ? chalk.green("✓") : chalk.yellow("○");
+          console.log(`  ${mark} ${t.name} ${chalk.gray(`(${t.signals})`)}`);
+        }
+      } else if (gw.tools.length > 6) {
+        console.log(
+          chalk.gray(`  ${gw.tools.map((t) => t.name).join(", ")}`)
+        );
+      }
       if (info.plugins.total > 0) {
         console.log(
           `${chalk.white("Plugins")}     ${chalk.magenta(`${info.plugins.configured}/${info.plugins.total} trỏ Stali`)}`
@@ -604,6 +623,7 @@ export function registerCommands(program: Command): void {
 
   program
     .command("gateway")
+    .alias("gw")
     .description("Quét app AI đang dùng và cài Stali gateway (base URL + API key)")
     .argument("[action]", "scan | install (mặc định: scan)")
     .option("--json", "JSON output (scan)")
