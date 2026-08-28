@@ -16,6 +16,7 @@ const SUBCOMMANDS = [
   "init",
   "setup",
   "onboard",
+  "help",
   "user",
   "status",
   "ready",

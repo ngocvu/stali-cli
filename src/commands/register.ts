@@ -27,6 +27,11 @@ import { resolveApiKey } from "./context";
 import { runBackupsList } from "./backups";
 import { runPaths, runToolsList } from "./paths-cmd";
 import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
+import {
+  applyCommandVisibility,
+  formatCompactHelpFooter,
+  setCommandHelpHidden,
+} from "./help-format";
 
 async function runPluginsList(opts: { init?: boolean }) {
   if (opts.init) {
@@ -61,12 +66,7 @@ export function registerCommands(program: Command): void {
     .option("--models", "Xem nhanh danh sách và bảng giá model thời gian thực")
     .option("-r, --reset", "Xóa token đã lưu trong ~/.stali/config.json để đăng nhập lại")
     .option("--logout", "Đăng xuất / xóa token đã lưu")
-    .addHelpText(
-      "after",
-      chalk.cyan(
-        "\nUser: stali -k sk-stali-...  ·  stali status  ·  stali doctor  ·  stali gw\n"
-      )
-    )
+    .addHelpText("after", formatCompactHelpFooter)
     .hook("preAction", (thisCommand, actionCommand) => {
       const globals = actionCommand.optsWithGlobals?.() ?? thisCommand.opts();
       const lang = globals.lang || process.env.STALI_LANG;
@@ -1334,4 +1334,26 @@ export function registerCommands(program: Command): void {
       await runRestore(opts.tool, opts.backup);
       process.exit(0);
     });
+
+  program
+    .command("help")
+    .description("Hướng dẫn user; `stali help advanced` = toàn bộ lệnh")
+    .argument("[topic]", "advanced | all")
+    .action(async (topic?: string) => {
+      if (topic === "advanced" || topic === "all") {
+        process.env.STALI_HELP_FULL = "1";
+        for (const cmd of program.commands) {
+          setCommandHelpHidden(cmd, false);
+        }
+        program.outputHelp();
+        process.exit(0);
+      }
+      const { printUserQuickReference } = await import("../services/user-cli");
+      const { printAdvancedHelpHint } = await import("./help-format");
+      printUserQuickReference();
+      printAdvancedHelpHint();
+      process.exit(0);
+    });
+
+  applyCommandVisibility(program);
 }

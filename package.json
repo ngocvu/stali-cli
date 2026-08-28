@@ -1,6 +1,6 @@
 {
   "name": "stali-cli",
-  "version": "3.33.0",
+  "version": "3.34.0",
   "description": "Interactive CLI tool and configuration manager for Stali API (https://api.stali.vn)",
   "type": "module",
   "main": "dist/index.js",
@@ -28,6 +28,7 @@
     "lint": "tsc --noEmit",
     "test": "bun test",
     "bench": "bun run build && bun scripts/benchmark-cold-start.ts",
+    "bench:setup": "bun run build && bun scripts/benchmark-setup.ts",
     "analyze": "bun run build && bun scripts/analyze-bundle.ts"
   },
   "keywords": [

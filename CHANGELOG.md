@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.34.0] — 2026-08-28
+
+### Added
+- **`stali help`** / **`stali help advanced`** — help user-first; advanced = toàn bộ lệnh
+- **`bun run bench:setup`** — đo `durationMs` của `setup --skip-configure --json`
+
+### Changed
+- **`stali --help`** — chỉ hiện lệnh user (setup, status, doctor, gw, …); lệnh nâng cao ẩn
+- `STALI_HELP_FULL=1 stali --help` — hiện đầy đủ như trước
+
+### Fixed
+- Help visibility — set `_hidden` (Commander internal) thay vì property `hidden` không có hiệu lực
+
 ## [3.33.0] — 2026-08-28
 
 ### Added

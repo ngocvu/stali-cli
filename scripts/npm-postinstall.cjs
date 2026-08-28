@@ -45,5 +45,6 @@ process.stderr.write(
     "   stali -k sk-stali-...        # nhanh nhất: auth + gateway + check\n" +
     "   stali setup -k sk-stali-...  # tương đương\n" +
     "   stali doctor                 # kiểm tra sau setup\n" +
-    "   stali status                 # trạng thái nhanh\n\n"
+    "   stali user                 # cheat sheet\n" +
+    "   stali help advanced        # toàn bộ lệnh\n\n"
 );

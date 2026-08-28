@@ -33,7 +33,7 @@ async function main() {
 
   const help = run(["--help"]);
   assert("--help exit 0", help.status === 0);
-  assert("--help lists init", /init/.test(help.stdout || ""));
+  assert("--help user-first hides init", !/^\s+init\s/m.test(help.stdout || ""));
 
   const ver = run(["--version"]);
   assert(`--version = ${pkg.version}`, ver.stdout?.trim() === pkg.version, ver.stdout?.trim());
@@ -261,6 +261,14 @@ async function main() {
   assert("setup --help exit 0", run(["setup", "--help"]).status === 0);
   assert("onboard --help exit 0", run(["onboard", "--help"]).status === 0);
   assert("user exit 0", run(["user"]).status === 0);
+  const helpOut = run(["--help"]);
+  assert("--help exit 0", helpOut.status === 0);
+  assert("--help user-first hides bench", !/^\s+bench\s/m.test(helpOut.stdout || ""));
+  assert("--help shows setup", /setup/.test(helpOut.stdout || ""));
+  const helpAdv = run(["help", "advanced"]);
+  assert("help advanced exit 0", helpAdv.status === 0);
+  assert("help advanced shows bench", /bench/.test(helpAdv.stdout || ""));
+  assert("help advanced shows init", /^\s+init\s/m.test(helpAdv.stdout || ""));
   assert("status --json exit 0|1", [0, 1].includes(run(["status", "--json"]).status));
   assert("ready --json exit 0|1", [0, 1].includes(run(["ready", "--json"]).status));
   const setupJson = run(["setup", "--json", "-k", "sk-stali-" + "x".repeat(40), "--skip-configure"]);

@@ -15,6 +15,7 @@ stali setup -k sk-stali-xxxxxxxx   # stali onboard = tương đương
 # Kiểm tra
 stali status          # hoặc: stali ready / stali check
 stali user            # hướng dẫn lệnh user
+stali help advanced   # toàn bộ lệnh (configure, plugins, …)
 stali info --json    # xem setup.ready + nextCommand
 ```
 
