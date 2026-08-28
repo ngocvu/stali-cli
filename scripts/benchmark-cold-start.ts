@@ -39,7 +39,7 @@ const results = [
   bench("doctor --json", ["doctor", "--json"]),
   bench("doctor --plugins-only --json", ["doctor", "--plugins-only", "--json"]),
   bench("doctor --tools-only --json", ["doctor", "--tools-only", "--json"]),
-  bench("paths", ["paths"]),
+  bench("check --tools-only --json", ["check", "--tools-only", "--json"]),
 ];
 
 console.log(`\n📊 stali-cli cold-start benchmark (${RUNS} runs, median ms)\n`);

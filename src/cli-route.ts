@@ -20,6 +20,7 @@ export const STALI_SUBCOMMANDS = new Set([
   "restore",
   "completion",
   "ls",
+  "wizard",
 ]);
 
 export type CliMode = "wizard" | "subcommand";

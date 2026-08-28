@@ -31,9 +31,11 @@ const SUBCOMMANDS = [
   "restore",
   "completion",
   "ls",
+  "wizard",
 ];
 
 const GLOBAL_FLAGS = ["-k", "--key", "-V", "--version", "-h", "--help", "--models", "--reset", "--lang"];
+const CHECK_FLAGS = ["--strict", "--tools-only", "--plugins-only", "--json"];
 
 const CONFIGURE_FLAGS = ["-m", "--model", "--dry-run", "-k", "--key"];
 const CONFIGURE_ALL_FLAGS = [
@@ -88,6 +90,9 @@ _stali_completion() {
       ;;
     doctor)
       COMPREPLY=( $(compgen -W "${DOCTOR_FLAGS.join(" ")}" -- "\${cur}") )
+      ;;
+    check)
+      COMPREPLY=( $(compgen -W "${CHECK_FLAGS.join(" ")}" -- "\${cur}") )
       ;;
     config)
       if [[ "\${prev}" == "config" ]]; then
@@ -241,6 +246,11 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l watch",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l notify",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -s i -l interval",
+    "",
+    "complete -c stali -n '__fish_seen_subcommand_from check' -l strict",
+    "complete -c stali -n '__fish_seen_subcommand_from check' -l tools-only",
+    "complete -c stali -n '__fish_seen_subcommand_from check' -l plugins-only",
+    "complete -c stali -n '__fish_seen_subcommand_from check' -l json",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from init' -s k -l key",
     "complete -c stali -n '__fish_seen_subcommand_from init' -l skip-configure",

@@ -52,6 +52,9 @@ async function main() {
   const removed = run(["plugins", "doctor", "--json"]);
   assert("plugins doctor removed exit 2", removed.status === 2);
 
+  const checkTools = run(["check", "--tools-only", "--json"]);
+  assert("check --tools-only --json", checkTools.status === 0 || checkTools.status === 1);
+
   const failed = results.filter((r) => !r.ok);
   for (const r of results) {
     const icon = r.ok ? "✓" : "✗";

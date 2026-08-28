@@ -2,6 +2,14 @@ import { authStatus } from "./auth-cli";
 import { runDoctorScan } from "./syncers";
 import { runPluginsDoctor } from "./plugin-doctor";
 
+export type HealthCheckScope = "full" | "tools" | "plugins";
+
+export interface HealthCheckOptions {
+  strict?: boolean;
+  toolsOnly?: boolean;
+  pluginsOnly?: boolean;
+}
+
 export interface HealthCheckResult {
   ok: boolean;
   authOk: boolean;
@@ -11,11 +19,31 @@ export interface HealthCheckResult {
   pluginsConfigured: number;
   pluginsTotal: number;
   strict: boolean;
+  scope: HealthCheckScope;
   messages: string[];
 }
 
-export async function runHealthCheck(strict = false): Promise<HealthCheckResult> {
+function resolveScope(opts: HealthCheckOptions): HealthCheckScope {
+  if (opts.toolsOnly) return "tools";
+  if (opts.pluginsOnly) return "plugins";
+  return "full";
+}
+
+function normalizeOptions(
+  opts: boolean | HealthCheckOptions = false
+): HealthCheckOptions {
+  if (typeof opts === "boolean") return { strict: opts };
+  return opts;
+}
+
+export async function runHealthCheck(
+  opts: boolean | HealthCheckOptions = false
+): Promise<HealthCheckResult> {
+  const options = normalizeOptions(opts);
+  const strict = options.strict ?? false;
+  const scope = resolveScope(options);
   const messages: string[] = [];
+
   const auth = await authStatus();
   const authOk = Boolean(auth.hasKey && auth.valid);
 
@@ -27,33 +55,48 @@ export async function runHealthCheck(strict = false): Promise<HealthCheckResult>
     messages.push(`API key OK (${auth.masked})`);
   }
 
-  const doctor = await runDoctorScan();
-  const configured = doctor.filter((d) => d.configuredForStali).length;
-  const total = doctor.length;
-  messages.push(`Doctor: ${configured}/${total} tool trỏ Stali`);
+  let configured = 0;
+  let total = 0;
+  let pluginsTotal = 0;
+  let pluginsConfigured = 0;
 
-  if (configured < total) {
-    const missing = doctor.filter((d) => !d.configuredForStali).map((d) => d.toolId);
-    messages.push(`Chưa OK: ${missing.join(", ")}`);
-  }
-
-  const pluginReport = await runPluginsDoctor();
-  const pluginsTotal = pluginReport.plugins.length;
-  const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
-
-  if (pluginsTotal > 0) {
-    messages.push(`Plugins: ${pluginsConfigured}/${pluginsTotal} trỏ Stali`);
-    if (pluginsConfigured < pluginsTotal) {
-      const missingPlugins = pluginReport.plugins
-        .filter((p) => !p.configuredForStali)
-        .map((p) => p.pluginId);
-      messages.push(`Plugin chưa OK: ${missingPlugins.join(", ")}`);
+  if (scope !== "plugins") {
+    const doctor = await runDoctorScan();
+    configured = doctor.filter((d) => d.configuredForStali).length;
+    total = doctor.length;
+    messages.push(`Doctor: ${configured}/${total} tool trỏ Stali`);
+    if (configured < total) {
+      const missing = doctor.filter((d) => !d.configuredForStali).map((d) => d.toolId);
+      messages.push(`Chưa OK: ${missing.join(", ")}`);
     }
   }
 
-  const toolsStrictOk = !strict || configured === total;
-  const pluginsStrictOk = !strict || pluginsTotal === 0 || pluginsConfigured === pluginsTotal;
-  const ok = authOk && toolsStrictOk && pluginsStrictOk;
+  if (scope !== "tools") {
+    const pluginReport = await runPluginsDoctor();
+    pluginsTotal = pluginReport.plugins.length;
+    pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
+
+    if (pluginsTotal > 0 || scope === "plugins") {
+      messages.push(`Plugins: ${pluginsConfigured}/${pluginsTotal} trỏ Stali`);
+      if (pluginsConfigured < pluginsTotal) {
+        const missingPlugins = pluginReport.plugins
+          .filter((p) => !p.configuredForStali)
+          .map((p) => p.pluginId);
+        messages.push(`Plugin chưa OK: ${missingPlugins.join(", ")}`);
+      }
+    }
+  }
+
+  const toolsStrictOk =
+    scope === "plugins" || !strict || configured === total;
+  const pluginsStrictOk =
+    scope === "tools" ||
+    !strict ||
+    (pluginsTotal === 0 ? scope !== "plugins" : pluginsConfigured === pluginsTotal);
+  const pluginsStrictFail =
+    strict && scope === "plugins" && pluginsTotal === 0;
+
+  const ok = authOk && toolsStrictOk && pluginsStrictOk && !pluginsStrictFail;
 
   return {
     ok,
@@ -64,6 +107,7 @@ export async function runHealthCheck(strict = false): Promise<HealthCheckResult>
     pluginsConfigured,
     pluginsTotal,
     strict,
+    scope,
     messages,
   };
 }

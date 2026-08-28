@@ -27,10 +27,10 @@ try {
     fs.mkdirSync(distDir, { recursive: true });
   }
 
-  console.log("1️⃣  Bundling (splitting, minify)...");
+  console.log("1️⃣  Bundling (splitting, minify, multi-entry)...");
   execSync(
     [
-      "bun build src/index.ts",
+      "bun build src/index.ts src/subcommand-cli.ts src/wizard-cli.ts",
       "--outdir dist",
       "--target bun",
       "--splitting",

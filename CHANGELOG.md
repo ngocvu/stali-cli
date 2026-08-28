@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.3.0] — 2026-08-28
+
+### Added
+- **`stali check --tools-only`** / **`--plugins-only`** — health check có phạm vi (đối xứng với `doctor`)
+- **`stali wizard`** — subcommand rõ ràng mở wizard Ink (`stali` không tham số vẫn hoạt động)
+- **Multi-entry build** — `index` + `subcommand-cli` + `wizard-cli` tách graph bundle
+
+### Changed
+- **`runHealthCheck`** — nhận object options; JSON có field `scope` (`full` | `tools` | `plugins`)
+
 ## [3.2.0] — 2026-08-28
 
 ### Added

@@ -13,6 +13,7 @@ describe("runHealthCheck", () => {
       expect(r.authOk).toBe(false);
       expect(r.ok).toBe(false);
       expect(r.pluginsTotal).toBe(0);
+      expect(r.scope).toBe("full");
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
@@ -25,10 +26,45 @@ describe("runHealthCheck", () => {
     process.env.STALI_HOME = home;
     try {
       await fs.mkdir(home, { recursive: true });
-      const r = await runHealthCheck(true);
+      const r = await runHealthCheck({ strict: true });
       expect(r.strict).toBe(true);
       expect(r.pluginsTotal).toBe(0);
       expect(r.ok).toBe(false);
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
+      await fs.rm(home, { recursive: true, force: true }).catch(() => {});
+    }
+  });
+
+  test("--tools-only → scope tools, không scan plugin", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-health-tools-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    try {
+      await fs.mkdir(home, { recursive: true });
+      const r = await runHealthCheck({ toolsOnly: true });
+      expect(r.scope).toBe("tools");
+      expect(r.doctorTotal).toBeGreaterThan(0);
+      expect(r.pluginsTotal).toBe(0);
+      expect(r.messages.some((m) => m.startsWith("Plugins:"))).toBe(false);
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
+      await fs.rm(home, { recursive: true, force: true }).catch(() => {});
+    }
+  });
+
+  test("--plugins-only → scope plugins, không scan tools", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-health-plug-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    try {
+      await fs.mkdir(home, { recursive: true });
+      const r = await runHealthCheck({ pluginsOnly: true });
+      expect(r.scope).toBe("plugins");
+      expect(r.doctorTotal).toBe(0);
+      expect(r.messages.some((m) => m.startsWith("Doctor:"))).toBe(false);
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;

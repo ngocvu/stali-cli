@@ -118,9 +118,24 @@ export function registerCommands(
     .command("check")
     .description("Kiểm tra nhanh: auth + doctor (exit 1 nếu lỗi)")
     .option("--strict", "Yêu cầu tất cả tool (và plugin nếu có) đã trỏ Stali")
+    .option("--tools-only", "Chỉ kiểm tra 13 tool (bỏ plugin)")
+    .option("--plugins-only", "Chỉ kiểm tra plugin (~/.stali/plugins.json)")
     .option("--json", "Xuất JSON")
-    .action(async (opts: { strict?: boolean; json?: boolean }) => {
-      const result = await runHealthCheck(opts.strict);
+    .action(async (opts: {
+      strict?: boolean;
+      json?: boolean;
+      toolsOnly?: boolean;
+      pluginsOnly?: boolean;
+    }) => {
+      if (opts.toolsOnly && opts.pluginsOnly) {
+        console.error(chalk.red("❌ --tools-only và --plugins-only không dùng cùng lúc"));
+        process.exit(1);
+      }
+      const result = await runHealthCheck({
+        strict: opts.strict,
+        toolsOnly: opts.toolsOnly,
+        pluginsOnly: opts.pluginsOnly,
+      });
       if (opts.json) {
         console.log(JSON.stringify(result, null, 2));
         process.exit(result.ok ? 0 : 1);
@@ -131,6 +146,16 @@ export function registerCommands(
       }
       console.log(result.ok ? chalk.green(`\n${t("check_ok")}\n`) : chalk.red(`\n${t("check_fail")}\n`));
       process.exit(result.ok ? 0 : 1);
+    });
+
+  program
+    .command("wizard")
+    .description("Mở wizard tương tác Ink (tương đương chạy stali không tham số)")
+    .option("-k, --key <token>", "Stali API key khởi tạo wizard")
+    .action(async (opts: { key?: string }) => {
+      const globals = program.opts<{ key?: string }>();
+      const { launchWizard } = await import("./wizard-launcher");
+      await launchWizard(opts.key || globals.key);
     });
 
   program
