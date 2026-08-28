@@ -35,6 +35,29 @@ function median(samples: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+function runWizardSpawnBench(
+  cli: string,
+  runner: string,
+  runs: number,
+  timeoutMs: number
+): BenchResult {
+  const name = "wizard spawn";
+  const samples: number[] = [];
+  for (let i = 0; i < runs; i++) {
+    const t0 = performance.now();
+    spawnSync(runner, [cli], {
+      encoding: "utf8",
+      timeout: timeoutMs,
+      stdio: "ignore",
+      env: { ...process.env, STALI_SKIP_TELEMETRY_FLUSH: "1" },
+    });
+    samples.push(Math.round(performance.now() - t0));
+  }
+  const ms = median(samples);
+  const limit = Number(process.env.STALI_BENCH_MAX_WIZARD_MS || 900);
+  return { name, ms, overLimit: ms > limit };
+}
+
 function benchCase(
   name: string,
   cli: string,
@@ -111,6 +134,9 @@ export function runColdStartBench(options?: {
   ];
 
   const results = cases.map((c) => benchCase(c.name, cli, runner, c.args, runs));
+  const wizardRuns = options?.runs ?? Number(process.env.STALI_BENCH_RUNS || 5);
+  const wizardTimeout = Number(process.env.STALI_BENCH_WIZARD_TIMEOUT_MS || 800);
+  results.push(runWizardSpawnBench(cli, runner, Math.min(wizardRuns, 3), wizardTimeout));
   const failed =
     (options?.strict || process.env.STALI_BENCH_STRICT === "1") &&
     results.some((r) => r.overLimit);

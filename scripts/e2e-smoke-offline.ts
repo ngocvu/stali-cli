@@ -304,6 +304,19 @@ async function main() {
   const telemetryFlush = run(["telemetry", "flush", "--json"]);
   assert("telemetry flush --json exit 0", telemetryFlush.status === 0);
 
+  const doctorJson = run(["doctor", "--json"]);
+  assert("doctor --json exit 0", doctorJson.status === 0);
+  if (doctorJson.stdout) {
+    try {
+      const parsed = JSON.parse(doctorJson.stdout);
+      assert("doctor JSON has installedTools", Array.isArray(parsed.installedTools));
+      assert("doctor JSON meta.installedToolsCount", typeof parsed.meta?.installedToolsCount === "number");
+      assert("doctor JSON meta.modelsEndpoint", typeof parsed.meta?.modelsEndpoint === "string");
+    } catch {
+      assert("doctor JSON parseable", false);
+    }
+  }
+
   const prom = run(["doctor", "--tools-only", "--prometheus"]);
   assert("doctor --prometheus", prom.status === 0 || prom.status === 1);
   assert(

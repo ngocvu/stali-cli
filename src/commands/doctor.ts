@@ -10,6 +10,18 @@ import { t, getLocale } from "../i18n";
 import { startDoctorMetricsServer, stopDoctorMetricsServer } from "../services/doctor-metrics-server";
 import type { Server } from "http";
 import type { ToolHealthStatus } from "../services/syncers";
+import {
+  discoverInstalledTools,
+  formatDiscoverySignal,
+  type ToolDiscoveryEntry,
+} from "../services/tool-discovery";
+
+export interface DoctorInstalledToolSummary {
+  toolId: string;
+  toolName: string;
+  configuredForStali: boolean;
+  signals: string[];
+}
 
 export interface DoctorJsonOutput {
   meta: {
@@ -21,9 +33,40 @@ export interface DoctorJsonOutput {
     toolsTotal: number;
     pluginsConfigured: number;
     pluginsTotal: number;
+    installedToolsCount: number;
   };
+  installedTools: DoctorInstalledToolSummary[];
   tools: ToolHealthStatus[];
   plugins: PluginHealthStatus[];
+}
+
+function summarizeInstalledTools(discovery: ToolDiscoveryEntry[]): DoctorInstalledToolSummary[] {
+  return discovery
+    .filter((e) => e.installed)
+    .map((e) => ({
+      toolId: e.toolId,
+      toolName: e.toolName,
+      configuredForStali: e.configuredForStali,
+      signals: formatDiscoverySignal(e.signals)
+        .split("+")
+        .map((s) => s.trim())
+        .filter((s) => s && s !== "—"),
+    }));
+}
+
+function withInstalledMeta(
+  payload: Omit<DoctorJsonOutput, "installedTools"> & { installedTools?: DoctorInstalledToolSummary[] },
+  discovery: ToolDiscoveryEntry[]
+): DoctorJsonOutput {
+  const installedTools = summarizeInstalledTools(discovery);
+  return {
+    ...payload,
+    installedTools,
+    meta: {
+      ...payload.meta,
+      installedToolsCount: installedTools.length,
+    },
+  };
 }
 
 export interface DoctorViewOptions {
@@ -40,26 +83,61 @@ export async function buildDoctorJsonOutput(
   if (opts?.pluginsOnly) {
     const pluginReport = await runPluginsDoctor();
     const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
-    return {
-      meta: {
-        baseUrl: cfg?.baseUrl || urls.openAiBaseUrl,
-        openAiBaseUrl: urls.openAiBaseUrl,
-        anthropicBaseUrl: urls.anthropicBaseUrl,
-        modelsEndpoint: urls.modelsEndpoint,
-        toolsConfigured: 0,
-        toolsTotal: 0,
-        pluginsConfigured,
-        pluginsTotal: pluginReport.plugins.length,
+    const discovery = await discoverInstalledTools();
+    return withInstalledMeta(
+      {
+        meta: {
+          baseUrl: cfg?.baseUrl || urls.openAiBaseUrl,
+          openAiBaseUrl: urls.openAiBaseUrl,
+          anthropicBaseUrl: urls.anthropicBaseUrl,
+          modelsEndpoint: urls.modelsEndpoint,
+          toolsConfigured: 0,
+          toolsTotal: 0,
+          pluginsConfigured,
+          pluginsTotal: pluginReport.plugins.length,
+          installedToolsCount: 0,
+        },
+        tools: [],
+        plugins: pluginReport.plugins,
       },
-      tools: [],
-      plugins: pluginReport.plugins,
-    };
+      discovery
+    );
   }
 
   if (opts?.toolsOnly) {
     const tools = await runDoctorScan({ urls });
     const toolsConfigured = tools.filter((s) => s.configuredForStali).length;
-    return {
+    const discovery = await discoverInstalledTools({ health: tools });
+    return withInstalledMeta(
+      {
+        meta: {
+          baseUrl: cfg?.baseUrl || urls.openAiBaseUrl,
+          openAiBaseUrl: urls.openAiBaseUrl,
+          anthropicBaseUrl: urls.anthropicBaseUrl,
+          modelsEndpoint: urls.modelsEndpoint,
+          toolsConfigured,
+          toolsTotal: tools.length,
+          pluginsConfigured: 0,
+          pluginsTotal: 0,
+          installedToolsCount: 0,
+        },
+        tools,
+        plugins: [],
+      },
+      discovery
+    );
+  }
+
+  const [tools, pluginReport] = await Promise.all([
+    runDoctorScan({ urls }),
+    runPluginsDoctor(),
+  ]);
+  const discovery = await discoverInstalledTools({ health: tools });
+  const toolsConfigured = tools.filter((s) => s.configuredForStali).length;
+  const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
+
+  return withInstalledMeta(
+    {
       meta: {
         baseUrl: cfg?.baseUrl || urls.openAiBaseUrl,
         openAiBaseUrl: urls.openAiBaseUrl,
@@ -67,35 +145,15 @@ export async function buildDoctorJsonOutput(
         modelsEndpoint: urls.modelsEndpoint,
         toolsConfigured,
         toolsTotal: tools.length,
-        pluginsConfigured: 0,
-        pluginsTotal: 0,
+        pluginsConfigured,
+        pluginsTotal: pluginReport.plugins.length,
+        installedToolsCount: 0,
       },
       tools,
-      plugins: [],
-    };
-  }
-
-  const [tools, pluginReport] = await Promise.all([
-    runDoctorScan({ urls }),
-    runPluginsDoctor(),
-  ]);
-  const toolsConfigured = tools.filter((s) => s.configuredForStali).length;
-  const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
-
-  return {
-    meta: {
-      baseUrl: cfg?.baseUrl || urls.openAiBaseUrl,
-      openAiBaseUrl: urls.openAiBaseUrl,
-      anthropicBaseUrl: urls.anthropicBaseUrl,
-      modelsEndpoint: urls.modelsEndpoint,
-      toolsConfigured,
-      toolsTotal: tools.length,
-      pluginsConfigured,
-      pluginsTotal: pluginReport.plugins.length,
+      plugins: pluginReport.plugins,
     },
-    tools,
-    plugins: pluginReport.plugins,
-  };
+    discovery
+  );
 }
 
 function printPluginSection(plugins: PluginHealthStatus[]) {

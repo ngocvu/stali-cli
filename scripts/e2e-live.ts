@@ -110,6 +110,17 @@ async function main() {
   const doctorFixDry = run(["doctor", "--fix", "--dry-run", "-k", KEY]);
   assert("doctor --fix --dry-run exit 0", doctorFixDry.status === 0);
 
+  const doctorJson = run(["doctor", "--json"]);
+  assert("doctor --json exit 0", doctorJson.status === 0);
+  if (doctorJson.stdout) {
+    try {
+      const parsed = JSON.parse(doctorJson.stdout);
+      assert("doctor JSON installedTools", Array.isArray(parsed.installedTools));
+    } catch {
+      assert("doctor JSON parseable", false);
+    }
+  }
+
   const models = run(["ls", "-k", KEY]);
   assert("ls -k live exit 0", models.status === 0);
 

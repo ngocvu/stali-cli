@@ -59,11 +59,30 @@ const CONFIGURE_ALL_FLAGS = [
   "--tools",
   "--continue-on-error",
   "--skip-advanced",
+  "--all-apps",
   "--include-plugins",
   "--no-plugins",
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
-const DOCTOR_FLAGS = ["--json", "--plugins-only", "--tools-only", "--fix", "--dry-run", "--force", "--tools", "--ids", "--watch", "--notify", "-i", "--interval"];
+const DOCTOR_FLAGS = [
+  "--json",
+  "--plugins-only",
+  "--tools-only",
+  "--fix",
+  "--dry-run",
+  "--force",
+  "--all-apps",
+  "--installed-only",
+  "--tools",
+  "--ids",
+  "-m",
+  "--model",
+  "--watch",
+  "--notify",
+  "-i",
+  "--interval",
+];
+const SCAN_FLAGS = ["--json"];
 const GATEWAY_ACTIONS = ["auto", "scan", "plan", "install"];
 const GATEWAY_FLAGS = ["--json", "--dry-run", "--all", "--force", "-y", "--yes", "-m", "--model", "--continue-on-error", "--include-plugins", "--no-plugins"];
 const INFO_FLAGS = ["--json", "--offline", "--online"];
@@ -107,6 +126,9 @@ _stali_completion() {
       ;;
     doctor)
       COMPREPLY=( $(compgen -W "${DOCTOR_FLAGS.join(" ")}" -- "\${cur}") )
+      ;;
+    scan)
+      COMPREPLY=( $(compgen -W "${SCAN_FLAGS.join(" ")}" -- "\${cur}") )
       ;;
     check)
       COMPREPLY=( $(compgen -W "${CHECK_FLAGS.join(" ")}" -- "\${cur}") )
@@ -212,6 +234,7 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
             '--tools[Danh sách tool, cách nhau bởi dấu phẩy]' \\
             '--continue-on-error[Tiếp tục khi lỗi]' \\
             '--skip-advanced[Bỏ qua claude/codex]' \\
+            '--all-apps[Cả 13 tool]' \\
             '--include-plugins[Đồng bộ plugin sau configure]' \\
             '--no-plugins[Bỏ qua plugin]'
           ;;
@@ -233,9 +256,19 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
             '--plugins-only[Chỉ plugin]' \\
             '--tools-only[Chỉ tool]' \\
             '--fix[Tự sửa cấu hình]' \\
+            '--all-apps[Với --fix: cả 13 tool]' \\
+            '--installed-only[Với --fix: chỉ app phát hiện]' \\
             '--watch[Theo dõi liên tục]' \\
             '--notify[Desktop notify với --watch]' \\
             '(-i --interval)'{-i,--interval}'[Chu kỳ giây]'
+          ;;
+        scan)
+          _arguments '--json[JSON output]'
+          ;;
+        config)
+          _arguments \\
+            '1:sub:(show set get)' \\
+            '--json[JSON với show/get]'
           ;;
         init)
           _arguments \\
@@ -333,6 +366,14 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from configure-all' -l tools",
     "complete -c stali -n '__fish_seen_subcommand_from configure-all' -l continue-on-error",
     "complete -c stali -n '__fish_seen_subcommand_from configure-all' -l skip-advanced",
+    "complete -c stali -n '__fish_seen_subcommand_from configure-all' -l all-apps -d 'Cả 13 tool'",
+    "",
+    "complete -c stali -n '__fish_seen_subcommand_from scan' -l json",
+    "",
+    "complete -c stali -n '__fish_seen_subcommand_from config' -a 'show set get'",
+    "complete -c stali -n '__fish_seen_subcommand_from config' -l json",
+    "complete -c stali -n '__fish_seen_subcommand_from config set' -a 'base-url'",
+    "complete -c stali -n '__fish_seen_subcommand_from config get' -a 'base-url'",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from restore' -s t -l tool -a '" +
       tools.join(" ") +
@@ -342,6 +383,9 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l json",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l plugins-only",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l tools-only",
+    "complete -c stali -n '__fish_seen_subcommand_from doctor' -l fix",
+    "complete -c stali -n '__fish_seen_subcommand_from doctor' -l all-apps -d 'Với --fix: cả 13 tool'",
+    "complete -c stali -n '__fish_seen_subcommand_from doctor' -l installed-only",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l watch",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l notify",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l prometheus -d 'Metrics Prometheus text'",

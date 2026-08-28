@@ -4,6 +4,7 @@ import { resolveHomePath } from "../utils/file";
 import type { PluginEntry } from "./plugins";
 import {
   patchAnthropicEnvJsonTool,
+  patchCoworkJsonTool,
   patchDroidJsonTool,
   patchOpenAiProviderJsonTool,
   patchOpenAiTomlTool,
@@ -17,7 +18,62 @@ export type PluginPatchStyle =
   | "openai-toml"
   | "openai-json"
   | "vscode-agent"
-  | "opencode";
+  | "opencode"
+  | "cowork";
+
+export function buildPluginConfigPreview(
+  entry: PluginEntry,
+  apiKey: string,
+  model?: string,
+  baseUrl?: string
+): Record<string, unknown> {
+  const urls = resolveSyncUrls({ baseUrl });
+  const style = inferPluginPatchStyle(entry);
+  const resolvedModel = model || entry.defaultModel || "claude-fable-5";
+  const maskedKey = apiKey.trim().slice(0, 12) + "…";
+
+  switch (style) {
+    case "anthropic-env":
+      return {
+        patchStyle: style,
+        env: { ANTHROPIC_BASE_URL: urls.anthropicBaseUrl, ANTHROPIC_API_KEY: maskedKey },
+        model: resolvedModel,
+      };
+    case "openai-toml":
+      return {
+        patchStyle: style,
+        base_url: urls.openAiBaseUrl,
+        api_key: maskedKey,
+        model: resolvedModel,
+      };
+    case "vscode-agent":
+      return {
+        patchStyle: style,
+        anthropicBaseUrl: urls.anthropicBaseUrl,
+        apiKey: maskedKey,
+        anthropicModelId: resolvedModel,
+      };
+    case "opencode":
+      return {
+        patchStyle: style,
+        defaultProvider: "stali",
+        provider: { stali: { options: { baseURL: urls.openAiBaseUrl, apiKey: maskedKey } } },
+        model: resolvedModel,
+      };
+    case "cowork":
+      return {
+        patchStyle: style,
+        openai: { baseUrl: urls.openAiBaseUrl, apiKey: maskedKey, model: resolvedModel },
+      };
+    case "openai-json":
+    default:
+      return {
+        patchStyle: style,
+        provider: { type: "openai", baseUrl: urls.openAiBaseUrl, apiKey: maskedKey },
+        model: resolvedModel,
+      };
+  }
+}
 
 export function inferPluginPatchStyle(entry: PluginEntry): PluginPatchStyle {
   if (entry.patchStyle) return entry.patchStyle;
@@ -72,6 +128,16 @@ export async function syncPluginEntry(
       );
     case "opencode":
       return patchOpenAiProviderJsonTool(
+        entry.id,
+        entry.name,
+        configPath,
+        apiKey,
+        resolvedModel,
+        undefined,
+        urls
+      );
+    case "cowork":
+      return patchCoworkJsonTool(
         entry.id,
         entry.name,
         configPath,
@@ -149,22 +215,22 @@ export async function runPluginsSync(opts: {
   }
 
   const items: PluginSyncItem[] = [];
-  for (const entry of targets) {
+
+  const syncOne = async (entry: PluginEntry): Promise<PluginSyncItem> => {
     if (opts.dryRun) {
-      items.push({
+      return {
         pluginId: entry.id,
         pluginName: entry.name,
         success: true,
         message: `Dry-run → ${entry.configFile} (${inferPluginPatchStyle(entry)})`,
         configPath: resolveHomePath(entry.configFile),
-      });
-      continue;
+      };
     }
 
     const result = await syncPluginEntry(entry, opts.apiKey, opts.model, {
       baseUrl: opts.baseUrl,
     });
-    items.push({
+    return {
       pluginId: entry.id,
       pluginName: entry.name,
       success: result.success,
@@ -172,7 +238,15 @@ export async function runPluginsSync(opts: {
       configPath: result.configPath,
       backupPath: result.backupPath,
       error: result.error,
-    });
+    };
+  };
+
+  if (targets.length > 1 && !opts.dryRun) {
+    items.push(...(await Promise.all(targets.map((entry) => syncOne(entry)))));
+  } else {
+    for (const entry of targets) {
+      items.push(await syncOne(entry));
+    }
   }
 
   return { items, allOk: items.every((i) => i.success) };

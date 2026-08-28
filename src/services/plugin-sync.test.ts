@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
-import { inferPluginPatchStyle, syncPluginEntry } from "./plugin-sync";
+import { inferPluginPatchStyle, syncPluginEntry, buildPluginConfigPreview } from "./plugin-sync";
 import type { PluginEntry } from "./plugins";
 
 describe("plugin-sync", () => {
@@ -22,6 +22,30 @@ describe("plugin-sync", () => {
       protocol: "anthropic",
     };
     expect(inferPluginPatchStyle(anthropic)).toBe("anthropic-env");
+  });
+
+  test("buildPluginConfigPreview masks key", () => {
+    const entry: PluginEntry = {
+      id: "x",
+      name: "X",
+      configFile: "~/.x/config.json",
+      protocol: "openai",
+      patchStyle: "openai-json",
+    };
+    const preview = buildPluginConfigPreview(entry, "sk-stali-" + "a".repeat(40));
+    expect(JSON.stringify(preview)).toContain("…");
+    expect(JSON.stringify(preview)).toContain("api.stali.vn");
+  });
+
+  test("cowork patchStyle", () => {
+    const entry: PluginEntry = {
+      id: "c",
+      name: "C",
+      configFile: "~/.cowork/settings.json",
+      protocol: "openai",
+      patchStyle: "cowork",
+    };
+    expect(inferPluginPatchStyle(entry)).toBe("cowork");
   });
 
   test("syncPluginEntry ghi file (isolated HOME)", async () => {

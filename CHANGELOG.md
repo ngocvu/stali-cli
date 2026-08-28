@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.36.0] — 2026-08-28
+
+### Added
+- **`doctor --json`** — field `installedTools` + `meta.installedToolsCount` (app AI đã phát hiện)
+- **Plugin sync** — patch style `cowork`, preview `buildPluginConfigPreview`, sync song song
+- **`bun run bench:wizard`** — đo wizard spawn (Ink cold-start proxy)
+- **Shell completion** — `scan`, `config get/set`, `--all-apps` (bash/zsh/fish)
+
+### Changed
+- `plugins sync` chạy parallel khi nhiều entry
+- Bench cold-start thêm case `wizard spawn`
+
 ## [3.35.0] — 2026-08-28
 
 ### Added

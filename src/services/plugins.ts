@@ -9,6 +9,7 @@ const PluginPatchStyleSchema = z.enum([
   "openai-json",
   "vscode-agent",
   "opencode",
+  "cowork",
 ]);
 
 const PluginEntrySchema = z.object({
