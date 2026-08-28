@@ -1,4 +1,4 @@
-import { validateApiKeyAndFetchModels } from "./api";
+import { validateApiKeyAndFetchModels, type ValidateResult } from "./api";
 import { runHealthCheck } from "./health-check";
 import { loadStaliConfig, saveStaliConfig } from "./config";
 import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
@@ -56,7 +56,12 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
 
   const login = await (async () => {
     if (!trimmedKey) {
-      return { success: false as const, message: "API key trống", preDiscovery: null as ToolDiscoveryEntry[] | null };
+      return {
+        success: false as const,
+        message: "API key trống",
+        preDiscovery: null as ToolDiscoveryEntry[] | null,
+        validation: null as ValidateResult | null,
+      };
     }
     const [validation, preDiscovery] = await Promise.all([
       validateApiKeyAndFetchModels(trimmedKey, { baseUrl }),
@@ -67,6 +72,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
         success: false as const,
         message: validation.error || "Token không hợp lệ",
         preDiscovery,
+        validation: null,
       };
     }
     await saveStaliConfig({
@@ -78,6 +84,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
       success: true as const,
       message: "Đã lưu API key vào ~/.stali/config.json",
       preDiscovery,
+      validation,
     };
   })();
 
@@ -91,6 +98,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   }
 
   const preDiscovery = "preDiscovery" in login ? login.preDiscovery : null;
+  const keyValidation = "validation" in login ? login.validation : null;
 
   if (!opts.skipCliCheck) {
     try {
@@ -137,6 +145,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
       includePlugins,
       yes: opts.yes,
       discovery: preDiscovery ?? undefined,
+      prefetchedValidation: keyValidation ?? undefined,
     });
     const gw = batch.install ?? { items: [], allOk: true, targets: [] as string[] };
     const okCount = gw.items.filter((i) => i.success).length;
@@ -153,7 +162,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
     steps.push({ name: "gateway auto", ok: true, detail: "skipped" });
   }
 
-  const health = await runHealthCheck({ authLocalOnly: true });
+  const health = await runHealthCheck({ authLocalOnly: true, toolsOnly: true });
   steps.push({
     name: "check",
     ok: health.authOk,

@@ -32,6 +32,10 @@ describe("resolveCliMode", () => {
     expect(resolveCliMode(["bun", "stali", "setup", "-k", "sk-stali-x"])).toBe("subcommand");
   });
 
+  test("status → subcommand", () => {
+    expect(resolveCliMode(["bun", "stali", "status", "--json"])).toBe("subcommand");
+  });
+
   test("wizard → wizard entry (không bundle React trong subcommand)", () => {
     expect(resolveCliMode(["bun", "stali", "wizard"])).toBe("wizard");
   });

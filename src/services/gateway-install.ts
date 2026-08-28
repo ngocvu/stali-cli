@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { loadStaliConfig } from "./config";
+import type { ValidateResult } from "./api";
 import { runConfigureBatch, type ConfigureBatchItem } from "./configure-batch";
 import {
   discoverInstalledTools,
@@ -27,6 +28,8 @@ export interface GatewayInstallOptions {
   includePlugins?: boolean;
   /** Discovery đã quét (setup song song auth + scan). */
   discovery?: ToolDiscoveryEntry[];
+  /** Validation đã có từ auth — bỏ GET /v1/models lần 2. */
+  prefetchedValidation?: ValidateResult;
 }
 
 export interface GatewayPlanOptions {
@@ -358,6 +361,8 @@ export async function runGatewayInstall(
     continueOnError: opts.continueOnError ?? true,
     skipAdvanced: false,
     includePlugins: opts.includePlugins,
+    prefetchedValidation: opts.prefetchedValidation,
+    parallel: true,
   });
 
   return { ...batch, targets };

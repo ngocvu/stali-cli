@@ -44,5 +44,6 @@ process.stderr.write(
   `\n✅ stali-cli v${version} (prebuilt, 0 npm deps)\n` +
     "   stali -k sk-stali-...        # nhanh nhất: auth + gateway + check\n" +
     "   stali setup -k sk-stali-...  # tương đương\n" +
-    "   stali doctor                 # kiểm tra sau setup\n\n"
+    "   stali doctor                 # kiểm tra sau setup\n" +
+    "   stali status                 # trạng thái nhanh\n\n"
 );

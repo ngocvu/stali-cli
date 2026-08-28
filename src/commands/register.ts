@@ -53,7 +53,7 @@ export function registerCommands(program: Command): void {
   program
     .name("stali")
     .description(
-      "Interactive CLI tool and configuration manager for Stali API (https://api.stali.vn)"
+      "Stali API CLI — setup nhanh: stali -k sk-stali-... | stali setup | stali status"
     )
     .version(VERSION)
     .option("--lang <locale>", "Ngôn ngữ CLI: vi | en (hoặc STALI_LANG)")
@@ -177,6 +177,17 @@ export function registerCommands(program: Command): void {
         printSetupResult(result);
       }
       process.exit(result.success ? 0 : 1);
+    });
+
+  program
+    .command("status")
+    .description("Trạng thái setup nhanh (auth + gateway) — không cần wizard")
+    .option("--json", "JSON output")
+    .option("--online", "Validate API key qua mạng")
+    .action(async (opts: { json?: boolean; online?: boolean }) => {
+      const { runUserStatus } = await import("../services/status-cli");
+      const code = await runUserStatus({ json: opts.json, validateAuth: opts.online });
+      process.exit(code);
     });
 
   program

@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.31.0] — 2026-08-28
+
+### Added
+- **`stali status`** — trạng thái setup nhanh (auth + gateway), `--json` / `--online`
+
+### Changed
+- **Gateway configure song song** — cài nhiều app AI cùng lúc (parallel `syncTool`)
+- **Setup bỏ validate API trùng** — `prefetchedValidation` từ bước auth, không GET `/v1/models` lần 2
+- **Health check setup** — `toolsOnly` bỏ quét plugin khi không cần
+- **Telemetry** — flush queue nền khi khởi động CLI (không chặn lệnh)
+- Mô tả `--help` tập trung luồng user
+
 ## [3.30.0] — 2026-08-28
 
 ### Added

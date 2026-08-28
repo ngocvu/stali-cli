@@ -1,5 +1,5 @@
 import { SUPPORTED_TOOLS } from "../constants/tools";
-import { validateApiKeyAndFetchModels } from "./api";
+import { validateApiKeyAndFetchModels, type ValidateResult } from "./api";
 import { syncTool } from "./syncers";
 import { buildToolConfigPreview } from "./syncers/preview";
 import { getToolById, resolveToolDefaultModel, resolveToolId } from "../utils/tool-utils";
@@ -19,6 +19,10 @@ export interface ConfigureBatchOptions {
   includePlugins?: boolean;
   /** Chỉ các tool đã phát hiện trên máy (qua tool-discovery) */
   installedOnly?: boolean;
+  /** Đã validate key ở bước auth — bỏ GET /v1/models lần 2 (setup nhanh hơn). */
+  prefetchedValidation?: ValidateResult;
+  /** Cấu hình nhiều tool song song (mặc định khi continueOnError). */
+  parallel?: boolean;
 }
 
 export interface ConfigureBatchItem {
@@ -70,6 +74,69 @@ export async function resolveBatchToolIdsAsync(
   return resolveBatchToolIds(undefined, opts.skipAdvanced ?? false, installedIds);
 }
 
+async function resolveBatchValidation(opts: ConfigureBatchOptions): Promise<ValidateResult> {
+  if (opts.prefetchedValidation?.valid) {
+    return opts.prefetchedValidation;
+  }
+  if (opts.dryRun) {
+    const formatError = validateTokenFormat(opts.apiKey.trim());
+    if (formatError) {
+      return { valid: false, error: formatError, models: [], defaultModel: "" };
+    }
+    return {
+      valid: true,
+      defaultModel: "claude-fable-5",
+      models: [],
+    };
+  }
+  return validateApiKeyAndFetchModels(opts.apiKey, { baseUrl: opts.baseUrl });
+}
+
+async function configureOneTool(
+  toolId: string,
+  opts: ConfigureBatchOptions,
+  apiDefault: string,
+  models: ValidateResult["models"]
+): Promise<ConfigureBatchItem> {
+  const tool = getToolById(toolId)!;
+  const resolvedModel =
+    opts.model || resolveToolDefaultModel(toolId, apiDefault, models) || tool.defaultModel;
+
+  if (opts.dryRun) {
+    return {
+      toolId,
+      toolName: tool.name,
+      success: true,
+      message: `Dry-run OK → ${tool.configFile}`,
+      preview: buildToolConfigPreview(toolId, opts.apiKey, resolvedModel, opts.baseUrl),
+    };
+  }
+
+  try {
+    const result: SyncerResult = await syncTool(toolId, opts.apiKey, resolvedModel, {
+      baseUrl: opts.baseUrl,
+    });
+    return {
+      toolId,
+      toolName: tool.name,
+      success: result.success,
+      message: result.message,
+      configPath: result.configPath,
+      backupPath: result.backupPath,
+      error: result.error,
+    };
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e.message : String(e);
+    return {
+      toolId,
+      toolName: tool.name,
+      success: false,
+      message: `Lỗi: ${err}`,
+      error: err,
+    };
+  }
+}
+
 export async function runConfigureBatch(
   opts: ConfigureBatchOptions
 ): Promise<{ items: ConfigureBatchItem[]; allOk: boolean }> {
@@ -94,24 +161,7 @@ export async function runConfigureBatch(
     };
   }
 
-  const validation = opts.dryRun
-    ? (() => {
-        const formatError = validateTokenFormat(opts.apiKey.trim());
-        if (formatError) {
-          return {
-            valid: false as const,
-            error: formatError,
-            models: [] as { id: string; supported_endpoint_types: string[] }[],
-            defaultModel: "",
-          };
-        }
-        return {
-          valid: true as const,
-          defaultModel: "claude-fable-5",
-          models: [] as { id: string; supported_endpoint_types: string[] }[],
-        };
-      })()
-    : await validateApiKeyAndFetchModels(opts.apiKey, { baseUrl: opts.baseUrl });
+  const validation = await resolveBatchValidation(opts);
 
   if (!validation.valid) {
     return {
@@ -120,7 +170,7 @@ export async function runConfigureBatch(
           toolId: "",
           toolName: "",
           success: false,
-          message: (validation as { error?: string }).error || "Token không hợp lệ",
+          message: validation.error || "Token không hợp lệ",
           error: "INVALID_KEY",
         },
       ],
@@ -128,58 +178,24 @@ export async function runConfigureBatch(
     };
   }
 
-  const models = (validation as { models?: { id: string; supported_endpoint_types: string[] }[] }).models;
-  const apiDefault = (validation as { defaultModel?: string }).defaultModel;
+  const models = validation.models;
+  const apiDefault = validation.defaultModel;
+  const continueOnError = opts.continueOnError !== false;
+  const useParallel = opts.parallel !== false && continueOnError && !opts.dryRun && toolIds.length > 1;
 
-  const items: ConfigureBatchItem[] = [];
+  let items: ConfigureBatchItem[];
 
-  for (const toolId of toolIds) {
-    const tool = getToolById(toolId)!;
-    const resolvedModel =
-      opts.model ||
-      resolveToolDefaultModel(toolId, apiDefault, models) ||
-      tool.defaultModel;
-
-    if (opts.dryRun) {
-      items.push({
-        toolId,
-        toolName: tool.name,
-        success: true,
-        message: `Dry-run OK → ${tool.configFile}`,
-        preview: buildToolConfigPreview(toolId, opts.apiKey, resolvedModel, opts.baseUrl),
-      });
-      continue;
+  if (useParallel) {
+    items = await Promise.all(
+      toolIds.map((toolId) => configureOneTool(toolId, opts, apiDefault, models))
+    );
+  } else {
+    items = [];
+    for (const toolId of toolIds) {
+      const item = await configureOneTool(toolId, opts, apiDefault, models);
+      items.push(item);
+      if (!item.success && !continueOnError) break;
     }
-
-    let result: SyncerResult;
-    try {
-      result = await syncTool(toolId, opts.apiKey, resolvedModel, {
-        baseUrl: opts.baseUrl,
-      });
-    } catch (e: unknown) {
-      const err = e instanceof Error ? e.message : String(e);
-      items.push({
-        toolId,
-        toolName: tool.name,
-        success: false,
-        message: `Lỗi: ${err}`,
-        error: err,
-      });
-      if (!opts.continueOnError) break;
-      continue;
-    }
-
-    items.push({
-      toolId,
-      toolName: tool.name,
-      success: result.success,
-      message: result.message,
-      configPath: result.configPath,
-      backupPath: result.backupPath,
-      error: result.error,
-    });
-
-    if (!result.success && !opts.continueOnError) break;
   }
 
   if (opts.includePlugins) {

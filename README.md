@@ -13,6 +13,7 @@ stali -k sk-stali-xxxxxxxx
 stali setup -k sk-stali-xxxxxxxx
 
 # Kiểm tra
+stali status
 stali doctor
 stali info --json    # xem setup.ready + nextCommand
 ```

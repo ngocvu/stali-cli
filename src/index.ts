@@ -12,6 +12,10 @@ if (
 
 rewriteArgvForKeySetup(process.argv);
 
+void import("./services/telemetry")
+  .then((m) => m.flushTelemetryQueue(20))
+  .catch(() => {});
+
 const mode = resolveCliMode(process.argv);
 
 if (mode === "wizard") {
