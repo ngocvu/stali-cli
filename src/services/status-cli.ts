@@ -1,13 +1,17 @@
 import chalk from "chalk";
 import { gatherCliInfo } from "./cli-info";
 import { STALI_DASHBOARD_KEYS_URL } from "./auth-cli";
+import { formatUserStatusJson, type StatusCommand } from "./status-json";
 
 export interface StatusDisplayOptions {
   json?: boolean;
   validateAuth?: boolean;
+  /** `ready` đổi tiêu đề human + field `command` trong JSON */
+  command?: StatusCommand;
 }
 
 export async function runUserStatus(opts?: StatusDisplayOptions): Promise<number> {
+  const command = opts?.command ?? "status";
   const info = await gatherCliInfo({
     offline: !opts?.validateAuth,
     validateAuth: opts?.validateAuth ?? false,
@@ -17,29 +21,12 @@ export async function runUserStatus(opts?: StatusDisplayOptions): Promise<number
   });
 
   if (opts?.json) {
-    console.log(
-      JSON.stringify(
-        {
-          ok: info.setup?.ready ?? false,
-          setup: info.setup,
-          auth: info.auth,
-          gateway: {
-            installed: info.gateway.installed,
-            configured: info.gateway.configured,
-            pending: info.gateway.pending,
-            pendingGateway: info.gateway.pendingGateway,
-            pendingGatewayCount: info.gateway.pendingGatewayCount,
-          },
-          version: info.version,
-        },
-        null,
-        2
-      )
-    );
+    console.log(JSON.stringify(formatUserStatusJson(info, command), null, 2));
     return info.setup?.ready ? 0 : 1;
   }
 
-  console.log(chalk.bold.cyan("\n📋 STALI STATUS\n"));
+  const title = command === "ready" ? "📋 STALI READY" : "📋 STALI STATUS";
+  console.log(chalk.bold.cyan(`\n${title}\n`));
 
   if (!info.auth.hasKey) {
     console.log(chalk.yellow("○ Chưa có API key"));

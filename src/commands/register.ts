@@ -263,7 +263,11 @@ export function registerCommands(program: Command): void {
     .option("--online", "Validate API key qua mạng")
     .action(async (opts: { json?: boolean; online?: boolean }) => {
       const { runUserStatus } = await import("../services/status-cli");
-      const code = await runUserStatus({ json: opts.json, validateAuth: opts.online });
+      const code = await runUserStatus({
+        json: opts.json,
+        validateAuth: opts.online,
+        command: "ready",
+      });
       process.exit(code);
     });
 
@@ -615,6 +619,15 @@ export function registerCommands(program: Command): void {
               ? chalk.yellow(` · ${gw.pending} chờ cài (stali gateway install)`)
               : "");
       console.log(`${chalk.white("Gateway")}     ${gwLine}`);
+      if (info.pendingGatewayCount > 0) {
+        const names = info.gateway.tools
+          .filter((t) => !t.configured)
+          .map((t) => t.name)
+          .join(", ");
+        console.log(
+          chalk.yellow(`  Gateway chờ: ${names || info.pendingGateway.join(", ")}`)
+        );
+      }
       if (gw.tools.length > 0 && gw.tools.length <= 6) {
         for (const t of gw.tools) {
           const mark = t.configured ? chalk.green("✓") : chalk.yellow("○");

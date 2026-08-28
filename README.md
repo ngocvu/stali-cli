@@ -21,6 +21,8 @@ stali info --json    # xem setup.ready + nextCommand
 
 Lấy API key: [api.stali.vn/dashboard/keys](https://api.stali.vn/dashboard/keys)
 
+**Hướng dẫn đầy đủ (một trang):** [docs/ONBOARDING.md](docs/ONBOARDING.md) — setup, doctor strict, git pre-commit mẫu.
+
 ---
 
 ## ✨ Tính năng

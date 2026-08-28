@@ -1,0 +1,74 @@
+# Onboarding stali-cli (một trang)
+
+Cài và cấu hình **Stali API** cho app AI trên máy bạn — khoảng **2 phút**.
+
+## 1. Cài CLI
+
+```bash
+npm install -g stali-cli@latest
+stali --version
+```
+
+Standalone (không cần Node): xem [GitHub Releases](https://github.com/ngocvu/stali-cli/releases).
+
+## 2. API key
+
+Lấy key tại [api.stali.vn/dashboard/keys](https://api.stali.vn/dashboard/keys) (prefix `sk-stali-`).
+
+## 3. Setup một lệnh
+
+```bash
+stali -k sk-stali-xxxxxxxx
+# hoặc
+stali setup -k sk-stali-xxxxxxxx --json
+```
+
+Setup sẽ: lưu key → `stali gw auto` (cài gateway app đã phát hiện) → kiểm tra nhanh.
+
+## 4. Kiểm tra
+
+| Lệnh | Mục đích |
+|------|----------|
+| `stali status --json` | Auth + gateway + `pendingGateway` |
+| `stali ready --json` | Giống status (`command: "ready"`) |
+| `stali scan --json` | Quét app AI đang dùng |
+| `stali doctor --json` | Chi tiết 13 tool + plugin |
+| `stali doctor --strict` | CI: exit 1 nếu còn gateway chờ |
+
+```bash
+stali status --json | jq '.pendingGatewayCount, .setup.nextCommand'
+```
+
+## 5. Plugin tùy chỉnh (tuỳ chọn)
+
+```bash
+stali plugins --init
+stali plugins suggest --json
+stali plugins sync --preview --json
+stali plugins sync
+```
+
+## 6. Gateway thủ công
+
+```bash
+stali scan
+stali gw plan --json
+stali gw auto -k sk-stali-...
+```
+
+## 7. CI / Git hook (tuỳ chọn)
+
+```bash
+# Sau khi đổi config AI — fail nếu chưa trỏ Stali
+stali doctor --strict --tools-only --json
+
+# Mẫu git hook: scripts/examples/git-hooks/pre-commit-stali-doctor.sh
+```
+
+## Luồng gợi ý hàng ngày
+
+```
+stali status → stali doctor → stali gw (nếu pending) → mở app AI
+```
+
+Trợ giúp: `stali user` · `stali help advanced` · `stali info --json`

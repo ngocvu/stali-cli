@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.41.0] — 2026-08-28
+
+### Added
+- **`ready --json`** — schema v2 đồng bộ `status` (`command`, top-level `pendingGateway`, `pendingGatewayCount`)
+- **`info --json`** — top-level `pendingGateway`, `pendingGatewayCount`, `schemaVersion: 2`
+- **`info` human** — dòng `Gateway chờ` khi còn app chưa trỏ Stali
+- **`docs/ONBOARDING.md`** — hướng dẫn onboarding một trang (npm pack gồm file này)
+- **Mẫu git pre-commit** — `scripts/examples/git-hooks/pre-commit-stali-doctor.sh` (`stali doctor --strict`)
+
+### Changed
+- `formatUserStatusJson()` — shared helper cho `status` / `ready` JSON
+- README link tới ONBOARDING
+
 ## [3.40.0] — 2026-08-28
 
 ### Added

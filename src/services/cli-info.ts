@@ -59,6 +59,10 @@ export interface CliInfoSnapshot {
   };
   npm?: VersionCheckResult;
   gateway: CliGatewaySummary;
+  /** Top-level alias (JSON v2) — trùng gateway.pendingGateway */
+  pendingGateway: string[];
+  pendingGatewayCount: number;
+  schemaVersion: 2;
   telemetry?: {
     enabled: boolean;
     queueDepth: number;
@@ -196,6 +200,9 @@ export async function gatherCliInfo(options?: GatherCliInfoOptions): Promise<Cli
     },
     npm: npm ?? undefined,
     gateway: gatewaySummary,
+    pendingGateway: gatewaySummary.pendingGateway,
+    pendingGatewayCount: gatewaySummary.pendingGatewayCount,
+    schemaVersion: 2,
     setup: {
       ready: setupReady,
       authOk,

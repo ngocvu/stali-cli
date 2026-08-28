@@ -173,6 +173,8 @@ async function main() {
       if (typeof parsed.offline === "boolean") {
         assert("info JSON offline flag", parsed.offline === true);
       }
+      assert("info JSON schemaVersion", parsed.schemaVersion === 2);
+      assert("info JSON pendingGateway", Array.isArray(parsed.pendingGateway));
     } catch {
       assert("info JSON parseable", false);
     }
@@ -336,13 +338,26 @@ async function main() {
         "status JSON gateway.pendingGatewayCount",
         typeof parsed.gateway?.pendingGatewayCount === "number"
       );
+      assert("status JSON top-level pendingGateway", Array.isArray(parsed.pendingGateway));
+      assert("status JSON schemaVersion", parsed.schemaVersion === 2);
+      assert("status JSON command", parsed.command === "status");
     } catch {
       assert("status JSON parseable", false);
     }
   }
+  const readyJson = run(["ready", "--json"]);
+  assert("ready --json exit 0|1", [0, 1].includes(readyJson.status));
+  if (readyJson.stdout) {
+    try {
+      const parsed = JSON.parse(readyJson.stdout);
+      assert("ready JSON command", parsed.command === "ready");
+      assert("ready JSON pendingGateway", Array.isArray(parsed.pendingGateway));
+    } catch {
+      assert("ready JSON parseable", false);
+    }
+  }
   const doctorStrict = run(["doctor", "--strict", "--tools-only", "--json"]);
   assert("doctor --strict --tools-only --json exit 0|1", [0, 1].includes(doctorStrict.status));
-  assert("ready --json exit 0|1", [0, 1].includes(run(["ready", "--json"]).status));
   const setupJson = run(["setup", "--json", "-k", "sk-stali-" + "x".repeat(40), "--skip-configure"]);
   assert("setup --json exit 0|1", setupJson.status === 0 || setupJson.status === 1);
   if (setupJson.stdout) {
