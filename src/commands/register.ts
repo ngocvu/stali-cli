@@ -675,6 +675,24 @@ export function registerCommands(program: Command): void {
     });
 
   program
+    .command("bench")
+    .description("Benchmark cold-start các lệnh CLI (median ms)")
+    .option("--json", "Xuất JSON")
+    .option("--runs <n>", "Số lần chạy mỗi case", "5")
+    .option("--strict", "Fail nếu vượt ngưỡng STALI_BENCH_MAX_*_MS")
+    .action(async (opts: { json?: boolean; runs?: string; strict?: boolean }) => {
+      const { runColdStartBench, formatBenchReport } = await import("../services/bench-cli");
+      const runs = Number(opts.runs || 5);
+      const report = runColdStartBench({ runs, strict: opts.strict });
+      if (opts.json) {
+        console.log(JSON.stringify(report, null, 2));
+      } else {
+        console.log(formatBenchReport(report));
+      }
+      process.exit(report.failed ? 1 : 0);
+    });
+
+  program
     .command("update")
     .description("Cập nhật stali-cli (npm global / git / standalone)")
     .option("--check", "Chỉ kiểm tra phiên bản mới (không cập nhật)")

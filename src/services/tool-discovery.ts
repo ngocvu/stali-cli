@@ -26,6 +26,17 @@ export interface ToolDiscoveryEntry {
   configPath: string;
 }
 
+export interface DiscoveryScanContext {
+  ideEntries: Set<string>;
+  processLines: string[];
+}
+
+export interface DiscoverInstalledToolsOptions {
+  /** Tái sử dụng kết quả doctor scan (tránh quét 2 lần trong `stali info`). */
+  health?: ToolHealthStatus[];
+  ctx?: DiscoveryScanContext;
+}
+
 function whichBinary(name: string): string | null {
   if (process.platform === "win32") {
     const r = spawnSync("where", [name], { encoding: "utf8", shell: true, windowsHide: true });
@@ -56,31 +67,81 @@ async function dirHasEntries(dir: string): Promise<boolean> {
   }
 }
 
-async function hasVsCodeExtension(markers: string[]): Promise<boolean> {
-  const home = os.homedir();
-  for (const rel of IDE_EXTENSION_ROOTS) {
-    const root = path.join(home, rel);
-    try {
-      const entries = await readdir(root);
-      const lower = entries.map((e) => e.toLowerCase());
-      if (markers.some((m) => lower.some((e) => e.includes(m.toLowerCase())))) {
-        return true;
-      }
-    } catch {
-      /* skip */
-    }
+function loadProcessLines(): string[] {
+  if (process.platform === "win32") {
+    const r = spawnSync("tasklist", [], {
+      encoding: "utf8",
+      shell: true,
+      windowsHide: true,
+      timeout: 5000,
+    });
+    return (r.stdout || "").toLowerCase().split(/\r?\n/);
   }
-  return false;
+  const r = spawnSync("ps", ["-A", "-o", "comm="], { encoding: "utf8", timeout: 5000 });
+  if (r.status !== 0) return [];
+  return (r.stdout || "")
+    .split(/\r?\n/)
+    .map((l) => l.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export async function buildDiscoveryScanContext(): Promise<DiscoveryScanContext> {
+  const home = os.homedir();
+  const ideEntries = new Set<string>();
+  await Promise.all(
+    IDE_EXTENSION_ROOTS.map(async (rel) => {
+      try {
+        const entries = await readdir(path.join(home, rel));
+        for (const e of entries) ideEntries.add(e.toLowerCase());
+      } catch {
+        /* skip */
+      }
+    })
+  );
+  return { ideEntries, processLines: loadProcessLines() };
+}
+
+export function hasIdeExtensionFromIndex(index: Set<string>, markers: string[]): boolean {
+  if (markers.length === 0) return false;
+  return markers.some((m) => {
+    const needle = m.toLowerCase();
+    for (const entry of index) {
+      if (entry.includes(needle)) return true;
+    }
+    return false;
+  });
+}
+
+function probeRunningProcessFromList(lines: string[], toolId: string): boolean {
+  const names = TOOL_BINARY_NAMES[toolId] || [];
+  const tool = getToolById(toolId);
+  const candidates = [
+    ...new Set([...(names || []), tool?.command].filter(Boolean) as string[]),
+  ].map((n) => n.toLowerCase());
+  if (candidates.length === 0) return false;
+
+  if (process.platform === "win32") {
+    const out = lines.join("\n");
+    return candidates.some((n) => out.includes(`${n}.exe`) || out.includes(n));
+  }
+
+  return candidates.some((name) =>
+    lines.some((line) => line === name || line.endsWith(`/${name}`) || line.includes(name))
+  );
+}
+
+/** Phát hiện process đang chạy — dùng buildDiscoveryScanContext() để gọi ps một lần. */
+export function probeRunningProcess(toolId: string): boolean {
+  return probeRunningProcessFromList(loadProcessLines(), toolId);
 }
 
 async function probeJetBrainsMarkers(toolId: string): Promise<boolean> {
   const markers = TOOL_JETBRAINS_MARKERS[toolId] || [];
   if (markers.length === 0) return false;
   const home = os.homedir();
-  for (const marker of markers) {
-    if (await pathExists(path.join(home, marker))) return true;
-  }
-  return false;
+  const checks = markers.map((marker) => pathExists(path.join(home, marker)));
+  const results = await Promise.all(checks);
+  return results.some(Boolean);
 }
 
 async function probeBinary(toolId: string): Promise<{ found: boolean; path?: string }> {
@@ -97,50 +158,15 @@ async function probeBinary(toolId: string): Promise<{ found: boolean; path?: str
 async function probeHomeMarkers(toolId: string): Promise<boolean> {
   const markers = TOOL_HOME_MARKERS[toolId] || [];
   const home = os.homedir();
-  for (const marker of markers) {
-    const dir = path.join(home, marker);
-    if (await dirHasEntries(dir)) return true;
-  }
-  return false;
-}
-
-/** Phát hiện process đang chạy (Cursor, Claude Code, v.v.) — không cần binary trong PATH. */
-export function probeRunningProcess(toolId: string): boolean {
-  const names = TOOL_BINARY_NAMES[toolId] || [];
-  const tool = getToolById(toolId);
-  const candidates = [
-    ...new Set([...(names || []), tool?.command].filter(Boolean) as string[]),
-  ].map((n) => n.toLowerCase());
-  if (candidates.length === 0) return false;
-
-  if (process.platform === "win32") {
-    const r = spawnSync("tasklist", [], {
-      encoding: "utf8",
-      shell: true,
-      windowsHide: true,
-      timeout: 5000,
-    });
-    const out = (r.stdout || "").toLowerCase();
-    return candidates.some((n) => out.includes(`${n}.exe`) || out.includes(n));
-  }
-
-  const r = spawnSync("ps", ["-A", "-o", "comm="], { encoding: "utf8", timeout: 5000 });
-  if (r.status !== 0) return false;
-  const lines = (r.stdout || "")
-    .split(/\r?\n/)
-    .map((l) => l.trim().toLowerCase())
-    .filter(Boolean);
-  return candidates.some(
-    (name) =>
-      lines.some(
-        (line) => line === name || line.endsWith(`/${name}`) || line.includes(name)
-      )
-  );
+  const checks = markers.map((marker) => dirHasEntries(path.join(home, marker)));
+  const results = await Promise.all(checks);
+  return results.some(Boolean);
 }
 
 export async function discoverTool(
   toolId: string,
-  health?: ToolHealthStatus
+  health?: ToolHealthStatus,
+  ctx?: DiscoveryScanContext
 ): Promise<ToolDiscoveryEntry> {
   const tool = getToolById(toolId);
   if (!tool) {
@@ -156,22 +182,37 @@ export async function discoverTool(
 
   const configPath = resolveHomePath(tool.configFile);
   const config = health?.exists ?? (await pathExists(configPath));
-  const binary = await probeBinary(toolId);
   const vscodeMarkers = TOOL_VSCODE_EXTENSIONS[toolId];
-  const vscode = vscodeMarkers ? await hasVsCodeExtension(vscodeMarkers) : false;
-  const home = await probeHomeMarkers(toolId);
-  const running = probeRunningProcess(toolId);
-  const jetbrains = await probeJetBrainsMarkers(toolId);
+
+  const [binary, home, jetbrains] = await Promise.all([
+    probeBinary(toolId),
+    probeHomeMarkers(toolId),
+    probeJetBrainsMarkers(toolId),
+  ]);
+
+  let vscodeHit = false;
+  if (vscodeMarkers) {
+    if (ctx) {
+      vscodeHit = hasIdeExtensionFromIndex(ctx.ideEntries, vscodeMarkers);
+    } else {
+      const scan = await buildDiscoveryScanContext();
+      vscodeHit = hasIdeExtensionFromIndex(scan.ideEntries, vscodeMarkers);
+    }
+  }
+
+  const running = ctx
+    ? probeRunningProcessFromList(ctx.processLines, toolId)
+    : probeRunningProcess(toolId);
 
   const signals: Partial<Record<DiscoverySignal, boolean>> = {};
   if (binary.found) signals.binary = true;
   if (config) signals.config = true;
-  if (vscode) signals.vscode = true;
+  if (vscodeHit) signals.vscode = true;
   if (home) signals.home = true;
   if (running) signals.process = true;
   if (jetbrains) signals.jetbrains = true;
 
-  const installed = Boolean(binary.found || config || vscode || home || running || jetbrains);
+  const installed = Boolean(binary.found || config || vscodeHit || home || running || jetbrains);
 
   return {
     toolId: tool.id,
@@ -184,19 +225,24 @@ export async function discoverTool(
   };
 }
 
-/** Quét toàn bộ 13 tool — binary, config, VS Code extension, thư mục home. */
-export async function discoverInstalledTools(): Promise<ToolDiscoveryEntry[]> {
-  const health = await runDoctorScan();
+/** Quét toàn bộ 13 tool — binary, config, IDE extension, process (song song). */
+export async function discoverInstalledTools(
+  opts?: DiscoverInstalledToolsOptions
+): Promise<ToolDiscoveryEntry[]> {
+  const [health, ctx] = await Promise.all([
+    opts?.health ? Promise.resolve(opts.health) : runDoctorScan(),
+    opts?.ctx ? Promise.resolve(opts.ctx) : buildDiscoveryScanContext(),
+  ]);
   const byId = new Map(health.map((h) => [h.toolId, h]));
-  const results: ToolDiscoveryEntry[] = [];
-  for (const tool of SUPPORTED_TOOLS) {
-    results.push(await discoverTool(tool.id, byId.get(tool.id)));
-  }
-  return results;
+  return Promise.all(
+    SUPPORTED_TOOLS.map((tool) => discoverTool(tool.id, byId.get(tool.id), ctx))
+  );
 }
 
-export async function discoverInstalledToolIds(): Promise<string[]> {
-  const entries = await discoverInstalledTools();
+export async function discoverInstalledToolIds(
+  opts?: DiscoverInstalledToolsOptions
+): Promise<string[]> {
+  const entries = await discoverInstalledTools(opts);
   return entries.filter((e) => e.installed).map((e) => e.toolId);
 }
 

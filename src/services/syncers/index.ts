@@ -167,12 +167,10 @@ export async function runDoctorScan(ctx?: DoctorStatusContext): Promise<ToolHeal
   }
 
   const { SUPPORTED_TOOLS } = await import("../../constants/tools");
-  const results: ToolHealthStatus[] = [];
-  for (const tool of SUPPORTED_TOOLS) {
-    const status = await getToolHealthStatus(tool.id, statusCtx);
-    if (status) results.push(status);
-  }
-  return results;
+  const statuses = await Promise.all(
+    SUPPORTED_TOOLS.map((tool) => getToolHealthStatus(tool.id, statusCtx))
+  );
+  return statuses.filter((s): s is ToolHealthStatus => s !== null);
 }
 
 export async function syncTool(

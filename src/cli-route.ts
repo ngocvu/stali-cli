@@ -13,6 +13,7 @@ export const STALI_SUBCOMMANDS = new Set([
   "gateway",
   "gw",
   "install",
+  "bench",
   "configure",
   "configure-all",
   "export-env",

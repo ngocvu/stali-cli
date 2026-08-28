@@ -247,20 +247,36 @@ if (mode === "wizard") {
     const targetFlag = compileTarget ? `--target=${compileTarget}` : "";
     console.log(`4️⃣  Standalone binary (${standaloneName}${compileTarget ? `, ${compileTarget}` : ""})…`);
     const out = path.join(distDir, standaloneName);
+    const isWindowsTarget = compileTarget.includes("windows") || standaloneName.includes("win");
+    const compileOutfile = isWindowsTarget && !out.endsWith(".exe") ? `${out}.exe` : out;
     try {
       execSync(
-        `bun build "${path.join(runtimeDir, "subcommand-cli.js")}" --compile ${targetFlag} --outfile "${out}"`.replace(
+        `bun build "${path.join(runtimeDir, "subcommand-cli.js")}" --compile ${targetFlag} --outfile "${compileOutfile}"`.replace(
           /\s+/g,
           " "
         ).trim(),
         { cwd: rootDir, stdio: "inherit" }
       );
+      let artifact = compileOutfile;
+      if (!fs.existsSync(artifact) && fs.existsSync(`${out}.exe`)) {
+        artifact = `${out}.exe`;
+      }
+      if (!fs.existsSync(artifact)) {
+        throw new Error(`Standalone artifact missing: ${artifact}`);
+      }
+      if (artifact !== out) {
+        fs.copyFileSync(artifact, out);
+      }
       fs.chmodSync(out, 0o755);
       console.log(`   → dist/${standaloneName} (${(fs.statSync(out).size / 1024 / 1024).toFixed(1)} MB)`);
       if (standaloneName === "stali-standalone-linux-x64") {
         fs.copyFileSync(out, path.join(distDir, "stali-standalone"));
       }
     } catch (e) {
+      if (process.env.STALI_BUILD_STANDALONE === "1") {
+        console.error("❌ Standalone compile failed:", (e as Error).message);
+        process.exit(1);
+      }
       console.warn("   ⚠️  Standalone compile skipped:", (e as Error).message);
     }
   }

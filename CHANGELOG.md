@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.17.0] — 2026-08-28
+
+### Added
+- **`stali bench`** — benchmark cold-start (`--json`, `--strict`, `--runs`)
+- Module `bench-cli` dùng chung cho `bun run bench` và lệnh CLI
+
+### Changed
+- **Gateway/info nhanh hơn ~3–4×** — cache IDE extensions + một lần `ps`; quét 13 tool song song
+- **`stali info`** — bỏ `runDoctorScan` trùng; doctor stats lấy từ gateway discovery
+- **`runDoctorScan`** — song song 13 tool
+- **Windows standalone CI** — normalize `.exe` artifact; fail build nếu compile lỗi
+
 ## [3.16.0] — 2026-08-28
 
 ### Added

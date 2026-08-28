@@ -177,6 +177,17 @@ async function main() {
     }
   }
 
+  const benchJson = run(["bench", "--json", "--runs", "1"]);
+  assert("bench --json exit 0", benchJson.status === 0);
+  if (benchJson.status === 0) {
+    try {
+      const parsed = JSON.parse(benchJson.stdout || "{}");
+      assert("bench JSON has results", Array.isArray(parsed.results));
+    } catch {
+      assert("bench JSON parseable", false);
+    }
+  }
+
   const prom = run(["doctor", "--tools-only", "--prometheus"]);
   assert("doctor --prometheus", prom.status === 0 || prom.status === 1);
   assert(

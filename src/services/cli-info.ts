@@ -7,7 +7,6 @@ import {
   getStaliConfigPath,
   getStaliHome,
 } from "../constants/paths";
-import { runDoctorScan } from "./syncers";
 import { authStatus } from "./auth-cli";
 import { runPluginsDoctor } from "./plugin-doctor";
 import { detectInstallMode, type InstallMode } from "./install-mode";
@@ -89,16 +88,14 @@ export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
     .then(() => true)
     .catch(() => false);
 
-  const [auth, doctorStatuses, pluginReport, installInfo, gatewayEntries, npm] =
-    await Promise.all([
-      authStatus(),
-      runDoctorScan(),
-      runPluginsDoctor(),
-      detectInstallMode(),
-      discoverInstalledTools(),
-      fetchNpmLatestVersion(),
-    ]);
-  const configured = doctorStatuses.filter((s) => s.configuredForStali).length;
+  const [auth, pluginReport, installInfo, gatewayEntries, npm] = await Promise.all([
+    authStatus(),
+    runPluginsDoctor(),
+    detectInstallMode(),
+    discoverInstalledTools(),
+    fetchNpmLatestVersion(),
+  ]);
+  const configured = gatewayEntries.filter((e) => e.configuredForStali).length;
   const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
 
   return {
@@ -121,7 +118,7 @@ export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
     },
     doctor: {
       configured,
-      total: doctorStatuses.length,
+      total: gatewayEntries.length,
     },
     plugins: {
       configured: pluginsConfigured,
