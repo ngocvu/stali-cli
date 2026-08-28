@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.15.0] — 2026-08-28
+
+### Added
+- **macOS LaunchAgent** — `stali update --install-launchd` / `--install-cron` dùng launchd 04:00 trên macOS
+- **`stali init --skip-cli-check` / `--upgrade-cli`** — kiểm tra hoặc nâng cấp CLI trong onboarding
+- **npm dist-tag `beta`** — release workflow tự gắn tag `beta` cho phiên bản `-beta`/`-rc`/`-alpha`
+
+### Changed
+- `--cron-status` hiển thị LaunchAgent trên macOS
+- `installAutoUpdateCron` trên macOS dùng launchd thay crontab
+
 ## [3.14.0] — 2026-08-28
 
 ### Added

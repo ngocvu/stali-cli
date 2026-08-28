@@ -20,7 +20,7 @@ export const InstallMenu: React.FC<InstallMenuProps> = ({ installMode, onSelect 
   const items = [
     { label: "🔍 Kiểm tra phiên bản mới (update --check)", value: "check-update" as const },
     { label: "📦 Nâng cấp qua npm global (nhanh nhất)", value: "npm-upgrade" as const },
-    { label: "⏰ Bật auto-update 04:00 (cron / Task Scheduler)", value: "auto-update" as const },
+    { label: "⏰ Bật auto-update 04:00 (cron / launchd / Task Scheduler)", value: "auto-update" as const },
     { label: "📋 Xem hướng dẫn cài đặt đầy đủ", value: "guide" as const },
     { label: "⬅️  Quay lại Menu chính", value: "back" as const },
   ];

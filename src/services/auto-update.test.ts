@@ -7,6 +7,8 @@ import {
   getTaskSchedulerStatus,
   resolveStaliExecutableForScheduler,
   WINDOWS_TASK_NAME,
+  getLaunchdStatus,
+  LAUNCHD_LABEL,
 } from "./auto-update";
 
 describe("auto-update config", () => {
@@ -34,5 +36,12 @@ describe("auto-update config", () => {
   test("resolveStaliExecutableForScheduler returns path", () => {
     const p = resolveStaliExecutableForScheduler();
     expect(p.length).toBeGreaterThan(0);
+  });
+
+  test("getLaunchdStatus on non-macOS", () => {
+    if (process.platform === "darwin") return;
+    const s = getLaunchdStatus();
+    expect(s.installed).toBe(false);
+    expect(s.label).toBe(LAUNCHD_LABEL);
   });
 });

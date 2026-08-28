@@ -135,12 +135,16 @@ export function registerCommands(program: Command): void {
     .option("--include-plugins", "Đồng bộ plugin (mặc định: bật nếu plugins.json có entry)")
     .option("--no-plugins", "Bỏ qua plugin khi configure-all")
     .option("--skip-completion", "Bỏ qua cài shell completion (bash/fish/zsh)")
+    .option("--skip-cli-check", "Bỏ qua kiểm tra phiên bản stali-cli")
+    .option("--upgrade-cli", "Nâng cấp stali-cli qua npm nếu có bản mới")
     .action(async (opts: {
       key?: string;
       skipConfigure?: boolean;
       includePlugins?: boolean;
       noPlugins?: boolean;
       skipCompletion?: boolean;
+      skipCliCheck?: boolean;
+      upgradeCli?: boolean;
     }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = opts.key || globals.key;
@@ -157,6 +161,8 @@ export function registerCommands(program: Command): void {
         includePlugins: opts.includePlugins,
         noPlugins: opts.noPlugins,
         skipCompletion: opts.skipCompletion,
+        skipCliCheck: opts.skipCliCheck,
+        upgradeCli: opts.upgradeCli,
       });
       for (const step of result.steps) {
         const icon = step.ok ? chalk.green("✓") : chalk.red("✗");
@@ -623,6 +629,8 @@ export function registerCommands(program: Command): void {
     .option("--cron-status", "Trạng thái auto-update (cron / systemd / Task Scheduler)")
     .option("--install-systemd", "Cài systemd user timer 04:00 (Linux)")
     .option("--uninstall-systemd", "Gỡ systemd user timer")
+    .option("--install-launchd", "Cài macOS LaunchAgent 04:00")
+    .option("--uninstall-launchd", "Gỡ macOS LaunchAgent auto-update")
     .option("--install-task", "Cài Windows Task Scheduler 04:00 (alias cron trên Windows)")
     .option("--uninstall-task", "Gỡ Windows Task Scheduler auto-update")
     .option("--dry-run", "Chỉ xem kế hoạch update (không thực hiện)")
@@ -634,6 +642,8 @@ export function registerCommands(program: Command): void {
       cronStatus?: boolean;
       installSystemd?: boolean;
       uninstallSystemd?: boolean;
+      installLaunchd?: boolean;
+      uninstallLaunchd?: boolean;
       installTask?: boolean;
       uninstallTask?: boolean;
       dryRun?: boolean;
@@ -645,15 +655,21 @@ export function registerCommands(program: Command): void {
           readAutoUpdateConfig,
           getSystemdTimerStatus,
           getTaskSchedulerStatus,
+          getLaunchdStatus,
         } = await import("../services/auto-update");
         const status = getAutoUpdateCronStatus();
         const systemd = getSystemdTimerStatus();
         const task = getTaskSchedulerStatus();
+        const launchd = getLaunchdStatus();
         const cfg = await readAutoUpdateConfig();
         console.log(chalk.bold.cyan("\n⏰ STALI AUTO-UPDATE\n"));
         if (process.platform === "win32") {
           console.log(
             `Task:      ${task.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")} (${task.taskName})`
+          );
+        } else if (process.platform === "darwin") {
+          console.log(
+            `Launchd:   ${launchd.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")} (${launchd.label})`
           );
         } else {
           console.log(`Cron:      ${status.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")}`);
@@ -665,6 +681,19 @@ export function registerCommands(program: Command): void {
         console.log(`Log:       ${status.logPath}`);
         if (cfg) console.log(`Config:    channel=${cfg.channel || "stable"} enabled=${cfg.enabled}`);
         console.log("");
+        process.exit(0);
+      }
+      if (opts.installLaunchd) {
+        const { installAutoUpdateLaunchd } = await import("../services/auto-update");
+        const r = await installAutoUpdateLaunchd(opts.channel);
+        console.log(r.ok ? chalk.green(`✅ ${r.message}`) : chalk.red(`❌ ${r.message}`));
+        if (r.error) console.error(chalk.red(r.error));
+        process.exit(r.ok ? 0 : 1);
+      }
+      if (opts.uninstallLaunchd) {
+        const { uninstallAutoUpdateLaunchd } = await import("../services/auto-update");
+        const r = await uninstallAutoUpdateLaunchd();
+        console.log(chalk.green(`✅ ${r.message}`));
         process.exit(0);
       }
       if (opts.installTask) {

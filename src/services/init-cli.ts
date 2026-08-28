@@ -11,6 +11,8 @@ export interface InitOptions {
   includePlugins?: boolean;
   noPlugins?: boolean;
   skipCompletion?: boolean;
+  skipCliCheck?: boolean;
+  upgradeCli?: boolean;
 }
 
 export interface InitResult {
@@ -51,6 +53,38 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   });
   if (!login.success) {
     return { success: false, steps };
+  }
+
+  if (!opts.skipCliCheck) {
+    try {
+      const { fetchLatestVersion } = await import("./version-check");
+      const { resolveUpdateChannelResolved } = await import("./update-channel");
+      const channelCfg = await resolveUpdateChannelResolved("stable");
+      const ver = await fetchLatestVersion(channelCfg.versionUrl);
+      if (opts.upgradeCli && ver.updateAvailable) {
+        const { runInstallCli } = await import("./install-cli");
+        const code = await runInstallCli({ npm: true });
+        steps.push({
+          name: "cli upgrade",
+          ok: code === 0,
+          detail: code === 0 ? `→ ${ver.latest}` : "npm install thất bại",
+        });
+      } else {
+        steps.push({
+          name: "cli version",
+          ok: true,
+          detail: ver.updateAvailable
+            ? `có bản mới ${ver.latest} — stali install --npm`
+            : `${ver.current} (latest)`,
+        });
+      }
+    } catch (e: unknown) {
+      steps.push({
+        name: "cli version",
+        ok: true,
+        detail: e instanceof Error ? e.message : "skip (offline)",
+      });
+    }
   }
 
   if (!opts.skipConfigure) {

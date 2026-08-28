@@ -123,7 +123,14 @@ jobs:
             echo "::warning::NPM_TOKEN secret chưa cấu hình — bỏ qua npm publish"
             echo "Thêm NPM_TOKEN trong GitHub → Secrets → Actions"
           else
-            npm publish --access public --provenance
+            VER=$(node -p "require('./package.json').version")
+            if echo "$VER" | grep -qE '-(beta|alpha|rc)(\.|$|-)'; then
+              DIST_TAG=beta
+            else
+              DIST_TAG=latest
+            fi
+            echo "Publishing stali-cli@${VER} with dist-tag=${DIST_TAG}"
+            npm publish --access public --provenance --tag "$DIST_TAG"
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

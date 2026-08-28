@@ -8,6 +8,7 @@ import { getStaliBinDir, getStaliHome } from "../constants/paths";
 const CRON_MARKER = "stali-cli auto-update";
 const SYSTEMD_MARKER = "stali-cli";
 export const WINDOWS_TASK_NAME = "stali-cli-auto-update";
+export const LAUNCHD_LABEL = "com.stali.cli.update";
 const LOG_FILE = "auto-update.log";
 
 export interface AutoUpdateCronStatus {
@@ -137,6 +138,118 @@ export async function uninstallAutoUpdateTaskScheduler(): Promise<{ ok: boolean;
   return { ok: true, message: "Đã gỡ Task Scheduler auto-update" };
 }
 
+export interface LaunchdStatus {
+  installed: boolean;
+  plistPath: string;
+  label: string;
+}
+
+export function getLaunchdStatus(): LaunchdStatus {
+  const plistPath = path.join(os.homedir(), "Library", "LaunchAgents", `${LAUNCHD_LABEL}.plist`);
+  return {
+    installed: process.platform === "darwin" && existsSync(plistPath),
+    plistPath,
+    label: LAUNCHD_LABEL,
+  };
+}
+
+function launchctlUid(): string {
+  const getuid = process.getuid;
+  if (typeof getuid === "function") {
+    return String(getuid.call(process));
+  }
+  const r = spawnSync("id", ["-u"], { encoding: "utf8" });
+  return (r.stdout || "501").trim();
+}
+
+function launchctlLoad(plistPath: string): { ok: boolean; error?: string } {
+  const uid = launchctlUid();
+  let r = spawnSync("launchctl", ["bootstrap", `gui/${uid}`, plistPath], { encoding: "utf8" });
+  if (r.status === 0) return { ok: true };
+  r = spawnSync("launchctl", ["load", "-w", plistPath], { encoding: "utf8" });
+  if (r.status === 0) return { ok: true };
+  return { ok: false, error: (r.stderr || r.stdout || "launchctl load failed").trim() };
+}
+
+function launchctlUnload(plistPath: string): void {
+  const uid = launchctlUid();
+  spawnSync("launchctl", ["bootout", `gui/${uid}`, plistPath], { encoding: "utf8" });
+  spawnSync("launchctl", ["unload", "-w", plistPath], { encoding: "utf8" });
+}
+
+/** macOS LaunchAgent — daily 04:00 `stali update`. */
+export async function installAutoUpdateLaunchd(channel = "stable"): Promise<{
+  ok: boolean;
+  message: string;
+  error?: string;
+}> {
+  if (process.platform !== "darwin") {
+    return { ok: false, message: "launchd chỉ hỗ trợ macOS" };
+  }
+  const stali = resolveStaliExecutableForScheduler();
+  const logPath = path.join(getStaliHome(), LOG_FILE);
+  const agentsDir = path.join(os.homedir(), "Library", "LaunchAgents");
+  const plistPath = path.join(agentsDir, `${LAUNCHD_LABEL}.plist`);
+  await fs.mkdir(agentsDir, { recursive: true });
+  await fs.mkdir(getStaliHome(), { recursive: true });
+
+  const wasInstalled = existsSync(plistPath);
+  if (wasInstalled) launchctlUnload(plistPath);
+
+  const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${LAUNCHD_LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${stali}</string>
+    <string>update</string>
+    <string>--channel</string>
+    <string>${channel}</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>4</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>${logPath}</string>
+  <key>StandardErrorPath</key>
+  <string>${logPath}</string>
+</dict>
+</plist>
+`;
+  await fs.writeFile(plistPath, plist, "utf8");
+  const loaded = launchctlLoad(plistPath);
+  if (!loaded.ok) {
+    return { ok: false, message: "launchctl load failed", error: loaded.error };
+  }
+  await writeAutoUpdateConfig({ channel, enabled: true });
+  return {
+    ok: true,
+    message: `Đã cài LaunchAgent 04:00 (${plistPath})`,
+  };
+}
+
+export async function uninstallAutoUpdateLaunchd(): Promise<{ ok: boolean; message: string }> {
+  if (process.platform !== "darwin") {
+    return { ok: true, message: "Không có launchd agent" };
+  }
+  const { plistPath, installed } = getLaunchdStatus();
+  if (!installed) {
+    await writeAutoUpdateConfig({ enabled: false });
+    return { ok: true, message: "LaunchAgent auto-update chưa cài" };
+  }
+  launchctlUnload(plistPath);
+  await fs.rm(plistPath, { force: true }).catch(() => {});
+  await writeAutoUpdateConfig({ enabled: false });
+  return { ok: true, message: "Đã gỡ LaunchAgent auto-update" };
+}
+
 /** Cài cron 04:00 hàng ngày — `stali update` (ưu tiên standalone). */
 export async function installAutoUpdateCron(channel = "stable"): Promise<{
   ok: boolean;
@@ -145,6 +258,9 @@ export async function installAutoUpdateCron(channel = "stable"): Promise<{
 }> {
   if (process.platform === "win32") {
     return installAutoUpdateTaskScheduler(channel);
+  }
+  if (process.platform === "darwin") {
+    return installAutoUpdateLaunchd(channel);
   }
 
   const stali = path.join(getStaliBinDir(), "stali");
@@ -170,6 +286,9 @@ export async function installAutoUpdateCron(channel = "stable"): Promise<{
 export async function uninstallAutoUpdateCron(): Promise<{ ok: boolean; message: string }> {
   if (process.platform === "win32") {
     return uninstallAutoUpdateTaskScheduler();
+  }
+  if (process.platform === "darwin") {
+    return uninstallAutoUpdateLaunchd();
   }
 
   const existing = readCrontab();

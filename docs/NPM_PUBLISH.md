@@ -45,5 +45,14 @@ npm install -g stali-cli --no-fund --no-audit
 Hoặc pin version:
 
 ```bash
-npm install -g stali-cli@3.13.0 --no-fund --no-audit
+npm install -g stali-cli@3.15.0 --no-fund --no-audit
+```
+
+### dist-tag
+
+- `latest` — stable (`3.15.0`, …)
+- `beta` — prerelease (`3.16.0-beta.1`, `3.16.0-rc.1`, …)
+
+```bash
+npm install -g stali-cli@beta
 ```

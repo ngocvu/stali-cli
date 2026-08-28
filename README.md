@@ -36,6 +36,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
+- 📦 **v3.15**: macOS launchd auto-update, init --upgrade-cli, npm dist-tag beta
 - 📦 **v3.14**: Windows Task Scheduler auto-update, wizard install menu, npm registry publish
 - 📦 **v3.13**: `stali install`, `update --json`, npm pack verify, install auto default
 - 📦 **v3.12**: npm fast install (Node), install.ps1, update dry-run, metrics-bind, systemd timer
