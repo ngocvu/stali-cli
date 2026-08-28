@@ -52,6 +52,9 @@ jobs:
           bash -n scripts/examples/git-hooks/pre-commit-stali-doctor.sh
           bash scripts/examples/git-hooks/pre-commit-stali-doctor.sh; code=$?
           test "$code" -eq 0 -o "$code" -eq 1
+          bash -n scripts/examples/shell/doctor-strict-ci.sh
+          bash scripts/examples/shell/doctor-strict-ci.sh; code=$?
+          test "$code" -eq 0 -o "$code" -eq 1
 
   live-gate:
     runs-on: ubuntu-latest

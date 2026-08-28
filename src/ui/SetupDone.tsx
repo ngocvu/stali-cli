@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
 import { SyncerResult } from "../types";
+import { ONBOARDING_DOC_URL } from "../services/user-cli";
 
 interface SetupDoneProps {
   results: SyncerResult[];
@@ -118,6 +119,9 @@ export const SetupDone: React.FC<SetupDoneProps> = ({
         </Box>
 
         <Box flexDirection="column" marginTop={1} gap={1}>
+          <Text color="gray">
+            Hướng dẫn đầy đủ: <Text color="cyan">{ONBOARDING_DOC_URL}</Text>
+          </Text>
           <Text color="gray">
             Telemetry ẩn danh (opt-in): <Text color="cyan">stali telemetry on</Text>
           </Text>

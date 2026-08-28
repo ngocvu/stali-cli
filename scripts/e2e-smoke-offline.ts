@@ -370,6 +370,9 @@ async function main() {
         "setup JSON pendingGatewayCount",
         typeof parsed.pendingGatewayCount === "number"
       );
+      assert("setup JSON schemaVersion", parsed.schemaVersion === 2);
+      assert("setup JSON command", parsed.command === "setup");
+      assert("setup JSON pendingGateway", Array.isArray(parsed.pendingGateway));
     } catch {
       assert("setup JSON parseable", false);
     }

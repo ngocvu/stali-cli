@@ -11,6 +11,7 @@ npm install -g stali-cli@latest
 stali -k sk-stali-xxxxxxxx
 # hoặc
 stali setup -k sk-stali-xxxxxxxx   # stali onboard = tương đương
+stali setup -k sk-stali-... --json  # schemaVersion: 2 + pendingGateway
 
 # Kiểm tra
 stali status          # hoặc: stali ready / stali check

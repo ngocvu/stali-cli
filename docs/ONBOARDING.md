@@ -30,6 +30,7 @@ Setup sẽ: lưu key → `stali gw auto` (cài gateway app đã phát hiện) �
 | Lệnh | Mục đích |
 |------|----------|
 | `stali status --json` | Auth + gateway + `pendingGateway` |
+| `stali setup --json` | Setup một lệnh (`schemaVersion: 2`, `pendingGateway`) |
 | `stali ready --json` | Giống status (`command: "ready"`) |
 | `stali scan --json` | Quét app AI đang dùng |
 | `stali doctor --json` | Chi tiết 13 tool + plugin |
@@ -63,6 +64,7 @@ stali gw auto -k sk-stali-...
 stali doctor --strict --tools-only --json
 
 # Mẫu git hook: scripts/examples/git-hooks/pre-commit-stali-doctor.sh
+# Mẫu CI shell:   scripts/examples/shell/doctor-strict-ci.sh
 ```
 
 ## Luồng gợi ý hàng ngày

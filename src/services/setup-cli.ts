@@ -2,17 +2,23 @@ import chalk from "chalk";
 import type { InitOptions, InitResult } from "./init-cli";
 import { STALI_DASHBOARD_KEYS_URL } from "./auth-cli";
 import { VERSION } from "../version";
-import { deriveSetupNextCommand } from "./user-cli";
+import { deriveSetupNextCommand, ONBOARDING_DOC_URL } from "./user-cli";
 
 export function formatSetupJson(result: InitResult): Record<string, unknown> {
+  const pendingGateway = result.gateway?.pendingGateway ?? [];
+  const pendingGatewayCount = result.gateway?.pendingGatewayCount ?? 0;
   return {
+    command: "setup",
+    schemaVersion: 2,
     ok: result.success,
     version: VERSION,
     durationMs: result.durationMs,
     nextCommand: deriveSetupNextCommand(result),
     steps: result.steps,
-    pendingGatewayCount: result.gateway?.pendingGatewayCount ?? 0,
+    pendingGateway,
+    pendingGatewayCount,
     gateway: result.gateway,
+    onboardingDoc: ONBOARDING_DOC_URL,
   };
 }
 
@@ -32,6 +38,7 @@ export function printSetupResult(result: InitResult, opts?: { title?: string; do
     console.log(chalk.gray("Tiếp theo:"));
     console.log(chalk.cyan(`  ${next}`));
     console.log(chalk.cyan("  stali doctor           # kiểm tra chi tiết"));
+    console.log(chalk.gray(`  Hướng dẫn: ${ONBOARDING_DOC_URL}`));
     console.log(chalk.cyan(`  ${STALI_DASHBOARD_KEYS_URL}`));
     console.log("");
   } else {

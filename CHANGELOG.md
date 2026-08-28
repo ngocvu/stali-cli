@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.43.0] — 2026-08-28
+
+### Added
+- **`setup --json`** — `schemaVersion: 2`, `command: "setup"`, top-level `pendingGateway`, `onboardingDoc`
+- **Wizard `SetupDone`** + **`stali setup` human** — link hướng dẫn ONBOARDING sau cài đặt
+- **Bench** — `ready --json` trong fast mode; `doctor --strict --tools-only --json` + `STALI_BENCH_MAX_DOCTOR_STRICT_MS`
+- **Mẫu CI shell** — `scripts/examples/shell/doctor-strict-ci.sh`
+- **Completion tests** — assert `doctor --strict` bash/zsh/fish
+
+### Changed
+- Health Gate CI dry-run thêm `doctor-strict-ci.sh`
+- ONBOARDING: bảng lệnh `setup --json` schema v2
+
 ## [3.42.0] — 2026-08-28
 
 ### Added

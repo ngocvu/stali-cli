@@ -79,6 +79,9 @@ function benchCase(
     "gateway auto --dry-run --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_AUTO_MS || 300),
     "doctor --json": Number(process.env.STALI_BENCH_MAX_DOCTOR_MS || 300),
     "doctor --tools-only --json": Number(process.env.STALI_BENCH_MAX_DOCTOR_MS || 250),
+    "doctor --strict --tools-only --json": Number(
+      process.env.STALI_BENCH_MAX_DOCTOR_STRICT_MS || 280
+    ),
     "check --tools-only --json": Number(process.env.STALI_BENCH_MAX_CHECK_MS || 200),
     "status --json": Number(process.env.STALI_BENCH_MAX_STATUS_MS || 200),
     "ready --json": Number(process.env.STALI_BENCH_MAX_STATUS_MS || 200),
@@ -103,6 +106,7 @@ export function runColdStartBench(options?: {
         { name: "--version", args: ["--version"] },
         { name: "--help", args: ["--help"] },
         { name: "info --json", args: ["info", "--json"] },
+        { name: "ready --json", args: ["ready", "--json"] },
       ]
     : [
     { name: "--version", args: ["--version"] },
@@ -124,6 +128,7 @@ export function runColdStartBench(options?: {
     { name: "gateway scan --json", args: ["gateway", "scan", "--json"] },
     { name: "doctor --json", args: ["doctor", "--json"] },
     { name: "doctor --tools-only --json", args: ["doctor", "--tools-only", "--json"] },
+    { name: "doctor --strict --tools-only --json", args: ["doctor", "--strict", "--tools-only", "--json"] },
     { name: "check --tools-only --json", args: ["check", "--tools-only", "--json"] },
     { name: "status --json", args: ["status", "--json"] },
     { name: "ready --json", args: ["ready", "--json"] },
