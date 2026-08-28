@@ -47,6 +47,39 @@ async function main() {
   const pluginsInit = run(["plugins", "--init"]);
   assert("plugins --init exit 0", pluginsInit.status === 0);
 
+  const pluginsSuggest = run(["plugins", "suggest", "--json"]);
+  assert("plugins suggest --json exit 0", pluginsSuggest.status === 0);
+  if (pluginsSuggest.status === 0) {
+    try {
+      const parsed = JSON.parse(pluginsSuggest.stdout || "{}");
+      assert("plugins suggest JSON has suggestions", Array.isArray(parsed.suggestions));
+    } catch {
+      assert("plugins suggest JSON parseable", false);
+    }
+  }
+
+  const pluginsPreview = run([
+    "plugins",
+    "sync",
+    "--preview",
+    "--json",
+    "-k",
+    "sk-stali-" + "p".repeat(40),
+  ]);
+  assert("plugins sync --preview --json exit 0|1", pluginsPreview.status === 0 || pluginsPreview.status === 1);
+  if (pluginsPreview.status === 0) {
+    try {
+      const parsed = JSON.parse(pluginsPreview.stdout || "{}");
+      assert("plugins preview JSON preview flag", parsed.preview === true);
+      assert("plugins preview JSON has items", Array.isArray(parsed.items));
+      if (parsed.items?.length > 0) {
+        assert("plugins preview item has preview field", typeof parsed.items[0].preview === "object");
+      }
+    } catch {
+      assert("plugins preview JSON parseable", false);
+    }
+  }
+
   const docPlugins = run(["doctor", "--plugins-only", "--json"]);
   assert("doctor --plugins-only --json exit 0|1", docPlugins.status === 0 || docPlugins.status === 1);
 
@@ -311,6 +344,12 @@ async function main() {
       const parsed = JSON.parse(doctorJson.stdout);
       assert("doctor JSON has installedTools", Array.isArray(parsed.installedTools));
       assert("doctor JSON meta.installedToolsCount", typeof parsed.meta?.installedToolsCount === "number");
+      assert("doctor JSON pendingGateway", Array.isArray(parsed.pendingGateway));
+      assert("doctor JSON meta.schemaVersion", parsed.meta?.schemaVersion === 2);
+      assert(
+        "doctor JSON meta.pendingGatewayCount",
+        typeof parsed.meta?.pendingGatewayCount === "number"
+      );
       assert("doctor JSON meta.modelsEndpoint", typeof parsed.meta?.modelsEndpoint === "string");
     } catch {
       assert("doctor JSON parseable", false);

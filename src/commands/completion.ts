@@ -89,8 +89,8 @@ const INFO_FLAGS = ["--json", "--offline", "--online"];
 const BENCH_FLAGS = ["--json", "--strict", "--runs"];
 const TELEMETRY_SUB = ["status", "flush", "on", "off"];
 const CONFIG_SET_FLAGS = ["base-url", "--reset"];
-const PLUGINS_SUB = ["list", "sync", "--init"];
-const PLUGINS_SYNC_FLAGS = ["-k", "--key", "-m", "--model", "--dry-run", "--ids"];
+const PLUGINS_SUB = ["list", "sync", "suggest", "--init"];
+const PLUGINS_SYNC_FLAGS = ["-k", "--key", "-m", "--model", "--dry-run", "--preview", "--json", "--ids"];
 
 function bashCompletion(): string {
   const tools = [...TOOL_IDS, ...TOOL_ALIASES].join(" ");
@@ -169,6 +169,8 @@ _stali_completion() {
         COMPREPLY=( $(compgen -W "${PLUGINS_SUB.join(" ")}" -- "\${cur}") )
       elif [[ "\${COMP_WORDS[2]}" == "sync" ]]; then
         COMPREPLY=( $(compgen -W "${PLUGINS_SYNC_FLAGS.join(" ")}" -- "\${cur}") )
+      elif [[ "\${COMP_WORDS[2]}" == "suggest" ]]; then
+        COMPREPLY=( $(compgen -W "--json" -- "\${cur}") )
       else
         COMPREPLY=( $(compgen -W "--init" -- "\${cur}") )
       fi
@@ -321,6 +323,11 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
         telemetry)
           _arguments '1:sub:(status flush on off)' '--json[JSON với status/flush]'
           ;;
+        plugins)
+          _arguments \\
+            '1:sub:(list sync suggest)' \\
+            '--init[Khởi tạo plugins.json]'
+          ;;
         completion)
           _arguments '1:shell:(bash zsh fish)'
           ;;
@@ -405,6 +412,11 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from init' -l no-plugins",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from plugins' -l init",
+    "complete -c stali -n '__fish_seen_subcommand_from plugins' -a 'list sync suggest'",
+    "complete -c stali -n '__fish_seen_subcommand_from plugins sync' -l preview -d 'Preview config trước khi ghi'",
+    "complete -c stali -n '__fish_seen_subcommand_from plugins sync' -l dry-run",
+    "complete -c stali -n '__fish_seen_subcommand_from plugins sync' -l json",
+    "complete -c stali -n '__fish_seen_subcommand_from plugins suggest' -l json",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from gateway' -a 'auto scan plan install'",
     "complete -c stali -n '__fish_seen_subcommand_from gw' -a 'auto scan plan install'",

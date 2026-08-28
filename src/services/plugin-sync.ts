@@ -168,6 +168,8 @@ export interface PluginSyncItem {
   configPath?: string;
   backupPath?: string;
   error?: string;
+  patchStyle?: PluginPatchStyle;
+  preview?: Record<string, unknown>;
 }
 
 export async function runPluginsSync(opts: {
@@ -176,6 +178,7 @@ export async function runPluginsSync(opts: {
   model?: string;
   pluginIds?: string[];
   dryRun?: boolean;
+  preview?: boolean;
 }): Promise<{ items: PluginSyncItem[]; allOk: boolean }> {
   const { loadPlugins } = await import("./plugins");
   const plugins = await loadPlugins();
@@ -215,15 +218,34 @@ export async function runPluginsSync(opts: {
   }
 
   const items: PluginSyncItem[] = [];
+  const readOnly = Boolean(opts.dryRun || opts.preview);
 
   const syncOne = async (entry: PluginEntry): Promise<PluginSyncItem> => {
+    const patchStyle = inferPluginPatchStyle(entry);
+    const configPath = resolveHomePath(entry.configFile);
+    const preview = buildPluginConfigPreview(entry, opts.apiKey, opts.model, opts.baseUrl);
+
+    if (opts.preview) {
+      return {
+        pluginId: entry.id,
+        pluginName: entry.name,
+        success: true,
+        message: `Preview → ${entry.configFile} (${patchStyle})`,
+        configPath,
+        patchStyle,
+        preview,
+      };
+    }
+
     if (opts.dryRun) {
       return {
         pluginId: entry.id,
         pluginName: entry.name,
         success: true,
-        message: `Dry-run → ${entry.configFile} (${inferPluginPatchStyle(entry)})`,
-        configPath: resolveHomePath(entry.configFile),
+        message: `Dry-run → ${entry.configFile} (${patchStyle})`,
+        configPath,
+        patchStyle,
+        preview,
       };
     }
 
@@ -238,10 +260,11 @@ export async function runPluginsSync(opts: {
       configPath: result.configPath,
       backupPath: result.backupPath,
       error: result.error,
+      patchStyle,
     };
   };
 
-  if (targets.length > 1 && !opts.dryRun) {
+  if (targets.length > 1 && !readOnly) {
     items.push(...(await Promise.all(targets.map((entry) => syncOne(entry)))));
   } else {
     for (const entry of targets) {

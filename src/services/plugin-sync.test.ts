@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
-import { inferPluginPatchStyle, syncPluginEntry, buildPluginConfigPreview } from "./plugin-sync";
+import { inferPluginPatchStyle, syncPluginEntry, buildPluginConfigPreview, runPluginsSync } from "./plugin-sync";
 import type { PluginEntry } from "./plugins";
 
 describe("plugin-sync", () => {
@@ -75,6 +75,46 @@ describe("plugin-sync", () => {
     } finally {
       if (prev === undefined) delete process.env.HOME;
       else process.env.HOME = prev;
+      await fs.rm(home, { recursive: true, force: true });
+    }
+  });
+
+  test("runPluginsSync --preview không ghi file", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-sync-prev-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    await fs.mkdir(home, { recursive: true });
+    await fs.writeFile(
+      path.join(home, "plugins.json"),
+      JSON.stringify({
+        customTools: [
+          {
+            id: "p1",
+            name: "P1",
+            configFile: path.join(home, ".p1", "config.json"),
+            protocol: "openai",
+            patchStyle: "openai-json",
+          },
+        ],
+      })
+    );
+    try {
+      const { items, allOk } = await runPluginsSync({
+        apiKey: "sk-stali-" + "b".repeat(40),
+        preview: true,
+      });
+      expect(allOk).toBe(true);
+      expect(items[0]?.preview).toBeDefined();
+      expect(items[0]?.preview?.patchStyle).toBe("openai-json");
+      expect(JSON.stringify(items[0]?.preview)).toContain("…");
+      const exists = await fs
+        .access(path.join(home, ".p1", "config.json"))
+        .then(() => true)
+        .catch(() => false);
+      expect(exists).toBe(false);
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
       await fs.rm(home, { recursive: true, force: true });
     }
   });

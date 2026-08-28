@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.37.0] — 2026-08-28
+
+### Added
+- **`plugins sync --preview`** / **`--json`** — xem preview config (masked key) trước khi ghi; `--dry-run` cũng kèm preview
+- **`plugins suggest`** — gợi ý `patchStyle` từ file config thực tế (`--json`)
+- **`doctor --json` v2** — `pendingGateway[]`, `meta.pendingGatewayCount`, `meta.schemaVersion: 2`
+- **CI Windows** — typecheck, test, build, e2e offline, bench smoke trên `windows-latest`
+
+### Changed
+- Shell completion: `plugins suggest`, `plugins sync --preview` / `--json`
+
 ## [3.36.0] — 2026-08-28
 
 ### Added

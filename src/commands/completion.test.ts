@@ -31,6 +31,12 @@ describe("renderCompletion", () => {
     expect(zsh).toContain("--tools-only");
   });
 
+  test("bash includes plugins suggest và sync preview", () => {
+    const bash = renderCompletion("bash");
+    expect(bash).toContain("suggest");
+    expect(bash).toContain("--preview");
+  });
+
   test("unknown shell → null", () => {
     expect(renderCompletion("powershell")).toBeNull();
   });

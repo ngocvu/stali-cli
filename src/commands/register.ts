@@ -343,11 +343,20 @@ export function registerCommands(program: Command): void {
     .option("-k, --key <token>", "Stali API key")
     .option("-m, --model <model>", "Model Stali áp dụng")
     .option("--dry-run", "Chỉ liệt kê, không ghi file")
+    .option("--preview", "Xem preview config sẽ ghi (không ghi file)")
+    .option("--json", "JSON output (preview / dry-run / sync)")
     .option("--ids <list>", "Chỉ các plugin id (cách nhau bởi dấu phẩy)")
-    .action(async (opts: { key?: string; model?: string; dryRun?: boolean; ids?: string }) => {
+    .action(async (opts: {
+      key?: string;
+      model?: string;
+      dryRun?: boolean;
+      preview?: boolean;
+      json?: boolean;
+      ids?: string;
+    }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = await resolveApiKey(opts.key || globals.key);
-      if (!apiKey) {
+      if (!apiKey && !opts.preview) {
         console.error(chalk.red("❌ Thiếu API key. Dùng -k hoặc lưu token qua wizard."));
         process.exit(1);
       }
@@ -357,15 +366,37 @@ export function registerCommands(program: Command): void {
         : undefined;
 
       const { runPluginsSync } = await import("../services/plugin-sync");
+      const keyForRun =
+        apiKey ||
+        "sk-stali-preview-only-" + "0".repeat(24);
       const { items, allOk } = await runPluginsSync({
-        apiKey,
+        apiKey: keyForRun,
         baseUrl: cfg?.baseUrl,
         model: opts.model,
         pluginIds,
         dryRun: opts.dryRun,
+        preview: opts.preview,
       });
 
-      if (opts.dryRun) {
+      if (opts.json) {
+        console.log(
+          JSON.stringify(
+            {
+              ok: allOk,
+              preview: Boolean(opts.preview),
+              dryRun: Boolean(opts.dryRun),
+              items,
+            },
+            null,
+            2
+          )
+        );
+        process.exit(allOk ? 0 : 1);
+      }
+
+      if (opts.preview) {
+        console.log(chalk.bold.cyan("\n🔍 Plugins sync (preview)\n"));
+      } else if (opts.dryRun) {
         console.log(chalk.bold.cyan("\n🔍 Plugins sync (dry-run)\n"));
       } else {
         console.log(chalk.bold.cyan("\n🔌 PLUGINS SYNC\n"));
@@ -374,9 +405,45 @@ export function registerCommands(program: Command): void {
         const icon = item.success ? chalk.green("✓") : chalk.red("✗");
         console.log(`${icon} ${chalk.white(item.pluginName || item.pluginId)} — ${item.message}`);
         if (item.configPath) console.log(chalk.gray(`   ${item.configPath}`));
+        if (item.preview && (opts.preview || opts.dryRun)) {
+          console.log(chalk.gray(JSON.stringify(item.preview, null, 2).split("\n").map((l) => `   ${l}`).join("\n")));
+        }
       }
       console.log("");
       process.exit(allOk ? 0 : 1);
+    });
+
+  pluginsCmd
+    .command("suggest")
+    .description("Gợi ý patchStyle cho plugin từ file config thực tế")
+    .option("--json", "JSON output")
+    .action(async (opts: { json?: boolean }) => {
+      const { suggestPluginPatchStyles } = await import("../services/plugin-suggest");
+      const suggestions = await suggestPluginPatchStyles();
+      if (suggestions.length === 0) {
+        if (opts.json) {
+          console.log(JSON.stringify({ suggestions: [], message: "NO_PLUGINS" }, null, 2));
+        } else {
+          console.log(chalk.yellow("\n○ Không có plugin — stali plugins --init\n"));
+        }
+        process.exit(0);
+      }
+      if (opts.json) {
+        console.log(JSON.stringify({ suggestions }, null, 2));
+        process.exit(0);
+      }
+      console.log(chalk.bold.cyan("\n💡 PLUGINS — GỢI Ý patchStyle\n"));
+      for (const s of suggestions) {
+        const flag = s.changed ? chalk.yellow(" ⚠ đổi") : s.currentPatchStyle ? chalk.green(" ✓") : chalk.gray(" (mới)");
+        console.log(
+          `${chalk.white(s.pluginName)} (${s.pluginId})${flag}\n` +
+            chalk.gray(`   file: ${s.configFile}${s.configExists ? "" : " (chưa có)"}\n`) +
+            chalk.cyan(`   → ${s.suggestedPatchStyle}`) +
+            chalk.gray(` — ${s.reason}\n`)
+        );
+      }
+      console.log(chalk.gray("Cập nhật ~/.stali/plugins.json rồi: stali plugins sync\n"));
+      process.exit(0);
     });
 
   pluginsCmd

@@ -41,3 +41,33 @@ jobs:
 
       - name: Verify npm pack
         run: bun scripts/verify-npm-pack.ts
+
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun test
+
+      - name: Build
+        run: bun run build
+
+      - name: E2E smoke (offline)
+        run: bun scripts/e2e-smoke-offline.ts
+
+      - name: Bench smoke
+        run: bun dist/index.js bench --json --runs 1
+
+      - name: Verify dist exists
+        run: if (!(Test-Path dist/index.js)) { exit 1 }

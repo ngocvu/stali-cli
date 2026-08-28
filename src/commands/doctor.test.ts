@@ -21,6 +21,10 @@ describe("doctor unified JSON", () => {
       expect(payload.meta.modelsEndpoint).toContain("/v1/models");
       expect(Array.isArray(payload.installedTools)).toBe(true);
       expect(typeof payload.meta.installedToolsCount).toBe("number");
+      expect(Array.isArray(payload.pendingGateway)).toBe(true);
+      expect(typeof payload.meta.pendingGatewayCount).toBe("number");
+      expect(payload.meta.schemaVersion).toBe(2);
+      expect(payload.meta.pendingGatewayCount).toBe(payload.pendingGateway.length);
       expect(Array.isArray(payload.tools)).toBe(true);
       expect(Array.isArray(payload.plugins)).toBe(true);
       expect(payload.meta.toolsTotal).toBe(payload.tools.length);

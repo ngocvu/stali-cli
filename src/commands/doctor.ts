@@ -34,8 +34,11 @@ export interface DoctorJsonOutput {
     pluginsConfigured: number;
     pluginsTotal: number;
     installedToolsCount: number;
+    pendingGatewayCount: number;
+    schemaVersion: 2;
   };
   installedTools: DoctorInstalledToolSummary[];
+  pendingGateway: string[];
   tools: ToolHealthStatus[];
   plugins: PluginHealthStatus[];
 }
@@ -55,16 +58,25 @@ function summarizeInstalledTools(discovery: ToolDiscoveryEntry[]): DoctorInstall
 }
 
 function withInstalledMeta(
-  payload: Omit<DoctorJsonOutput, "installedTools"> & { installedTools?: DoctorInstalledToolSummary[] },
+  payload: Omit<DoctorJsonOutput, "installedTools" | "pendingGateway"> & {
+    installedTools?: DoctorInstalledToolSummary[];
+    pendingGateway?: string[];
+  },
   discovery: ToolDiscoveryEntry[]
 ): DoctorJsonOutput {
   const installedTools = summarizeInstalledTools(discovery);
+  const pendingGateway = discovery
+    .filter((e) => e.installed && !e.configuredForStali)
+    .map((e) => e.toolId);
   return {
     ...payload,
     installedTools,
+    pendingGateway,
     meta: {
       ...payload.meta,
       installedToolsCount: installedTools.length,
+      pendingGatewayCount: pendingGateway.length,
+      schemaVersion: 2,
     },
   };
 }
@@ -96,6 +108,8 @@ export async function buildDoctorJsonOutput(
           pluginsConfigured,
           pluginsTotal: pluginReport.plugins.length,
           installedToolsCount: 0,
+          pendingGatewayCount: 0,
+          schemaVersion: 2,
         },
         tools: [],
         plugins: pluginReport.plugins,
@@ -120,6 +134,8 @@ export async function buildDoctorJsonOutput(
           pluginsConfigured: 0,
           pluginsTotal: 0,
           installedToolsCount: 0,
+          pendingGatewayCount: 0,
+          schemaVersion: 2,
         },
         tools,
         plugins: [],
@@ -148,6 +164,8 @@ export async function buildDoctorJsonOutput(
         pluginsConfigured,
         pluginsTotal: pluginReport.plugins.length,
         installedToolsCount: 0,
+        pendingGatewayCount: 0,
+        schemaVersion: 2,
       },
       tools,
       plugins: pluginReport.plugins,
