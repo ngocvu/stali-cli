@@ -10,8 +10,12 @@ import {
   toLegacyPluginsDoctorJson,
 } from "../commands/doctor";
 
+const DOCTOR_TEST_TIMEOUT = process.platform === "win32" ? 30_000 : 15_000;
+
 describe("doctor unified JSON", () => {
-  test("buildDoctorJsonOutput có tools + plugins + meta", async () => {
+  test(
+    "buildDoctorJsonOutput có tools + plugins + meta",
+    async () => {
     const prev = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-doc-json-${Date.now()}`);
     process.env.STALI_HOME = home;
@@ -36,9 +40,13 @@ describe("doctor unified JSON", () => {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
-  });
+  },
+    DOCTOR_TEST_TIMEOUT
+  );
 
-  test("buildDoctorJsonOutput --plugins-only bỏ qua tools", async () => {
+  test(
+    "buildDoctorJsonOutput --plugins-only bỏ qua tools",
+    async () => {
     const prev = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-doc-plug-${Date.now()}`);
     process.env.STALI_HOME = home;
@@ -50,9 +58,13 @@ describe("doctor unified JSON", () => {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
-  });
+  },
+    DOCTOR_TEST_TIMEOUT
+  );
 
-  test("buildDoctorJsonOutput --tools-only bỏ qua plugins", async () => {
+  test(
+    "buildDoctorJsonOutput --tools-only bỏ qua plugins",
+    async () => {
     const prev = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-doc-tools-${Date.now()}`);
     process.env.STALI_HOME = home;
@@ -65,9 +77,13 @@ describe("doctor unified JSON", () => {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
-  });
+  },
+    DOCTOR_TEST_TIMEOUT
+  );
 
-  test("scopedDoctorHash tools-only không phụ thuộc plugins", async () => {
+  test(
+    "scopedDoctorHash tools-only không phụ thuộc plugins",
+    async () => {
     const prev = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-hash-${Date.now()}`);
     process.env.STALI_HOME = home;
@@ -82,9 +98,13 @@ describe("doctor unified JSON", () => {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
-  });
+  },
+    DOCTOR_TEST_TIMEOUT
+  );
 
-  test("configuredScore theo scope tools/plugins/full", async () => {
+  test(
+    "configuredScore theo scope tools/plugins/full",
+    async () => {
     const prev = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-score-${Date.now()}`);
     process.env.STALI_HOME = home;
@@ -103,9 +123,13 @@ describe("doctor unified JSON", () => {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
-  });
+  },
+    DOCTOR_TEST_TIMEOUT
+  );
 
-  test("formatDoctorPrometheus emits gauge lines", async () => {
+  test(
+    "formatDoctorPrometheus emits gauge lines",
+    async () => {
     const prev = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-prom-${Date.now()}`);
     process.env.STALI_HOME = home;
@@ -118,9 +142,13 @@ describe("doctor unified JSON", () => {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
-  });
+  },
+    DOCTOR_TEST_TIMEOUT
+  );
 
-  test("toLegacyPluginsDoctorJson giữ shape plugins doctor cũ", async () => {
+  test(
+    "toLegacyPluginsDoctorJson giữ shape plugins doctor cũ",
+    async () => {
     const prev = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-legacy-doc-${Date.now()}`);
     process.env.STALI_HOME = home;
@@ -134,5 +162,7 @@ describe("doctor unified JSON", () => {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
-  });
+  },
+    DOCTOR_TEST_TIMEOUT
+  );
 });

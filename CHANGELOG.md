@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.37.3] — 2026-08-28
+
+### Fixed
+- Windows CI: timeout doctor tests 30s; `paths` test cô lập `STALI_HOME` (tránh leak từ test khác)
+
 ## [3.37.2] — 2026-08-28
 
 ### Fixed

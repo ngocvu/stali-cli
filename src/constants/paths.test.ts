@@ -10,11 +10,22 @@ import {
 
 describe("paths constants", () => {
   test("default layout under ~/.stali", () => {
-    const home = os.homedir();
-    expect(getStaliHome()).toBe(path.join(home, ".stali"));
-    expect(getStaliCliInstallDir()).toBe(path.join(home, ".stali", "cli"));
-    expect(getStaliBinDir()).toBe(path.join(home, ".stali", "bin"));
-    expect(getStaliConfigPath()).toBe(path.join(home, ".stali", "config.json"));
+    const prevHome = process.env.STALI_HOME;
+    const prevCli = process.env.STALI_CLI_INSTALL_DIR;
+    delete process.env.STALI_HOME;
+    delete process.env.STALI_CLI_INSTALL_DIR;
+    try {
+      const home = os.homedir();
+      expect(getStaliHome()).toBe(path.join(home, ".stali"));
+      expect(getStaliCliInstallDir()).toBe(path.join(home, ".stali", "cli"));
+      expect(getStaliBinDir()).toBe(path.join(home, ".stali", "bin"));
+      expect(getStaliConfigPath()).toBe(path.join(home, ".stali", "config.json"));
+    } finally {
+      if (prevHome === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prevHome;
+      if (prevCli === undefined) delete process.env.STALI_CLI_INSTALL_DIR;
+      else process.env.STALI_CLI_INSTALL_DIR = prevCli;
+    }
   });
 
   test("STALI_HOME override", () => {
