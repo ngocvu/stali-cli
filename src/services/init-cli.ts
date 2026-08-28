@@ -149,3 +149,20 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
     steps,
   };
 }
+
+/** Luồng setup nhanh cho user: auth + gateway auto (-y) + check, bỏ completion/version check. */
+export async function runUserSetup(opts: InitOptions): Promise<InitResult> {
+  return runInit({
+    ...opts,
+    yes: opts.yes ?? true,
+    skipCompletion: opts.skipCompletion ?? true,
+    skipCliCheck: opts.skipCliCheck ?? true,
+  });
+}
+
+export function formatInitSteps(steps: InitResult["steps"]): string[] {
+  return steps.map((step) => {
+    const icon = step.ok ? "✓" : "✗";
+    return `${icon} ${step.name}${step.detail ? ` — ${step.detail}` : ""}`;
+  });
+}

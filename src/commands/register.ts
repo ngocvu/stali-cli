@@ -139,8 +139,43 @@ export function registerCommands(program: Command): void {
     });
 
   program
+    .command("setup")
+    .description("Cài Stali API nhanh nhất: auth + gateway auto + kiểm tra (khuyến nghị)")
+    .option("-k, --key <token>", "Stali API key (sk-stali-...)")
+    .option("--include-plugins", "Đồng bộ plugin nếu có plugins.json")
+    .option("--no-plugins", "Bỏ qua plugin")
+    .option("--all-apps", "Cài gateway cả 13 tool (không chỉ app đang dùng)")
+    .option("--skip-configure", "Chỉ lưu API key")
+    .action(async (opts: {
+      key?: string;
+      includePlugins?: boolean;
+      noPlugins?: boolean;
+      allApps?: boolean;
+      skipConfigure?: boolean;
+    }) => {
+      const globals = program.opts<{ key?: string }>();
+      const apiKey = opts.key || globals.key;
+      if (!apiKey?.trim()) {
+        console.error(chalk.red(`❌ ${t("missing_key")}`));
+        console.log(chalk.cyan(`\nVí dụ: stali setup -k sk-stali-...\n${STALI_DASHBOARD_KEYS_URL}\n`));
+        process.exit(1);
+      }
+      const { runUserSetup } = await import("../services/init-cli");
+      const { printSetupResult } = await import("../services/setup-cli");
+      const result = await runUserSetup({
+        apiKey: apiKey.trim(),
+        skipConfigure: opts.skipConfigure,
+        includePlugins: opts.includePlugins,
+        noPlugins: opts.noPlugins,
+        installedOnly: !opts.allApps,
+      });
+      printSetupResult(result);
+      process.exit(result.success ? 0 : 1);
+    });
+
+  program
     .command("init")
-    .description("Khởi tạo nhanh: auth + gateway auto + check")
+    .description("Khởi tạo đầy đủ (completion, kiểm tra phiên bản). Nhanh hơn: stali setup")
     .option("-k, --key <token>", "Stali API key")
     .option("--skip-configure", "Chỉ lưu API key, không configure-all")
     .option("--include-plugins", "Đồng bộ plugin (mặc định: bật nếu plugins.json có entry)")
@@ -170,6 +205,7 @@ export function registerCommands(program: Command): void {
       }
       console.log(chalk.bold.cyan(`\n${t("init_title")}\n`));
       const { runInit } = await import("../services/init-cli");
+      const { printSetupResult } = await import("../services/setup-cli");
       const result = await runInit({
         apiKey: apiKey.trim(),
         skipConfigure: opts.skipConfigure,
@@ -179,13 +215,9 @@ export function registerCommands(program: Command): void {
         skipCliCheck: opts.skipCliCheck,
         upgradeCli: opts.upgradeCli,
         installedOnly: !opts.allApps,
-        yes: opts.yes,
+        yes: opts.yes ?? true,
       });
-      for (const step of result.steps) {
-        const icon = step.ok ? chalk.green("✓") : chalk.red("✗");
-        console.log(`${icon} ${step.name}${step.detail ? chalk.gray(` — ${step.detail}`) : ""}`);
-      }
-      console.log(result.success ? chalk.green(`\n✅ ${t("init_done")}\n`) : chalk.red("\n❌ Init incomplete\n"));
+      printSetupResult(result, { title: t("init_title"), done: t("init_done") });
       process.exit(result.success ? 0 : 1);
     });
 

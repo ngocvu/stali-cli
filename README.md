@@ -32,13 +32,15 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🔗 **Open**: `stali open keys` · **Guide**: `stali guide cursor`
 - ⚙️ **Wizard configure-all**: batch 11/13 tool từ menu chính
 - 🟣 **13/13 menu riêng**: Qwen, Droid, Cowork — không còn generic fallback
-- 🚀 **Init**: `stali init` — onboarding một lệnh (auth + configure-all + check)
+- 🚀 **Setup**: `stali setup -k sk-stali-...` — **lệnh khuyến nghị** (auth + gateway + check, ~vài giây)
+- 🚀 **Init**: `stali init` — đầy đủ hơn (completion, version check)
 - 🔌 **Plugins**: `stali plugins list|sync` — registry `~/.stali/plugins.json` + syncer tự động
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
-- 📦 **v3.27**: `telemetry flush`, `init -y`, init dùng gateway auto đúng, info telemetry field
-- 📦 **v3.26**: `gw --yes`, telemetry retry queue, admin SSE live
+- 📦 **v3.28**: `stali setup` — lệnh user nhanh nhất
+- 📦 **v3.27**: `telemetry flush`, init gateway auto fix
+- 📦 **v3.26**: `gw --yes`, telemetry retry queue
 - 📦 **v3.21**: `gateway auto`, discovery process/app markers, info online nhanh hơn
 - 📦 **v3.20**: wizard gateway menu + plan, info offline flag, bench gateway plan
 - 📦 **v3.19**: `gateway plan`, shell completion bench/telemetry, plugin scan parallel

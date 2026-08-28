@@ -14,6 +14,7 @@ const SUBCOMMANDS = [
   "paths",
   "tools",
   "init",
+  "setup",
   "plugins",
   "config",
   "check",
@@ -235,6 +236,14 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
             '--skip-configure[Bỏ configure-all]' \\
             '--include-plugins[Đồng bộ plugin]' \\
             '--no-plugins[Bỏ plugin]'
+          ;;
+        setup)
+          _arguments \\
+            '(-k --key)'{-k,--key}'[API key — khuyến nghị]' \\
+            '--skip-configure[Chỉ lưu key]' \\
+            '--include-plugins[Đồng bộ plugin]' \\
+            '--no-plugins[Bỏ plugin]' \\
+            '--all-apps[Cả 13 tool]'
           ;;
         wizard)
           _arguments '(-k --key)'{-k,--key}'[API key khởi tạo wizard]'

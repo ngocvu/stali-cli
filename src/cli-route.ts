@@ -3,6 +3,7 @@ export const STALI_SUBCOMMANDS = new Set([
   "paths",
   "tools",
   "init",
+  "setup",
   "plugins",
   "config",
   "check",

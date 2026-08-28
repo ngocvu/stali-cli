@@ -258,6 +258,8 @@ async function main() {
     }
   }
 
+  assert("setup --help exit 0", run(["setup", "--help"]).status === 0);
+
   const telemetryStatus = run(["telemetry", "status", "--json"]);
   assert("telemetry status --json exit 0", telemetryStatus.status === 0);
 

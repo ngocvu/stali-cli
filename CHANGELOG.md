@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.28.0] — 2026-08-28
+
+### Added
+- **`stali setup`** — lệnh chính cho user: auth + gateway auto + check (nhanh nhất)
+- **`printSetupResult`** — hướng dẫn bước tiếp theo sau setup/init
+
+### Changed
+- **`stali init`** — mặc định `-y` gateway; gợi ý dùng `stali setup` cho luồng nhanh
+- Postinstall/README tập trung user setup, bỏ tham chiếu admin telemetry
+
+### Removed
+- (api.stali.vn) Admin CLI telemetry dashboard/API — không dùng cho user
+
 ## [3.27.0] — 2026-08-28
 
 ### Added

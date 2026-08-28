@@ -47,4 +47,20 @@ describe("init-cli", () => {
     ];
     expect(evaluateInitSuccess(steps, { skipConfigure: true })).toBe(true);
   });
+
+  test("runUserSetup defaults fast flags", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-setup-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    const fakeKey = "sk-stali-" + "x".repeat(40);
+    try {
+      const { runUserSetup } = await import("../services/init-cli");
+      const result = await runUserSetup({ apiKey: fakeKey, skipConfigure: true });
+      expect(result.steps.some((s) => s.name === "completion install")).toBe(false);
+      expect(result.steps.some((s) => s.name === "cli version")).toBe(false);
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
+    }
+  });
 });

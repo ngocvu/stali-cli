@@ -42,9 +42,7 @@ if (isDevCheckout && process.env.FORCE_STALI_POSTINSTALL !== "1") {
 // Gợi ý ngắn sau cài npm (không spam fund/audit — package không có runtime deps)
 process.stderr.write(
   `\n✅ stali-cli v${version} (prebuilt, 0 npm deps)\n` +
-    "   stali init -k sk-...         # auth + gateway auto + check\n" +
-    "   stali gw                     # auto khi đã có key (hoặc: stali gw auto)\n" +
-    "   stali gw plan --json         # kế hoạch cài gateway\n" +
-    "   stali telemetry on           # opt-in telemetry ẩn danh\n" +
+    "   stali setup -k sk-stali-...   # nhanh nhất: auth + gateway + check\n" +
+    "   stali auth login -k sk-...   # hoặc đăng nhập rồi: stali gw\n" +
     "   stali --help\n\n"
 );
