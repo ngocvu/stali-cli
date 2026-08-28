@@ -21,9 +21,9 @@ try {
     fs.mkdirSync(distDir, { recursive: true });
   }
 
-  console.log("1️⃣  Bundling TypeScript source (target: bun)...");
+  console.log("1️⃣  Bundling TypeScript (target: bun, code-splitting)...");
   execSync(
-    `bun build src/index.ts --outfile dist/index.js --target bun --define __STALI_VERSION__='"${pkg.version}"'`,
+    `bun build src/index.ts --outdir dist --target bun --splitting --define __STALI_VERSION__='"${pkg.version}"'`,
     { cwd: rootDir, stdio: "inherit" }
   );
 
@@ -41,10 +41,11 @@ try {
   const duration = Date.now() - startTime;
   const stat = fs.statSync(distFile);
   const sizeKb = (stat.size / 1024).toFixed(2);
+  const chunks = fs.readdirSync(distDir).filter((f) => f.endsWith(".js"));
 
   console.log("\n✨ stali-cli build completed!");
   console.log(`⏱️  Duration: ${duration}ms`);
-  console.log(`📁 Output: dist/index.js (${sizeKb} KB)\n`);
+  console.log(`📁 Output: dist/index.js (${sizeKb} KB), ${chunks.length} chunk(s)\n`);
 } catch (error) {
   console.error("❌ stali-cli build failed:", error);
   process.exit(1);

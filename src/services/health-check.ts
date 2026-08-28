@@ -1,5 +1,6 @@
 import { authStatus } from "./auth-cli";
 import { runDoctorScan } from "./syncers";
+import { runPluginsDoctor } from "./plugin-doctor";
 
 export interface HealthCheckResult {
   ok: boolean;
@@ -7,6 +8,8 @@ export interface HealthCheckResult {
   authError?: string;
   doctorConfigured: number;
   doctorTotal: number;
+  pluginsConfigured: number;
+  pluginsTotal: number;
   strict: boolean;
   messages: string[];
 }
@@ -34,7 +37,23 @@ export async function runHealthCheck(strict = false): Promise<HealthCheckResult>
     messages.push(`Chưa OK: ${missing.join(", ")}`);
   }
 
-  const ok = authOk && (!strict || configured === total);
+  const pluginReport = await runPluginsDoctor();
+  const pluginsTotal = pluginReport.plugins.length;
+  const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
+
+  if (pluginsTotal > 0) {
+    messages.push(`Plugins: ${pluginsConfigured}/${pluginsTotal} trỏ Stali`);
+    if (pluginsConfigured < pluginsTotal) {
+      const missingPlugins = pluginReport.plugins
+        .filter((p) => !p.configuredForStali)
+        .map((p) => p.pluginId);
+      messages.push(`Plugin chưa OK: ${missingPlugins.join(", ")}`);
+    }
+  }
+
+  const toolsStrictOk = !strict || configured === total;
+  const pluginsStrictOk = !strict || pluginsTotal === 0 || pluginsConfigured === pluginsTotal;
+  const ok = authOk && toolsStrictOk && pluginsStrictOk;
 
   return {
     ok,
@@ -42,6 +61,8 @@ export async function runHealthCheck(strict = false): Promise<HealthCheckResult>
     authError: auth.error,
     doctorConfigured: configured,
     doctorTotal: total,
+    pluginsConfigured,
+    pluginsTotal,
     strict,
     messages,
   };

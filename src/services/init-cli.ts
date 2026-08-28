@@ -7,6 +7,7 @@ export interface InitOptions {
   apiKey: string;
   skipConfigure?: boolean;
   baseUrl?: string;
+  includePlugins?: boolean;
 }
 
 export interface InitResult {
@@ -24,6 +25,14 @@ export function evaluateInitSuccess(
   const check = steps.find((s) => s.name === "check");
   const configureOk = opts.skipConfigure ? true : (configure?.ok ?? false);
   return Boolean(login?.ok && configureOk && check?.ok);
+}
+
+function formatHealthDetail(health: Awaited<ReturnType<typeof runHealthCheck>>): string {
+  const tools = `${health.doctorConfigured}/${health.doctorTotal} tools`;
+  if (health.pluginsTotal > 0) {
+    return `${tools}, ${health.pluginsConfigured}/${health.pluginsTotal} plugins`;
+  }
+  return tools;
 }
 
 export async function runInit(opts: InitOptions): Promise<InitResult> {
@@ -47,12 +56,14 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
       baseUrl,
       skipAdvanced: true,
       continueOnError: true,
+      includePlugins: opts.includePlugins,
     });
     const okCount = batch.items.filter((i) => i.success).length;
+    const label = opts.includePlugins ? "tools+plugins" : "tools";
     steps.push({
       name: "configure-all",
       ok: batch.allOk,
-      detail: `${okCount}/${batch.items.length} tools`,
+      detail: `${okCount}/${batch.items.length} ${label}`,
     });
   } else {
     steps.push({ name: "configure-all", ok: true, detail: "skipped" });
@@ -62,7 +73,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   steps.push({
     name: "check",
     ok: health.authOk,
-    detail: `${health.doctorConfigured}/${health.doctorTotal} Stali OK`,
+    detail: formatHealthDetail(health),
   });
 
   return {

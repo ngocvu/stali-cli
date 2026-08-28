@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.6.0] — 2026-08-28
+
+### Added
+- **`stali init --include-plugins`** — khởi tạo kèm đồng bộ plugin từ `~/.stali/plugins.json`
+- **`stali check --strict`** — khi có plugin đã khai báo, yêu cầu cả tool lẫn plugin trỏ Stali
+- **`stali doctor --json`** — payload thống nhất: `meta`, `tools`, `plugins` (gộp `plugins doctor`)
+- **`stali info`** — hiển thị tóm tắt plugin khi `plugins.json` không rỗng
+- **`doctor --watch --notify`** — hash thay đổi gồm cả plugin
+
+### Changed
+- **Lazy-load wizard** — Ink/React chỉ tải khi chạy `stali` (không tham số); cold-start subcommand nhẹ hơn
+- **Build** — `bun build --splitting` tách chunk UI riêng
+- **npm `bin`** — trỏ `./dist/index.js` (sửa cảnh báo publish)
+
 ## [2.5.0] — 2026-08-28
 
 ### Added

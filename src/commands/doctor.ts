@@ -2,9 +2,11 @@ import chalk from "chalk";
 import { loadStaliConfig } from "../services/config";
 import { runDoctorFix } from "../services/doctor-fix";
 import { runDoctorScan } from "../services/syncers";
+import { runPluginsDoctor, type PluginHealthStatus } from "../services/plugin-doctor";
 import { doctorSnapshotHash, notifyChange } from "../services/notify";
 import { resolveStaliUrls } from "../utils/stali-urls";
 import { t, getLocale } from "../i18n";
+import type { ToolHealthStatus } from "../services/syncers";
 
 export interface DoctorJsonOutput {
   meta: {
@@ -12,23 +14,60 @@ export interface DoctorJsonOutput {
     openAiBaseUrl: string;
     anthropicBaseUrl: string;
     modelsEndpoint: string;
+    toolsConfigured: number;
+    toolsTotal: number;
+    pluginsConfigured: number;
+    pluginsTotal: number;
   };
-  tools: Awaited<ReturnType<typeof runDoctorScan>>;
+  tools: ToolHealthStatus[];
+  plugins: PluginHealthStatus[];
 }
 
 export async function buildDoctorJsonOutput(): Promise<DoctorJsonOutput> {
   const cfg = await loadStaliConfig();
   const urls = resolveStaliUrls(cfg?.baseUrl);
-  const tools = await runDoctorScan({ urls });
+  const [tools, pluginReport] = await Promise.all([
+    runDoctorScan({ urls }),
+    runPluginsDoctor(),
+  ]);
+  const toolsConfigured = tools.filter((s) => s.configuredForStali).length;
+  const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
+
   return {
     meta: {
       baseUrl: cfg?.baseUrl || urls.openAiBaseUrl,
       openAiBaseUrl: urls.openAiBaseUrl,
       anthropicBaseUrl: urls.anthropicBaseUrl,
       modelsEndpoint: urls.modelsEndpoint,
+      toolsConfigured,
+      toolsTotal: tools.length,
+      pluginsConfigured,
+      pluginsTotal: pluginReport.plugins.length,
     },
     tools,
+    plugins: pluginReport.plugins,
   };
+}
+
+function printPluginSection(plugins: PluginHealthStatus[]) {
+  if (plugins.length === 0) return;
+  const configured = plugins.filter((p) => p.configuredForStali);
+  console.log(
+    chalk.magenta(`\n🔌 Plugins: ${configured.length}/${plugins.length} trỏ Stali\n`)
+  );
+  for (const p of plugins) {
+    const icon = p.configuredForStali ? chalk.green("✓") : chalk.yellow("○");
+    const state = p.configuredForStali
+      ? chalk.green("Stali OK")
+      : p.exists
+      ? chalk.yellow("chưa trỏ Stali")
+      : chalk.gray("chưa có file");
+    console.log(
+      `${icon} ${chalk.white(p.pluginName)} (${p.patchStyle}) — ${state}${p.model ? chalk.gray(` (${p.model})`) : ""}`
+    );
+    if (p.endpoint) console.log(chalk.gray(`   ${p.endpoint}`));
+    console.log(chalk.gray(`   ${p.configPath}`));
+  }
 }
 
 export async function runDoctor(jsonOut?: boolean, fixOpts?: {
@@ -101,7 +140,20 @@ export async function runDoctor(jsonOut?: boolean, fixOpts?: {
     }
     console.log(chalk.gray(`   ${s.configPath}`));
   }
+
+  printPluginSection(payload.plugins);
   console.log("");
+}
+
+export function combinedDoctorHash(payload: DoctorJsonOutput): string {
+  const toolHash = doctorSnapshotHash(payload.tools);
+  const pluginHash = payload.plugins
+    .map(
+      (p) =>
+        `${p.pluginId}:${p.configuredForStali ? "1" : "0"}:${p.model || ""}:${p.endpoint || ""}`
+    )
+    .join("|");
+  return `${toolHash}#${pluginHash}`;
 }
 
 export async function runDoctorWatch(intervalSec: number, jsonOut?: boolean, notify?: boolean) {
@@ -125,11 +177,15 @@ export async function runDoctorWatch(intervalSec: number, jsonOut?: boolean, not
     }
     const payload = await buildDoctorJsonOutput();
     const statuses = payload.tools;
-    const hash = doctorSnapshotHash(statuses);
+    const hash = combinedDoctorHash(payload);
     if (notify && prevHash && hash !== prevHash) {
       const configured = statuses.filter((s) => s.configuredForStali).length;
+      const pConfigured = payload.plugins.filter((p) => p.configuredForStali).length;
       console.log(chalk.yellow(`\n${t("doctor_changed")}\n`));
-      notifyChange("stali-cli doctor", `${configured}/${statuses.length} tools → Stali`);
+      notifyChange(
+        "stali-cli doctor",
+        `${configured}/${statuses.length} tools, ${pConfigured}/${payload.plugins.length} plugins`
+      );
     }
     prevHash = hash;
 
@@ -139,13 +195,18 @@ export async function runDoctorWatch(intervalSec: number, jsonOut?: boolean, not
       const configured = statuses.filter((s) => s.configuredForStali);
       console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR\n"));
       console.log(
-        chalk.green(`✅ ${configured.length}/${statuses.length}\n`)
+        chalk.green(`✅ ${configured.length}/${statuses.length} tools`)
       );
+      if (payload.plugins.length > 0) {
+        const pOk = payload.plugins.filter((p) => p.configuredForStali).length;
+        console.log(chalk.magenta(`🔌 ${pOk}/${payload.plugins.length} plugins\n`));
+      } else {
+        console.log("");
+      }
       for (const s of statuses) {
         const icon = s.configuredForStali ? chalk.green("✓") : chalk.yellow("○");
         console.log(`${icon} ${chalk.white(s.toolName)}${s.model ? chalk.gray(` (${s.model})`) : ""}`);
       }
-      console.log("");
     }
 
     if (!running) break;

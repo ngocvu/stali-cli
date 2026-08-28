@@ -1,8 +1,6 @@
 import { Command } from "commander";
-import React from "react";
-import { render } from "ink";
 import chalk from "chalk";
-import { Wizard } from "../ui/Wizard";
+import { launchWizard } from "./wizard-launcher";
 import {
   loadStaliConfig,
   loadStaliConfigOrCorrupt,
@@ -91,7 +89,7 @@ export function registerCommands(program: Command): void {
         process.exit(0);
       }
 
-      render(React.createElement(Wizard, { initialKey: options.key }));
+      await launchWizard(options.key);
     });
 
   program
@@ -107,7 +105,7 @@ export function registerCommands(program: Command): void {
   program
     .command("check")
     .description("Kiểm tra nhanh: auth + doctor (exit 1 nếu lỗi)")
-    .option("--strict", "Yêu cầu 13/13 tool đã trỏ Stali")
+    .option("--strict", "Yêu cầu tất cả tool (và plugin nếu có) đã trỏ Stali")
     .option("--json", "Xuất JSON")
     .action(async (opts: { strict?: boolean; json?: boolean }) => {
       const result = await runHealthCheck(opts.strict);
@@ -128,7 +126,8 @@ export function registerCommands(program: Command): void {
     .description("Khởi tạo nhanh: auth login + configure-all (11 tool) + check")
     .option("-k, --key <token>", "Stali API key")
     .option("--skip-configure", "Chỉ lưu API key, không configure-all")
-    .action(async (opts: { key?: string; skipConfigure?: boolean }) => {
+    .option("--include-plugins", "Đồng bộ thêm plugin từ ~/.stali/plugins.json")
+    .action(async (opts: { key?: string; skipConfigure?: boolean; includePlugins?: boolean }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = opts.key || globals.key;
       if (!apiKey?.trim()) {
@@ -140,6 +139,7 @@ export function registerCommands(program: Command): void {
       const result = await runInit({
         apiKey: apiKey.trim(),
         skipConfigure: opts.skipConfigure,
+        includePlugins: opts.includePlugins,
       });
       for (const step of result.steps) {
         const icon = step.ok ? chalk.green("✓") : chalk.red("✗");
@@ -342,6 +342,11 @@ export function registerCommands(program: Command): void {
       console.log(
         `${chalk.white("Doctor")}      ${chalk.green(info.doctor.configured)}/${info.doctor.total} tool trỏ Stali`
       );
+      if (info.plugins.total > 0) {
+        console.log(
+          `${chalk.white("Plugins")}     ${chalk.magenta(`${info.plugins.configured}/${info.plugins.total} trỏ Stali`)}`
+        );
+      }
       console.log("");
       process.exit(0);
     });

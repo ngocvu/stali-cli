@@ -9,6 +9,7 @@ import {
 } from "../constants/paths";
 import { runDoctorScan } from "./syncers";
 import { authStatus } from "./auth-cli";
+import { runPluginsDoctor } from "./plugin-doctor";
 
 export interface CliInfoSnapshot {
   version: string;
@@ -29,6 +30,10 @@ export interface CliInfoSnapshot {
     configured: number;
     total: number;
   };
+  plugins: {
+    configured: number;
+    total: number;
+  };
 }
 
 function detectBunVersion(): string | undefined {
@@ -44,9 +49,13 @@ export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
     .then(() => true)
     .catch(() => false);
 
-  const auth = await authStatus();
-  const doctorStatuses = await runDoctorScan();
+  const [auth, doctorStatuses, pluginReport] = await Promise.all([
+    authStatus(),
+    runDoctorScan(),
+    runPluginsDoctor(),
+  ]);
   const configured = doctorStatuses.filter((s) => s.configuredForStali).length;
+  const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
 
   return {
     version: VERSION,
@@ -66,6 +75,10 @@ export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
     doctor: {
       configured,
       total: doctorStatuses.length,
+    },
+    plugins: {
+      configured: pluginsConfigured,
+      total: pluginReport.plugins.length,
     },
   };
 }
