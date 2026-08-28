@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.32.0] — 2026-08-28
+
+### Added
+- **`stali ready`** — alias `stali status` (kiểm tra API sẵn sàng)
+- **Setup `durationMs`** — hiển thị thời gian + JSON field `version`/`durationMs`
+- **Bench** — thêm `status --json`, `setup --skip-configure --json` + ngưỡng perf
+
+### Changed
+- **Doctor scan cache** (TTL 4s) — setup/status/doctor không quét lại ngay sau configure
+- **`--help`** — footer gợi ý luồng user
+- Setup thành công gợi ý `stali status` trước `doctor`
+
 ## [3.31.0] — 2026-08-28
 
 ### Added

@@ -22,6 +22,7 @@ export interface InitOptions {
 export interface InitResult {
   success: boolean;
   steps: { name: string; ok: boolean; detail?: string }[];
+  durationMs?: number;
 }
 
 /** Pure helper — dùng trong test và runInit */
@@ -45,6 +46,7 @@ function formatHealthDetail(health: Awaited<ReturnType<typeof runHealthCheck>>):
 }
 
 export async function runInit(opts: InitOptions): Promise<InitResult> {
+  const t0 = performance.now();
   const steps: InitResult["steps"] = [];
   const config = await loadStaliConfig();
   const baseUrl = opts.baseUrl ?? config?.baseUrl;
@@ -94,7 +96,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
     detail: login.message,
   });
   if (!login.success) {
-    return { success: false, steps };
+    return { success: false, steps, durationMs: Math.round(performance.now() - t0) };
   }
 
   const preDiscovery = "preDiscovery" in login ? login.preDiscovery : null;
@@ -191,6 +193,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   return {
     success: evaluateInitSuccess(steps, { skipConfigure: opts.skipConfigure }),
     steps,
+    durationMs: Math.round(performance.now() - t0),
   };
 }
 

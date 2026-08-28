@@ -61,6 +61,12 @@ export function registerCommands(program: Command): void {
     .option("--models", "Xem nhanh danh sách và bảng giá model thời gian thực")
     .option("-r, --reset", "Xóa token đã lưu trong ~/.stali/config.json để đăng nhập lại")
     .option("--logout", "Đăng xuất / xóa token đã lưu")
+    .addHelpText(
+      "after",
+      chalk.cyan(
+        "\nUser: stali -k sk-stali-...  ·  stali status  ·  stali doctor  ·  stali gw\n"
+      )
+    )
     .hook("preAction", (thisCommand, actionCommand) => {
       const globals = actionCommand.optsWithGlobals?.() ?? thisCommand.opts();
       const lang = globals.lang || process.env.STALI_LANG;
@@ -182,6 +188,17 @@ export function registerCommands(program: Command): void {
   program
     .command("status")
     .description("Trạng thái setup nhanh (auth + gateway) — không cần wizard")
+    .option("--json", "JSON output")
+    .option("--online", "Validate API key qua mạng")
+    .action(async (opts: { json?: boolean; online?: boolean }) => {
+      const { runUserStatus } = await import("../services/status-cli");
+      const code = await runUserStatus({ json: opts.json, validateAuth: opts.online });
+      process.exit(code);
+    });
+
+  program
+    .command("ready")
+    .description("Alias của stali status — API đã sẵn sàng chưa?")
     .option("--json", "JSON output")
     .option("--online", "Validate API key qua mạng")
     .action(async (opts: { json?: boolean; online?: boolean }) => {

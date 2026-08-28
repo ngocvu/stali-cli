@@ -260,6 +260,7 @@ async function main() {
 
   assert("setup --help exit 0", run(["setup", "--help"]).status === 0);
   assert("status --json exit 0|1", [0, 1].includes(run(["status", "--json"]).status));
+  assert("ready --json exit 0|1", [0, 1].includes(run(["ready", "--json"]).status));
   const setupJson = run(["setup", "--json", "-k", "sk-stali-" + "x".repeat(40), "--skip-configure"]);
   assert("setup --json exit 0|1", setupJson.status === 0 || setupJson.status === 1);
   if (setupJson.stdout) {

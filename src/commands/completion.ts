@@ -16,6 +16,7 @@ const SUBCOMMANDS = [
   "init",
   "setup",
   "status",
+  "ready",
   "plugins",
   "config",
   "check",
@@ -248,6 +249,9 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
             '--json[JSON output]'
           ;;
         status)
+          _arguments '--json[JSON output]' '--online[Validate API key]'
+          ;;
+        ready)
           _arguments '--json[JSON output]' '--online[Validate API key]'
           ;;
         wizard)

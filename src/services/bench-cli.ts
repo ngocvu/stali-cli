@@ -48,10 +48,16 @@ function benchCase(
   const limits: Record<string, number> = {
     "--version": Number(process.env.STALI_BENCH_MAX_VERSION_MS || 120),
     "--help": Number(process.env.STALI_BENCH_MAX_HELP_MS || 150),
+    "info --json": Number(process.env.STALI_BENCH_MAX_INFO_MS || 180),
     "gateway plan --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_PLAN_MS || 180),
     "gateway scan --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_MS || 250),
     "gateway --dry-run --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_AUTO_MS || 300),
-    "info --json": Number(process.env.STALI_BENCH_MAX_INFO_MS || 180),
+    "gateway auto --dry-run --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_AUTO_MS || 300),
+    "doctor --json": Number(process.env.STALI_BENCH_MAX_DOCTOR_MS || 300),
+    "doctor --tools-only --json": Number(process.env.STALI_BENCH_MAX_DOCTOR_MS || 250),
+    "check --tools-only --json": Number(process.env.STALI_BENCH_MAX_CHECK_MS || 200),
+    "status --json": Number(process.env.STALI_BENCH_MAX_STATUS_MS || 200),
+    "setup --skip-configure --json": Number(process.env.STALI_BENCH_MAX_SETUP_MS || 500),
   };
   const limit = limits[name];
   return { name, ms, overLimit: limit ? ms > limit : false };
@@ -85,6 +91,17 @@ export function runColdStartBench(options?: {
     { name: "doctor --json", args: ["doctor", "--json"] },
     { name: "doctor --tools-only --json", args: ["doctor", "--tools-only", "--json"] },
     { name: "check --tools-only --json", args: ["check", "--tools-only", "--json"] },
+    { name: "status --json", args: ["status", "--json"] },
+    {
+      name: "setup --skip-configure --json",
+      args: [
+        "setup",
+        "--skip-configure",
+        "--json",
+        "-k",
+        "sk-stali-test-key-for-dry-run-only-000000000000",
+      ],
+    },
   ];
 
   const results = cases.map((c) => benchCase(c.name, cli, runner, c.args, runs));

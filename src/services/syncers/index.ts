@@ -166,11 +166,37 @@ export async function runDoctorScan(ctx?: DoctorStatusContext): Promise<ToolHeal
     statusCtx = { urls: resolveStaliUrls(config?.baseUrl) };
   }
 
+  const cacheKey = statusCtx.urls.modelsEndpoint;
+  if (
+    !ctx?.bypassCache &&
+    doctorScanCache &&
+    doctorScanCache.key === cacheKey &&
+    Date.now() - doctorScanCache.at < DOCTOR_SCAN_TTL_MS
+  ) {
+    return doctorScanCache.result;
+  }
+
   const { SUPPORTED_TOOLS } = await import("../../constants/tools");
   const statuses = await Promise.all(
     SUPPORTED_TOOLS.map((tool) => getToolHealthStatus(tool.id, statusCtx))
   );
-  return statuses.filter((s): s is ToolHealthStatus => s !== null);
+  const result = statuses.filter((s): s is ToolHealthStatus => s !== null);
+  doctorScanCache = { at: Date.now(), key: cacheKey, result };
+  return result;
+}
+
+const DOCTOR_SCAN_TTL_MS = 4000;
+let doctorScanCache: { at: number; key: string; result: ToolHealthStatus[] } | null = null;
+
+/** Xóa cache sau khi ghi config tool (setup/gateway). */
+export function invalidateDoctorScanCache(): void {
+  doctorScanCache = null;
+}
+
+/** Làm nóng cache doctor — dùng sau configure batch. */
+export async function warmDoctorScanCache(): Promise<ToolHealthStatus[]> {
+  invalidateDoctorScanCache();
+  return runDoctorScan({ bypassCache: true });
 }
 
 export async function syncTool(

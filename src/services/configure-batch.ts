@@ -183,6 +183,11 @@ export async function runConfigureBatch(
   const continueOnError = opts.continueOnError !== false;
   const useParallel = opts.parallel !== false && continueOnError && !opts.dryRun && toolIds.length > 1;
 
+  if (!opts.dryRun) {
+    const { invalidateDoctorScanCache } = await import("./syncers");
+    invalidateDoctorScanCache();
+  }
+
   let items: ConfigureBatchItem[];
 
   if (useParallel) {
@@ -217,6 +222,11 @@ export async function runConfigureBatch(
         error: plugin.error,
       });
     }
+  }
+
+  if (!opts.dryRun && items.some((i) => i.success && i.toolId)) {
+    const { warmDoctorScanCache } = await import("./syncers");
+    await warmDoctorScanCache();
   }
 
   return { items, allOk: items.every((i) => i.success) };
