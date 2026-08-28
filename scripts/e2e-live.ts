@@ -58,6 +58,7 @@ async function main() {
     try {
       const parsed = JSON.parse(scan.stdout || "{}");
       assert("scan JSON has tools array", Array.isArray(parsed.tools));
+      assert("scan JSON schemaVersion", parsed.schemaVersion === 2);
     } catch {
       assert("scan JSON parseable", false);
     }
@@ -81,6 +82,9 @@ async function main() {
       const parsed = JSON.parse(setup.stdout);
       assert("setup JSON has durationMs", typeof parsed.durationMs === "number");
       assert("setup JSON has nextCommand", typeof parsed.nextCommand === "string");
+      assert("setup JSON schemaVersion", parsed.schemaVersion === 2);
+      assert("setup JSON command", parsed.command === "setup");
+      assert("setup JSON pendingGateway", Array.isArray(parsed.pendingGateway));
     } catch {
       assert("setup JSON parseable", false);
     }

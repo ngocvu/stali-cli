@@ -35,3 +35,4 @@ jobs:
           bun dist/index.js check --strict --tools-only --json
           bun dist/index.js check --json
           bun dist/index.js doctor --tools-only --fix --dry-run -k "$STALI_E2E_KEY" || true
+          bun scripts/e2e-live.ts

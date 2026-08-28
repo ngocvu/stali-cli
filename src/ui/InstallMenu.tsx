@@ -21,7 +21,7 @@ export const InstallMenu: React.FC<InstallMenuProps> = ({ installMode, onSelect 
     { label: "🔍 Kiểm tra phiên bản mới (update --check)", value: "check-update" as const },
     { label: "📦 Nâng cấp qua npm global (nhanh nhất)", value: "npm-upgrade" as const },
     { label: "⏰ Bật auto-update 04:00 (cron / launchd / Task Scheduler)", value: "auto-update" as const },
-    { label: "📋 Xem hướng dẫn cài đặt đầy đủ", value: "guide" as const },
+    { label: "📋 Hướng dẫn onboarding đầy đủ (guide onboarding)", value: "guide" as const },
     { label: "⬅️  Quay lại Menu chính", value: "back" as const },
   ];
 
@@ -33,7 +33,7 @@ export const InstallMenu: React.FC<InstallMenuProps> = ({ installMode, onSelect 
           {installMode ? ` · ${installMode}` : ""}
         </Text>
         <Text color="gray">
-          Khuyến nghị: npm install -g stali-cli@latest --no-fund --no-audit
+          Khuyến nghị: npm install -g stali-cli@latest · CLI: stali guide onboarding
         </Text>
         <SelectInput items={items} onSelect={(item) => onSelect(item.value)} />
         <Box justifyContent="center" marginTop={1}>

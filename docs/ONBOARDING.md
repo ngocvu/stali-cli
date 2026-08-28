@@ -34,6 +34,8 @@ Setup sẽ: lưu key → `stali gw auto` (cài gateway app đã phát hiện) �
 | `stali ready --json` | Giống status (`command: "ready"`) |
 | `stali scan --json` | Quét app AI (`schemaVersion: 2`, `pendingGateway`) |
 | `stali guide onboarding` | In toàn bộ hướng dẫn này trong terminal |
+| `stali plugins suggest --json` | Gợi ý patchStyle plugin (`schemaVersion: 2`) |
+| `stali telemetry status --json` | Trạng thái telemetry opt-in (`schemaVersion: 2`) |
 | `stali doctor --json` | Chi tiết 13 tool + plugin |
 | `stali doctor --strict` | CI: exit 1 nếu còn gateway chờ |
 

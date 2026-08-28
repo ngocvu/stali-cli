@@ -423,17 +423,18 @@ export function registerCommands(program: Command): void {
     .option("--json", "JSON output")
     .action(async (opts: { json?: boolean }) => {
       const { suggestPluginPatchStyles } = await import("../services/plugin-suggest");
+      const { formatPluginsSuggestJson } = await import("../services/plugins-json");
       const suggestions = await suggestPluginPatchStyles();
       if (suggestions.length === 0) {
         if (opts.json) {
-          console.log(JSON.stringify({ suggestions: [], message: "NO_PLUGINS" }, null, 2));
+          console.log(JSON.stringify(formatPluginsSuggestJson([], "NO_PLUGINS"), null, 2));
         } else {
           console.log(chalk.yellow("\n○ Không có plugin — stali plugins --init\n"));
         }
         process.exit(0);
       }
       if (opts.json) {
-        console.log(JSON.stringify({ suggestions }, null, 2));
+        console.log(JSON.stringify(formatPluginsSuggestJson(suggestions), null, 2));
         process.exit(0);
       }
       console.log(chalk.bold.cyan("\n💡 PLUGINS — GỢI Ý patchStyle\n"));
@@ -992,11 +993,12 @@ export function registerCommands(program: Command): void {
     .action(async (opts: { json?: boolean }) => {
       const { readTelemetryConfig, fetchTelemetryEndpointHealth, readTelemetryQueueDepth } =
         await import("../services/telemetry");
+      const { formatTelemetryStatusJson } = await import("../services/telemetry-json");
       const cfg = await readTelemetryConfig();
       const endpoint = await fetchTelemetryEndpointHealth();
       const queueDepth = await readTelemetryQueueDepth();
       if (opts.json) {
-        console.log(JSON.stringify({ ...cfg, endpoint, queueDepth }, null, 2));
+        console.log(JSON.stringify(formatTelemetryStatusJson(cfg, endpoint, queueDepth), null, 2));
         process.exit(0);
       }
       console.log(chalk.bold.cyan("\n📡 STALI TELEMETRY\n"));
@@ -1022,11 +1024,18 @@ export function registerCommands(program: Command): void {
     .option("--json", "JSON output")
     .action(async (opts: { json?: boolean }) => {
       const { flushTelemetryQueue, readTelemetryQueueDepth } = await import("../services/telemetry");
+      const { formatTelemetryFlushJson } = await import("../services/telemetry-json");
       const before = await readTelemetryQueueDepth();
       const result = await flushTelemetryQueue();
       const after = await readTelemetryQueueDepth();
       if (opts.json) {
-        console.log(JSON.stringify({ before, ...result, after }, null, 2));
+        console.log(
+          JSON.stringify(
+            formatTelemetryFlushJson({ before, sent: result.sent, remaining: result.remaining, after }),
+            null,
+            2
+          )
+        );
         process.exit(after === 0 ? 0 : 1);
       }
       console.log(chalk.bold.cyan("\n📡 TELEMETRY FLUSH\n"));

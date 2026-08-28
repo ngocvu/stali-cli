@@ -81,3 +81,4 @@ jobs:
           bun dist/index.js auth login -k "$STALI_E2E_KEY"
           bun dist/index.js check --strict --tools-only --json
           bun dist/index.js doctor --strict --tools-only --json | head -c 8000
+          bun scripts/e2e-live.ts

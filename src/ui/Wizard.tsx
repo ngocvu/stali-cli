@@ -534,19 +534,26 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         return;
       }
       if (action === "guide") {
+        const { renderOnboardingGuide } = await import("../constants/guides");
+        const onboarding = renderOnboardingGuide();
         const { buildInstallPlan } = await import("../services/install-cli");
         const plan = buildInstallPlan();
-        const lines = plan.methods.map((m) => `${m.label}: ${m.command}`).join("\n");
+        const installHint = plan.methods.map((m) => `${m.label}: ${m.command}`).join("\n");
+        const body = onboarding
+          ? onboarding.length > 2400
+            ? `${onboarding.slice(0, 2400)}\n\n… (đầy đủ: stali guide onboarding)`
+            : onboarding
+          : installHint;
         setResults([
           {
             toolId: "install",
-            toolName: "Hướng dẫn",
+            toolName: "Onboarding",
             success: true,
-            message: lines,
-            configPath: "stali install",
+            message: body,
+            configPath: "stali guide onboarding",
           },
         ]);
-        setSelectedModel("Hướng dẫn cài đặt");
+        setSelectedModel("Onboarding stali-cli");
         setStep("done");
       }
     } catch (e: unknown) {

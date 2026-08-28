@@ -53,6 +53,8 @@ async function main() {
     try {
       const parsed = JSON.parse(pluginsSuggest.stdout || "{}");
       assert("plugins suggest JSON has suggestions", Array.isArray(parsed.suggestions));
+      assert("plugins suggest JSON schemaVersion", parsed.schemaVersion === 2);
+      assert("plugins suggest JSON command", parsed.command === "plugins-suggest");
     } catch {
       assert("plugins suggest JSON parseable", false);
     }
@@ -397,9 +399,28 @@ async function main() {
 
   const telemetryStatus = run(["telemetry", "status", "--json"]);
   assert("telemetry status --json exit 0", telemetryStatus.status === 0);
+  if (telemetryStatus.status === 0) {
+    try {
+      const parsed = JSON.parse(telemetryStatus.stdout || "{}");
+      assert("telemetry status JSON schemaVersion", parsed.schemaVersion === 2);
+      assert("telemetry status JSON command", parsed.command === "telemetry-status");
+      assert("telemetry status JSON queueDepth", typeof parsed.queueDepth === "number");
+    } catch {
+      assert("telemetry status JSON parseable", false);
+    }
+  }
 
   const telemetryFlush = run(["telemetry", "flush", "--json"]);
   assert("telemetry flush --json exit 0", telemetryFlush.status === 0);
+  if (telemetryFlush.status === 0) {
+    try {
+      const parsed = JSON.parse(telemetryFlush.stdout || "{}");
+      assert("telemetry flush JSON schemaVersion", parsed.schemaVersion === 2);
+      assert("telemetry flush JSON command", parsed.command === "telemetry-flush");
+    } catch {
+      assert("telemetry flush JSON parseable", false);
+    }
+  }
 
   const doctorJson = run(["doctor", "--json"]);
   assert("doctor --json exit 0", doctorJson.status === 0);

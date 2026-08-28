@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.45.0] — 2026-08-28
+
+### Added
+- **`plugins suggest --json`** — `schemaVersion: 2`, `command: "plugins-suggest"`, `count`
+- **`telemetry status --json`** — `schemaVersion: 2`, `command: "telemetry-status"`
+- **`telemetry flush --json`** — `schemaVersion: 2`, `command: "telemetry-flush"`
+- **Wizard InstallMenu** — mục onboarding mở `docs/ONBOARDING.md` (fallback install plan)
+- **Live E2E** — assert `setup --json` schema v2 + `scan` schemaVersion; CI chạy `e2e-live.ts`
+
+### Changed
+- Health Gate live job + workflow E2E Live gọi `scripts/e2e-live.ts` sau smoke thủ công
+
 ## [3.44.0] — 2026-08-28
 
 ### Added
