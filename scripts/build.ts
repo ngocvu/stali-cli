@@ -62,6 +62,19 @@ try {
     }
   }
 
+  const subEntry = path.join(distDir, "subcommand-cli.js");
+  if (fs.existsSync(subEntry)) {
+    const subSrc = fs.readFileSync(subEntry, "utf8");
+    const wizardRefs = ["Wizard-", "wizard-launcher", "/ui/Wizard"];
+    for (const ref of wizardRefs) {
+      if (subSrc.includes(ref)) {
+        console.error(`❌ subcommand-cli.js vẫn tham chiếu wizard: ${ref}`);
+        process.exit(1);
+      }
+    }
+    console.log("2️⃣  subcommand bundle: không tham chiếu wizard/React ✓");
+  }
+
   let totalBytes = 0;
   for (const f of chunks) {
     totalBytes += fs.statSync(path.join(distDir, f)).size;

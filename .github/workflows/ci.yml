@@ -31,5 +31,17 @@ jobs:
       - name: E2E smoke (offline)
         run: bun scripts/e2e-smoke-offline.ts
 
+      - name: Health gate (live, optional)
+        env:
+          STALI_E2E_KEY: ${{ secrets.STALI_E2E_KEY }}
+        run: |
+          if [ -z "$STALI_E2E_KEY" ]; then
+            echo "::notice::STALI_E2E_KEY chưa cấu hình — bỏ qua live check"
+            exit 0
+          fi
+          bun dist/index.js auth login -k "$STALI_E2E_KEY"
+          bun dist/index.js check --strict --tools-only --json
+          bun dist/index.js check --plugins-only --json || true
+
       - name: Verify dist exists
         run: test -f dist/index.js

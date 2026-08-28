@@ -20,8 +20,10 @@ export const STALI_SUBCOMMANDS = new Set([
   "restore",
   "completion",
   "ls",
-  "wizard",
 ]);
+
+/** Subcommand chỉ định mở wizard Ink — route tới wizard-cli (không bundle React). */
+export const WIZARD_SUBCOMMAND = "wizard";
 
 export type CliMode = "wizard" | "subcommand";
 
@@ -50,6 +52,7 @@ export function resolveCliMode(argv: string[]): CliMode {
       if (takesValue(arg) && i + 1 < args.length) i++;
       continue;
     }
+    if (arg === WIZARD_SUBCOMMAND) return "wizard";
     if (STALI_SUBCOMMANDS.has(arg)) return "subcommand";
   }
 

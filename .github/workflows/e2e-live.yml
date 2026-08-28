@@ -32,4 +32,6 @@ jobs:
           bun dist/index.js auth login -k "$STALI_E2E_KEY"
           bun dist/index.js ls -k "$STALI_E2E_KEY"
           bun dist/index.js doctor --json | head -c 4000
+          bun dist/index.js check --strict --tools-only --json
           bun dist/index.js check --json
+          bun dist/index.js doctor --tools-only --fix --dry-run -k "$STALI_E2E_KEY" || true

@@ -1,0 +1,54 @@
+name: Health Gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+jobs:
+  offline-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install
+      - run: bun run typecheck
+      - run: bun test
+      - run: bun run build
+      - run: bun scripts/e2e-smoke-offline.ts
+
+      - name: Subcommand bundle must not reference wizard
+        run: |
+          if rg -q 'Wizard-|wizard-launcher|/ui/Wizard' dist/subcommand-cli.js; then
+            echo "::error::subcommand-cli still bundles wizard graph"
+            exit 1
+          fi
+
+  live-gate:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install
+      - run: bun run build
+
+      - name: Live health gate (tools)
+        env:
+          STALI_E2E_KEY: ${{ secrets.STALI_E2E_KEY }}
+        run: |
+          if [ -z "$STALI_E2E_KEY" ]; then
+            echo "::notice::STALI_E2E_KEY chưa cấu hình — bỏ qua live gate"
+            exit 0
+          fi
+          bun dist/index.js auth login -k "$STALI_E2E_KEY"
+          bun dist/index.js check --strict --tools-only --json
+          bun dist/index.js doctor --tools-only --json | head -c 8000

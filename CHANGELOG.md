@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.5.0] — 2026-08-28
+
+### Added
+- **`doctor --fix` scoped** — `--tools-only --fix`, `--plugins-only --fix`; full `--fix` sửa tools rồi plugins
+- **`stali completion install [shell]`** — cài idempotent bash/fish/zsh (auto detect từ `$SHELL`)
+- **Health Gate workflow** — PR offline gate + live `check --strict --tools-only` (dispatch)
+- **Build guard** — `subcommand-cli.js` không được tham chiếu wizard/React
+
+### Changed
+- **`stali wizard`** route tới `wizard-cli` (tách graph bundle khỏi subcommand cold-start)
+- **Release CI** — bỏ qua npm publish khi thiếu `NPM_TOKEN` (warning thay vì fail)
+- **E2E live / CI** — thêm `check --strict --tools-only`, `doctor --fix --dry-run`
+
 ## [3.4.0] — 2026-08-28
 
 ### Added

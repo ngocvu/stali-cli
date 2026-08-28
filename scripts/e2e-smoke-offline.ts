@@ -69,6 +69,12 @@ async function main() {
   const wizardHelp = run(["wizard", "--help"]);
   assert("wizard --help exit 0", wizardHelp.status === 0);
 
+  const subBundle = await fs.readFile(path.join(CLI_ROOT, "dist/subcommand-cli.js"), "utf8");
+  assert(
+    "subcommand bundle no wizard ref",
+    !subBundle.includes("Wizard-") && !subBundle.includes("wizard-launcher")
+  );
+
   const failed = results.filter((r) => !r.ok);
   for (const r of results) {
     const icon = r.ok ? "✓" : "✗";

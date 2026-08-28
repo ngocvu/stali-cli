@@ -50,7 +50,7 @@ async function runPluginsList(opts: { init?: boolean }) {
 
 export function registerCommands(
   program: Command,
-  opts?: { attachWizardAction?: boolean }
+  opts?: { attachWizardAction?: boolean; includeWizardSubcommand?: boolean }
 ): void {
   program
     .name("stali")
@@ -148,15 +148,17 @@ export function registerCommands(
       process.exit(result.ok ? 0 : 1);
     });
 
-  program
-    .command("wizard")
-    .description("Mở wizard tương tác Ink (tương đương chạy stali không tham số)")
-    .option("-k, --key <token>", "Stali API key khởi tạo wizard")
-    .action(async (opts: { key?: string }) => {
-      const globals = program.opts<{ key?: string }>();
-      const { launchWizard } = await import("./wizard-launcher");
-      await launchWizard(opts.key || globals.key);
-    });
+  if (opts?.includeWizardSubcommand !== false) {
+    program
+      .command("wizard")
+      .description("Mở wizard tương tác Ink (tương đương chạy stali không tham số)")
+      .option("-k, --key <token>", "Stali API key khởi tạo wizard")
+      .action(async (wizOpts: { key?: string }) => {
+        const globals = program.opts<{ key?: string }>();
+        const { launchWizard } = await import("./wizard-launcher");
+        await launchWizard(wizOpts.key || globals.key);
+      });
+  }
 
   program
     .command("init")
@@ -558,10 +560,6 @@ export function registerCommands(
         pluginsOnly: opts.pluginsOnly,
         toolsOnly: opts.toolsOnly,
       };
-      if (opts.fix && (opts.pluginsOnly || opts.toolsOnly)) {
-        console.error(chalk.red("❌ --plugins-only/--tools-only không dùng cùng --fix"));
-        process.exit(1);
-      }
       if (opts.watch && !opts.fix) {
         const sec = parseInt(opts.interval || "10", 10) || 10;
         await runDoctorWatch(sec, opts.json, opts.notify, view);
@@ -702,9 +700,27 @@ export function registerCommands(
     );
 
   program
-    .command("completion <shell>")
-    .description("In script shell completion (bash | zsh | fish)")
-    .action(async (shell: string) => {
+    .command("completion")
+    .description("Shell completion: in script hoặc cài vào ~/.bashrc / fish / zsh")
+    .argument("[shell]", "bash | zsh | fish | auto (mặc định khi --install)")
+    .option("--install", "Ghi completion vào shell config (idempotent)")
+    .action(async (shell: string | undefined, cmdOpts: { install?: boolean }) => {
+      if (cmdOpts.install) {
+        const { installCompletion } = await import("../services/completion-install");
+        try {
+          const result = await installCompletion(shell || "auto");
+          console.log(`✅ ${result.message}`);
+          console.log(`   ${result.shell} → ${result.path} (${result.action})`);
+          process.exit(0);
+        } catch (err) {
+          console.error(chalk.red(`❌ ${err instanceof Error ? err.message : String(err)}`));
+          process.exit(1);
+        }
+      }
+      if (!shell) {
+        console.error(chalk.red("❌ Thiếu shell. Ví dụ: stali completion bash | stali completion install zsh"));
+        process.exit(1);
+      }
       const { renderCompletion } = await import("./completion");
       const script = renderCompletion(shell);
       if (!script) {

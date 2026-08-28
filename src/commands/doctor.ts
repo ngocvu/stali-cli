@@ -1,8 +1,9 @@
 import chalk from "chalk";
 import { loadStaliConfig } from "../services/config";
 import { runDoctorFix } from "../services/doctor-fix";
-import { runDoctorScan } from "../services/syncers";
+import { runPluginsDoctorFix } from "../services/plugin-doctor-fix";
 import { runPluginsDoctor, type PluginHealthStatus } from "../services/plugin-doctor";
+import { runDoctorScan } from "../services/syncers";
 import { doctorSnapshotHash, notifyChange } from "../services/notify";
 import { resolveStaliUrls } from "../utils/stali-urls";
 import { t, getLocale } from "../i18n";
@@ -182,11 +183,49 @@ export async function runDoctor(
       console.error(chalk.red("❌ doctor --fix cần API key (-k hoặc token đã lưu)."));
       process.exit(1);
     }
+    const cfg = await loadStaliConfig();
     const toolInputs = fixOpts.tools
       ? fixOpts.tools.split(",").map((t) => t.trim()).filter(Boolean)
       : undefined;
-    const cfg = await loadStaliConfig();
-    const { items, allOk } = await runDoctorFix({
+
+    const printFixHeader = (title: string) => {
+      if (fixOpts.dryRun) {
+        console.log(chalk.bold.cyan(`\n🔍 Doctor fix (dry-run) — ${title}\n`));
+      } else {
+        console.log(chalk.bold.cyan(`\n🩺 STALI DOCTOR — FIX (${title})\n`));
+      }
+    };
+
+    const printItems = (
+      items: { success: boolean; message: string; toolName?: string; toolId?: string; pluginName?: string; pluginId?: string }[]
+    ) => {
+      for (const item of items) {
+        const icon = item.success ? chalk.green("✓") : chalk.red("✗");
+        const label =
+          item.toolName ||
+          item.pluginName ||
+          item.toolId ||
+          item.pluginId ||
+          "stali";
+        console.log(`${icon} ${chalk.white(label)} — ${item.message}`);
+      }
+      console.log("");
+    };
+
+    if (view?.pluginsOnly) {
+      const { items, allOk } = await runPluginsDoctorFix({
+        apiKey,
+        model: fixOpts.model,
+        baseUrl: cfg?.baseUrl,
+        dryRun: fixOpts.dryRun,
+        force: fixOpts.force,
+      });
+      printFixHeader("plugins");
+      printItems(items);
+      process.exit(allOk ? 0 : 1);
+    }
+
+    const { items: toolItems, allOk: toolsOk } = await runDoctorFix({
       apiKey,
       model: fixOpts.model,
       baseUrl: cfg?.baseUrl,
@@ -195,17 +234,30 @@ export async function runDoctor(
       force: fixOpts.force,
     });
 
-    if (fixOpts.dryRun) {
-      console.log(chalk.bold.cyan("\n🔍 Doctor fix (dry-run)\n"));
-    } else {
-      console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — FIX\n"));
+    if (view?.toolsOnly) {
+      printFixHeader("tools");
+      printItems(toolItems);
+      process.exit(toolsOk ? 0 : 1);
     }
-    for (const item of items) {
-      const icon = item.success ? chalk.green("✓") : chalk.red("✗");
-      console.log(`${icon} ${chalk.white(item.toolName || item.toolId)} — ${item.message}`);
+
+    printFixHeader("tools");
+    printItems(toolItems);
+
+    const pluginReport = await runPluginsDoctor();
+    if (pluginReport.plugins.length > 0) {
+      const { items: pluginItems, allOk: pluginsOk } = await runPluginsDoctorFix({
+        apiKey,
+        model: fixOpts.model,
+        baseUrl: cfg?.baseUrl,
+        dryRun: fixOpts.dryRun,
+        force: fixOpts.force,
+      });
+      printFixHeader("plugins");
+      printItems(pluginItems);
+      process.exit(toolsOk && pluginsOk ? 0 : 1);
     }
-    console.log("");
-    process.exit(allOk ? 0 : 1);
+
+    process.exit(toolsOk ? 0 : 1);
   }
 
   const payload = await buildDoctorJsonOutput(view);

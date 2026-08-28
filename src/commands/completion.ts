@@ -278,7 +278,8 @@ function fishCompletion(): string {
     "",
     "complete -c stali -n '__fish_seen_subcommand_from plugins' -l init",
     "",
-    "complete -c stali -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish'",
+    "complete -c stali -n '__fish_seen_subcommand_from completion' -l install -d 'Cài completion vào shell config'",
+    "complete -c stali -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish auto'",
   ];
   return lines.join("\n") + "\n";
 }
