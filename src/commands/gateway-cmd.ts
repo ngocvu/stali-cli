@@ -1,6 +1,12 @@
 import chalk from "chalk";
 import { runGatewayAuto, runGatewayInstall, runGatewayPlan, runGatewayScan } from "../services/gateway-install";
 
+/** Khi không chỉ định subcommand: auto nếu đã có key, scan nếu chưa. */
+export function resolveGatewayAction(sub: string | undefined, apiKey?: string): string {
+  if (sub?.trim()) return sub.trim().toLowerCase();
+  return apiKey?.trim() ? "auto" : "scan";
+}
+
 export async function runGatewayCommand(
   sub: string | undefined,
   opts: {
@@ -15,7 +21,7 @@ export async function runGatewayCommand(
   },
   apiKey?: string
 ): Promise<void> {
-  const action = (sub || "scan").toLowerCase();
+  const action = resolveGatewayAction(sub, apiKey);
 
   if (action === "scan") {
     await runGatewayScan({ json: opts.json });

@@ -101,6 +101,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     targets: number;
   }>();
   const [gatewayPending, setGatewayPending] = useState(0);
+  const [gatewayFirstRun, setGatewayFirstRun] = useState(false);
 
   const refreshGatewayPending = async () => {
     try {
@@ -180,7 +181,26 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       setModels(res.models);
       setApiDefaultModel(res.defaultModel);
       await saveStaliConfig({ apiKey: token });
-      setStep("menu");
+
+      const { planGatewayInstall } = await import("../services/gateway-install");
+      const { loadWizardState, saveWizardState } = await import("../services/wizard-state");
+      const [plan, wizardState] = await Promise.all([planGatewayInstall(), loadWizardState()]);
+
+      if (!wizardState.gatewayOnboardingSeen && plan.targets.length > 0) {
+        setGatewaySummary({
+          installed: plan.summary.installed,
+          configured: plan.summary.configured,
+          pending: plan.summary.pending,
+          targets: plan.targets.length,
+        });
+        setGatewayFirstRun(true);
+        setStep("gateway");
+        await saveWizardState({ gatewayOnboardingSeen: true });
+      } else {
+        setGatewayFirstRun(false);
+        setStep("menu");
+      }
+
       await Promise.all([refreshInstallMode(), refreshGatewayPending()]);
     } else {
       setError(res.error || "Token không hợp lệ");
@@ -237,6 +257,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       case "gateway": {
         setLoading(true);
         setError(undefined);
+        setGatewayFirstRun(false);
         try {
           const { planGatewayInstall } = await import("../services/gateway-install");
           const plan = await planGatewayInstall();
@@ -1001,7 +1022,11 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       )}
 
       {step === "gateway" && (
-        <GatewayMenu summary={gatewaySummary} onSelect={handleGatewayMenuSelect} />
+        <GatewayMenu
+          summary={gatewaySummary}
+          firstRun={gatewayFirstRun}
+          onSelect={handleGatewayMenuSelect}
+        />
       )}
 
       {step === "plugins" && (

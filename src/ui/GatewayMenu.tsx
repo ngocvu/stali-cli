@@ -12,10 +12,11 @@ interface GatewayMenuProps {
     pending: number;
     targets: number;
   };
+  firstRun?: boolean;
   onSelect: (action: GatewayMenuAction) => void;
 }
 
-export const GatewayMenu: React.FC<GatewayMenuProps> = ({ summary, onSelect }) => {
+export const GatewayMenu: React.FC<GatewayMenuProps> = ({ summary, firstRun, onSelect }) => {
   const items = [
     { label: "⚡ Quét & cài gateway tự động", value: "auto" as const },
     { label: "📋 Xem kế hoạch cài (gateway plan)", value: "plan" as const },
@@ -26,6 +27,11 @@ export const GatewayMenu: React.FC<GatewayMenuProps> = ({ summary, onSelect }) =
   return (
     <Card title="🌐 STALI GATEWAY" borderColor="cyan">
       <Box flexDirection="column" gap={1}>
+        {firstRun ? (
+          <Text color="yellow">
+            Lần đầu đăng nhập — chọn Quét & cài tự động để trỏ Stali API vào app AI của bạn.
+          </Text>
+        ) : null}
         {summary ? (
           <Text color="gray">
             Phát hiện {summary.installed} app · {summary.configured} đã gateway ·{" "}

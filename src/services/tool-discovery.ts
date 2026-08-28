@@ -4,7 +4,6 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { SUPPORTED_TOOLS } from "../constants/tools";
 import {
-  IDE_EXTENSION_ROOTS,
   TOOL_BINARY_NAMES,
   TOOL_HOME_MARKERS,
   TOOL_JETBRAINS_MARKERS,
@@ -15,6 +14,7 @@ import {
   TOOL_VSCODE_EXTENSIONS,
 } from "../constants/tool-binaries";
 import { resolveHomePath } from "../utils/file";
+import { resolveIdeExtensionRoots } from "../utils/ide-extension-roots";
 import { getToolById } from "../utils/tool-utils";
 import { runDoctorScan, type ToolHealthStatus } from "./syncers";
 import { loadProcessLines } from "./process-lines";
@@ -81,12 +81,11 @@ async function dirHasEntries(dir: string): Promise<boolean> {
 }
 
 export async function buildDiscoveryScanContext(): Promise<DiscoveryScanContext> {
-  const home = os.homedir();
   const ideEntries = new Set<string>();
   await Promise.all(
-    IDE_EXTENSION_ROOTS.map(async (rel) => {
+    resolveIdeExtensionRoots(os.homedir()).map(async (dir) => {
       try {
-        const entries = await readdir(path.join(home, rel));
+        const entries = await readdir(dir);
         for (const e of entries) ideEntries.add(e.toLowerCase());
       } catch {
         /* skip */

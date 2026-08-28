@@ -645,7 +645,7 @@ export function registerCommands(program: Command): void {
     .command("gateway")
     .alias("gw")
     .description("Quét app AI đang dùng và cài Stali gateway (base URL + API key)")
-    .argument("[action]", "scan | plan | auto | install (mặc định: scan)")
+    .argument("[action]", "scan | plan | auto | install (mặc định: auto nếu đã có key)")
     .option("--json", "JSON output (scan | plan | install)")
     .option("--dry-run", "Với install: preview, không ghi file")
     .option("--all", "Cài gateway cho cả 13 tool (bỏ qua quét)")

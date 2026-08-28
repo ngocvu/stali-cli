@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.24.0] — 2026-08-28
+
+### Added
+- **Windows IDE discovery** — `%APPDATA%\Cursor|Code|Windsurf\extensions` + `globalStorage`
+- **Wizard first-run** — sau login lần đầu, tự mở gateway menu khi có app chờ cài
+- **`stali gw` default `auto`** — khi đã lưu API key (không subcommand)
+- **Admin CLI telemetry** — `/admin/cli-telemetry` + API aggregate từ `cli-telemetry.jsonl`
+
+### Changed
+- `buildDiscoveryScanContext` dùng `resolveIdeExtensionRoots()` (đa nền tảng)
+
 ## [3.23.0] — 2026-08-28
 
 ### Added
