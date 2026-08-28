@@ -14,7 +14,6 @@ describe("plugin-doctor", () => {
       expect(report.meta.pluginCount).toBe(0);
       expect(report.plugins).toHaveLength(0);
       expect(report.meta.preferCommand).toBe("stali doctor");
-      expect(report.meta.deprecated).toContain("stali doctor");
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;

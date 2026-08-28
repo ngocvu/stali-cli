@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import os from "os";
 import path from "path";
-import { buildDoctorJsonOutput, combinedDoctorHash, toLegacyPluginsDoctorJson } from "../commands/doctor";
+import {
+  buildDoctorJsonOutput,
+  combinedDoctorHash,
+  toLegacyPluginsDoctorJson,
+} from "../commands/doctor";
 
 describe("doctor unified JSON", () => {
   test("buildDoctorJsonOutput có tools + plugins + meta", async () => {
@@ -25,15 +29,29 @@ describe("doctor unified JSON", () => {
     }
   });
 
+  test("buildDoctorJsonOutput --plugins-only bỏ qua tools", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-doc-plug-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    try {
+      const payload = await buildDoctorJsonOutput({ pluginsOnly: true });
+      expect(payload.tools).toHaveLength(0);
+      expect(payload.meta.toolsTotal).toBe(0);
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
+    }
+  });
+
   test("toLegacyPluginsDoctorJson giữ shape plugins doctor cũ", async () => {
     const prev = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-legacy-doc-${Date.now()}`);
     process.env.STALI_HOME = home;
     try {
-      const payload = await buildDoctorJsonOutput();
+      const payload = await buildDoctorJsonOutput({ pluginsOnly: true });
       const legacy = toLegacyPluginsDoctorJson(payload);
       expect(legacy.meta.pluginCount).toBe(payload.meta.pluginsTotal);
-      expect(legacy.meta.preferCommand).toBe("stali doctor");
+      expect(legacy.meta.preferCommand).toBe("stali doctor --plugins-only");
       expect(legacy.plugins).toEqual(payload.plugins);
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;

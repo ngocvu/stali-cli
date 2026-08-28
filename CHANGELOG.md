@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.1.0] — 2026-08-28
+
+### Added
+- **`stali doctor --plugins-only [--json]`** — chỉ quét plugin (bỏ scan 13 tool, nhanh hơn)
+- **`doctor --watch --plugins-only`** — theo dõi plugin riêng
+
+### Breaking
+- **`plugins doctor`** — đã gỡ; `--json` vẫn chuyển tiếp sang `doctor --plugins-only --json`; không `--json` → exit 2
+
+### Changed
+- **Lazy-load commands** — doctor, models, configure, init, completion… tải dynamic → entry nhẹ hơn
+- **Build limit** — tổng dist ≤ 1.6 MB (sau minify)
+
 ## [3.0.0] — 2026-08-28
 
 ### Breaking / Changed

@@ -37,7 +37,7 @@ const results = [
   bench("--version", ["--version"]),
   bench("--help", ["--help"]),
   bench("doctor --json", ["doctor", "--json"]),
-  bench("plugins doctor --json", ["plugins", "doctor", "--json"]),
+  bench("doctor --plugins-only --json", ["doctor", "--plugins-only", "--json"]),
   bench("paths", ["paths"]),
 ];
 

@@ -23,9 +23,35 @@ export interface DoctorJsonOutput {
   plugins: PluginHealthStatus[];
 }
 
-export async function buildDoctorJsonOutput(): Promise<DoctorJsonOutput> {
+export interface DoctorViewOptions {
+  pluginsOnly?: boolean;
+}
+
+export async function buildDoctorJsonOutput(
+  opts?: DoctorViewOptions
+): Promise<DoctorJsonOutput> {
   const cfg = await loadStaliConfig();
   const urls = resolveStaliUrls(cfg?.baseUrl);
+
+  if (opts?.pluginsOnly) {
+    const pluginReport = await runPluginsDoctor();
+    const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
+    return {
+      meta: {
+        baseUrl: cfg?.baseUrl || urls.openAiBaseUrl,
+        openAiBaseUrl: urls.openAiBaseUrl,
+        anthropicBaseUrl: urls.anthropicBaseUrl,
+        modelsEndpoint: urls.modelsEndpoint,
+        toolsConfigured: 0,
+        toolsTotal: 0,
+        pluginsConfigured,
+        pluginsTotal: pluginReport.plugins.length,
+      },
+      tools: [],
+      plugins: pluginReport.plugins,
+    };
+  }
+
   const [tools, pluginReport] = await Promise.all([
     runDoctorScan({ urls }),
     runPluginsDoctor(),
@@ -70,14 +96,66 @@ function printPluginSection(plugins: PluginHealthStatus[]) {
   }
 }
 
-export async function runDoctor(jsonOut?: boolean, fixOpts?: {
-  apiKey?: string;
-  fix?: boolean;
-  dryRun?: boolean;
-  force?: boolean;
-  tools?: string;
-  model?: string;
-}) {
+function printToolSection(statuses: ToolHealthStatus[], modelsEndpoint: string) {
+  const configured = statuses.filter((s) => s.configuredForStali);
+  console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR\n"));
+  console.log(chalk.gray(`API: ${modelsEndpoint}\n`));
+  console.log(
+    chalk.green(`✅ Đã trỏ Stali: ${configured.length}/${statuses.length} công cụ\n`)
+  );
+  for (const s of statuses) {
+    const icon = s.configuredForStali ? chalk.green("✓") : chalk.yellow("○");
+    const state = s.configuredForStali
+      ? chalk.green("Stali OK")
+      : s.exists
+      ? chalk.yellow("chưa trỏ Stali")
+      : chalk.gray("chưa có file");
+    console.log(
+      `${icon} ${chalk.white(s.toolName)} — ${state}${s.model ? chalk.gray(` (${s.model})`) : ""}`
+    );
+    if (s.endpoint) console.log(chalk.gray(`   ${s.endpoint}`));
+    console.log(chalk.gray(`   ${s.configPath}`));
+  }
+}
+
+export function computeDoctorExitCode(
+  payload: DoctorJsonOutput,
+  view?: DoctorViewOptions
+): number {
+  if (view?.pluginsOnly) {
+    if (payload.plugins.length === 0) return 1;
+    return payload.plugins.every((p) => p.configuredForStali) ? 0 : 1;
+  }
+  return 0;
+}
+
+/** JSON legacy shape (plugins doctor v2/v3). */
+export function toLegacyPluginsDoctorJson(payload: DoctorJsonOutput) {
+  return {
+    meta: {
+      baseUrl: payload.meta.baseUrl,
+      openAiBaseUrl: payload.meta.openAiBaseUrl,
+      anthropicBaseUrl: payload.meta.anthropicBaseUrl,
+      modelsEndpoint: payload.meta.modelsEndpoint,
+      pluginCount: payload.meta.pluginsTotal,
+      preferCommand: "stali doctor --plugins-only",
+    },
+    plugins: payload.plugins,
+  };
+}
+
+export async function runDoctor(
+  jsonOut?: boolean,
+  fixOpts?: {
+    apiKey?: string;
+    fix?: boolean;
+    dryRun?: boolean;
+    force?: boolean;
+    tools?: string;
+    model?: string;
+  },
+  view?: DoctorViewOptions
+): Promise<number> {
   if (fixOpts?.fix) {
     const apiKey = fixOpts.apiKey;
     if (!apiKey) {
@@ -110,77 +188,32 @@ export async function runDoctor(jsonOut?: boolean, fixOpts?: {
     process.exit(allOk ? 0 : 1);
   }
 
-  const payload = await buildDoctorJsonOutput();
+  const payload = await buildDoctorJsonOutput(view);
+
   if (jsonOut) {
-    console.log(JSON.stringify(payload, null, 2));
-    return;
+    const out = view?.pluginsOnly
+      ? toLegacyPluginsDoctorJson(payload)
+      : payload;
+    console.log(JSON.stringify(out, null, 2));
+    return computeDoctorExitCode(payload, view);
   }
 
-  const statuses = payload.tools;
-  const configured = statuses.filter((s) => s.configuredForStali);
-
-  console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR\n"));
-  console.log(chalk.gray(`API: ${payload.meta.modelsEndpoint}\n`));
-  console.log(
-    chalk.green(`✅ Đã trỏ Stali: ${configured.length}/${statuses.length} công cụ\n`)
-  );
-
-  for (const s of statuses) {
-    const icon = s.configuredForStali ? chalk.green("✓") : chalk.yellow("○");
-    const state = s.configuredForStali
-      ? chalk.green("Stali OK")
-      : s.exists
-      ? chalk.yellow("chưa trỏ Stali")
-      : chalk.gray("chưa có file");
-    console.log(
-      `${icon} ${chalk.white(s.toolName)} — ${state}${s.model ? chalk.gray(` (${s.model})`) : ""}`
-    );
-    if (s.endpoint) {
-      console.log(chalk.gray(`   ${s.endpoint}`));
+  if (view?.pluginsOnly) {
+    if (payload.plugins.length === 0) {
+      console.log(chalk.yellow("\nKhông có plugin — stali plugins list --init\n"));
+      return 1;
     }
-    console.log(chalk.gray(`   ${s.configPath}`));
+    console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — PLUGINS\n"));
+    console.log(chalk.gray(`API: ${payload.meta.modelsEndpoint}`));
+    printPluginSection(payload.plugins);
+    console.log(chalk.gray("\nXem đầy đủ: stali doctor\n"));
+    return computeDoctorExitCode(payload, view);
   }
 
+  printToolSection(payload.tools, payload.meta.modelsEndpoint);
   printPluginSection(payload.plugins);
   console.log("");
-}
-
-/** JSON tương thích ngược cho alias `plugins doctor` (v3). */
-export function toLegacyPluginsDoctorJson(payload: DoctorJsonOutput) {
-  return {
-    meta: {
-      baseUrl: payload.meta.baseUrl,
-      openAiBaseUrl: payload.meta.openAiBaseUrl,
-      anthropicBaseUrl: payload.meta.anthropicBaseUrl,
-      modelsEndpoint: payload.meta.modelsEndpoint,
-      pluginCount: payload.meta.pluginsTotal,
-      deprecated: "plugins doctor là alias v3 — dùng `stali doctor --json`",
-      preferCommand: "stali doctor",
-    },
-    plugins: payload.plugins,
-  };
-}
-
-/** Alias v3 — thay `plugins doctor` subcommand đầy đủ. */
-export async function runPluginsDoctorAlias(jsonOut?: boolean): Promise<number> {
-  console.error(
-    chalk.yellow("\n⚠  plugins doctor là alias → stali doctor (v3.0)\n")
-  );
-  const payload = await buildDoctorJsonOutput();
-  if (jsonOut) {
-    console.log(JSON.stringify(toLegacyPluginsDoctorJson(payload), null, 2));
-    if (payload.plugins.length === 0) return 1;
-    return payload.plugins.every((p) => p.configuredForStali) ? 0 : 1;
-  }
-  if (payload.plugins.length === 0) {
-    console.log(chalk.yellow("\nKhông có plugin — stali plugins list --init\n"));
-    return 1;
-  }
-  console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — PLUGINS\n"));
-  console.log(chalk.gray(`API: ${payload.meta.modelsEndpoint}`));
-  printPluginSection(payload.plugins);
-  console.log(chalk.gray("Xem tools + plugins: stali doctor\n"));
-  return payload.plugins.every((p) => p.configuredForStali) ? 0 : 1;
+  return 0;
 }
 
 export function combinedDoctorHash(payload: DoctorJsonOutput): string {
@@ -194,7 +227,12 @@ export function combinedDoctorHash(payload: DoctorJsonOutput): string {
   return `${toolHash}#${pluginHash}`;
 }
 
-export async function runDoctorWatch(intervalSec: number, jsonOut?: boolean, notify?: boolean) {
+export async function runDoctorWatch(
+  intervalSec: number,
+  jsonOut?: boolean,
+  notify?: boolean,
+  view?: DoctorViewOptions
+) {
   const sec = Math.max(3, intervalSec);
   let running = true;
   let prevHash = "";
@@ -213,7 +251,7 @@ export async function runDoctorWatch(intervalSec: number, jsonOut?: boolean, not
         )
       );
     }
-    const payload = await buildDoctorJsonOutput();
+    const payload = await buildDoctorJsonOutput(view);
     const statuses = payload.tools;
     const hash = combinedDoctorHash(payload);
     if (notify && prevHash && hash !== prevHash) {
@@ -228,13 +266,16 @@ export async function runDoctorWatch(intervalSec: number, jsonOut?: boolean, not
     prevHash = hash;
 
     if (jsonOut) {
-      console.log(JSON.stringify(payload, null, 2));
+      const out = view?.pluginsOnly ? toLegacyPluginsDoctorJson(payload) : payload;
+      console.log(JSON.stringify(out, null, 2));
+    } else if (view?.pluginsOnly) {
+      const pOk = payload.plugins.filter((p) => p.configuredForStali).length;
+      console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — PLUGINS\n"));
+      console.log(chalk.magenta(`🔌 ${pOk}/${payload.plugins.length} plugins\n`));
     } else {
       const configured = statuses.filter((s) => s.configuredForStali);
       console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR\n"));
-      console.log(
-        chalk.green(`✅ ${configured.length}/${statuses.length} tools`)
-      );
+      console.log(chalk.green(`✅ ${configured.length}/${statuses.length} tools`));
       if (payload.plugins.length > 0) {
         const pOk = payload.plugins.filter((p) => p.configuredForStali).length;
         console.log(chalk.magenta(`🔌 ${pOk}/${payload.plugins.length} plugins\n`));

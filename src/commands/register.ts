@@ -1,23 +1,17 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { launchWizard } from "./wizard-launcher";
 import {
   loadStaliConfig,
   loadStaliConfigOrCorrupt,
   resetStaliConfig,
   setStaliBaseUrl,
 } from "../services/config";
-import { runConfigureBatch } from "../services/configure-batch";
-import { renderCompletion } from "./completion";
-import { renderEnvExport, type ExportEnvFormat } from "../services/export-env";
-import { runUninstall } from "../services/uninstall";
 import {
   authLogin,
   authLogout,
   authStatus,
   STALI_DASHBOARD_KEYS_URL,
 } from "../services/auth-cli";
-import { gatherCliInfo } from "../services/cli-info";
 import { openUrlInBrowser } from "../utils/open-url";
 import { renderAppGuide, listGuideIds } from "../constants/guides";
 import { STALI_DOCS_URL } from "../constants/api";
@@ -27,14 +21,8 @@ import { maskToken } from "../utils/token";
 import { getToolById, resolveToolId } from "../utils/tool-utils";
 import { VERSION } from "../version";
 import { setLocale, resolveLocale, t } from "../i18n";
-import { runInit } from "../services/init-cli";
 import { loadPlugins, writePluginsExample, getPluginsPath } from "../services/plugins";
-import { runPluginsSync } from "../services/plugin-sync";
-import { selfUpdate } from "../services/self-update";
 import { resolveApiKey } from "./context";
-import { displayModelsTable } from "./models";
-import { runDoctor, runDoctorWatch, runPluginsDoctorAlias } from "./doctor";
-import { runConfigure, runRestore } from "./configure-cmd";
 import { runBackupsList } from "./backups";
 import { runPaths, runToolsList } from "./paths-cmd";
 import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
@@ -85,10 +73,12 @@ export function registerCommands(program: Command): void {
       }
 
       if (options.models) {
+        const { displayModelsTable } = await import("./models");
         await displayModelsTable(options.key);
         process.exit(0);
       }
 
+      const { launchWizard } = await import("./wizard-launcher");
       await launchWizard(options.key);
     });
 
@@ -98,6 +88,7 @@ export function registerCommands(program: Command): void {
     .option("-k, --key <token>", "Stali API Token")
     .action(async (opts) => {
       const globals = program.opts<{ key?: string }>();
+      const { displayModelsTable } = await import("./models");
       await displayModelsTable(opts.key || globals.key);
       process.exit(0);
     });
@@ -137,6 +128,7 @@ export function registerCommands(program: Command): void {
         process.exit(1);
       }
       console.log(chalk.bold.cyan(`\n${t("init_title")}\n`));
+      const { runInit } = await import("../services/init-cli");
       const result = await runInit({
         apiKey: apiKey.trim(),
         skipConfigure: opts.skipConfigure,
@@ -182,6 +174,7 @@ export function registerCommands(program: Command): void {
         ? opts.ids.split(",").map((id) => id.trim()).filter(Boolean)
         : undefined;
 
+      const { runPluginsSync } = await import("../services/plugin-sync");
       const { items, allOk } = await runPluginsSync({
         apiKey,
         baseUrl: cfg?.baseUrl,
@@ -206,11 +199,19 @@ export function registerCommands(program: Command): void {
 
   pluginsCmd
     .command("doctor")
-    .description("Alias → stali doctor (plugins); dùng stali doctor cho đầy đủ")
-    .option("--json", "Xuất JSON plugins (legacy shape)")
+    .description("(đã gỡ v3.1) dùng: stali doctor --plugins-only")
+    .option("--json", "Chuyển tiếp sang stali doctor --plugins-only --json")
     .action(async (opts: { json?: boolean }) => {
-      const code = await runPluginsDoctorAlias(opts.json);
-      process.exit(code);
+      console.error(
+        chalk.red("\n✖ plugins doctor đã gỡ trong v3.1\n") +
+          chalk.cyan("  → stali doctor --plugins-only" + (opts.json ? " --json" : "") + "\n")
+      );
+      if (opts.json) {
+        const { runDoctor } = await import("./doctor");
+        const code = await runDoctor(true, undefined, { pluginsOnly: true });
+        process.exit(code);
+      }
+      process.exit(2);
     });
 
   const configCmd = program
@@ -285,6 +286,7 @@ export function registerCommands(program: Command): void {
     .description("Thông tin cài đặt stali-cli, auth và doctor tóm tắt")
     .option("--json", "Xuất JSON")
     .action(async (opts: { json?: boolean }) => {
+      const { gatherCliInfo } = await import("../services/cli-info");
       const info = await gatherCliInfo();
       if (opts.json) {
         console.log(JSON.stringify(info, null, 2));
@@ -465,13 +467,14 @@ export function registerCommands(program: Command): void {
         console.error(chalk.red(`❌ Tool không hợp lệ: ${tool}`));
         process.exit(1);
       }
-      const fmt = (opts.format || "shell") as ExportEnvFormat;
+      const fmt = (opts.format || "shell") as "shell" | "dotenv" | "json" | "powershell";
       if (!["shell", "dotenv", "json", "powershell"].includes(fmt)) {
         console.error(chalk.red(`❌ Format không hợp lệ: ${fmt}`));
         process.exit(1);
       }
       const model = opts.model || toolDef.defaultModel;
       const cfg = await loadStaliConfig();
+      const { renderEnvExport } = await import("../services/export-env");
       console.log(renderEnvExport(toolId, apiKey, model, fmt, cfg?.baseUrl));
       process.exit(0);
     });
@@ -485,6 +488,7 @@ export function registerCommands(program: Command): void {
     .option("--force", "Với --fix: cấu hình lại cả tool đã OK")
     .option("--tools <list>", "Với --fix: chỉ các tool (cách nhau bởi dấu phẩy)")
     .option("-m, --model <model>", "Với --fix: model áp dụng")
+    .option("--plugins-only", "Chỉ kiểm tra plugin (~/.stali/plugins.json)")
     .option("--watch", "Theo dõi liên tục (Ctrl+C thoát)")
     .option("--notify", "Với --watch: chuông + desktop notify khi thay đổi")
     .option("-i, --interval <seconds>", "Với --watch: chu kỳ giây (mặc định 10)", "10")
@@ -498,23 +502,30 @@ export function registerCommands(program: Command): void {
       watch?: boolean;
       notify?: boolean;
       interval?: string;
+      pluginsOnly?: boolean;
     }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = await resolveApiKey(globals.key);
+      const { runDoctor, runDoctorWatch } = await import("./doctor");
+      const view = { pluginsOnly: opts.pluginsOnly };
+      if (opts.fix && opts.pluginsOnly) {
+        console.error(chalk.red("❌ --plugins-only không dùng cùng --fix"));
+        process.exit(1);
+      }
       if (opts.watch && !opts.fix) {
         const sec = parseInt(opts.interval || "10", 10) || 10;
-        await runDoctorWatch(sec, opts.json, opts.notify);
+        await runDoctorWatch(sec, opts.json, opts.notify, view);
         return;
       }
-      await runDoctor(opts.json, {
+      const code = await runDoctor(opts.json, {
         apiKey,
         fix: opts.fix,
         dryRun: opts.dryRun,
         force: opts.force,
         tools: opts.tools,
         model: opts.model,
-      });
-      process.exit(0);
+      }, view);
+      process.exit(code);
     });
 
   program
@@ -535,6 +546,7 @@ export function registerCommands(program: Command): void {
         process.exit(0);
       }
       console.log(chalk.cyan("\n⬇️  Đang cập nhật stali-cli…\n"));
+      const { selfUpdate } = await import("../services/self-update");
       const result = await selfUpdate();
       if (result.success) {
         console.log(chalk.green(`✅ ${result.message}`));
@@ -558,6 +570,7 @@ export function registerCommands(program: Command): void {
         console.error(chalk.red("❌ Thiếu API key. Dùng -k hoặc lưu token qua wizard trước."));
         process.exit(1);
       }
+      const { runConfigure } = await import("./configure-cmd");
       await runConfigure(tool, apiKey, opts.model, opts.dryRun);
     });
 
@@ -598,6 +611,7 @@ export function registerCommands(program: Command): void {
           noPlugins: opts.noPlugins,
         });
 
+        const { runConfigureBatch } = await import("../services/configure-batch");
         const { items, allOk } = await runConfigureBatch({
           apiKey,
           model: opts.model,
@@ -640,7 +654,8 @@ export function registerCommands(program: Command): void {
   program
     .command("completion <shell>")
     .description("In script shell completion (bash | zsh | fish)")
-    .action((shell: string) => {
+    .action(async (shell: string) => {
+      const { renderCompletion } = await import("./completion");
       const script = renderCompletion(shell);
       if (!script) {
         console.error(chalk.red(`❌ Shell không hỗ trợ: ${shell}. Dùng: bash, zsh, fish`));
@@ -658,6 +673,7 @@ export function registerCommands(program: Command): void {
     .option("--purge-path", "Gỡ ~/.stali/bin khỏi User PATH (Windows)")
     .action(async (opts: { keepConfig?: boolean; keepSource?: boolean; purgePath?: boolean }) => {
       console.log(chalk.bold.yellow("\n🗑️  STALI CLI — UNINSTALL\n"));
+      const { runUninstall } = await import("../services/uninstall");
       const result = await runUninstall({
         keepConfig: opts.keepConfig,
         keepSource: opts.keepSource,
@@ -686,6 +702,7 @@ export function registerCommands(program: Command): void {
     .requiredOption("-t, --tool <toolId>", "ID công cụ (vd: claude, codex, openclaw)")
     .option("-b, --backup <path>", "Đường dẫn file .bak cụ thể")
     .action(async (opts: { tool: string; backup?: string }) => {
+      const { runRestore } = await import("./configure-cmd");
       await runRestore(opts.tool, opts.backup);
       process.exit(0);
     });

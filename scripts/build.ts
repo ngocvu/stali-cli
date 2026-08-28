@@ -12,7 +12,7 @@ const distDir = path.join(rootDir, "dist");
 const distFile = path.join(distDir, "index.js");
 const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, "package.json"), "utf8"));
 
-const MAX_TOTAL_DIST_KB = Number(process.env.STALI_MAX_DIST_KB || 1800);
+const MAX_TOTAL_DIST_KB = Number(process.env.STALI_MAX_DIST_KB || 1600);
 
 console.log(`📦 Building stali-cli v${pkg.version} with Bun...\n`);
 

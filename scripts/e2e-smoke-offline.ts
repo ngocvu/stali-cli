@@ -43,8 +43,11 @@ async function main() {
   const shortToken = run(["--models", "-k", "sk-stali-x"]);
   assert("short token rejected", shortToken.status !== 0);
 
-  const plugins = run(["plugins", "--init"]);
-  assert("plugins --init exit 0", plugins.status === 0);
+  const pluginsInit = run(["plugins", "--init"]);
+  assert("plugins --init exit 0", pluginsInit.status === 0);
+
+  const docPlugins = run(["doctor", "--plugins-only", "--json"]);
+  assert("doctor --plugins-only --json exit 0|1", docPlugins.status === 0 || docPlugins.status === 1);
 
   const failed = results.filter((r) => !r.ok);
   for (const r of results) {
