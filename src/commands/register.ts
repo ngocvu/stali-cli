@@ -68,7 +68,8 @@ export function registerCommands(program: Command): void {
     })
     .hook("postAction", async (_thisCommand, actionCommand) => {
       const name = actionCommand.name();
-      if (!name || name === "telemetry") return;
+      const parent = actionCommand.parent?.name();
+      if (!name || name === "bench" || name === "telemetry" || parent === "telemetry") return;
       try {
         const { recordCliTelemetry } = await import("../services/telemetry");
         await recordCliTelemetry(name);
@@ -642,8 +643,8 @@ export function registerCommands(program: Command): void {
     .command("gateway")
     .alias("gw")
     .description("Quét app AI đang dùng và cài Stali gateway (base URL + API key)")
-    .argument("[action]", "scan | install (mặc định: scan)")
-    .option("--json", "JSON output (scan | install)")
+    .argument("[action]", "scan | plan | install (mặc định: scan)")
+    .option("--json", "JSON output (scan | plan | install)")
     .option("--dry-run", "Với install: preview, không ghi file")
     .option("--all", "Cài gateway cho cả 13 tool (bỏ qua quét)")
     .option("--force", "Cài lại cả tool đã trỏ Stali")

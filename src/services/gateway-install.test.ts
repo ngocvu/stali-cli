@@ -1,0 +1,42 @@
+import { describe, expect, test } from "bun:test";
+import { planGatewayInstall, resolveGatewayTargets } from "./gateway-install";
+import type { ToolDiscoveryEntry } from "./tool-discovery";
+
+function entry(
+  toolId: string,
+  installed: boolean,
+  configured: boolean
+): ToolDiscoveryEntry {
+  return {
+    toolId,
+    toolName: toolId,
+    installed,
+    configuredForStali: configured,
+    signals: installed ? { config: true } : {},
+    configPath: `~/.${toolId}/config`,
+  };
+}
+
+describe("gateway plan", () => {
+  test("resolveGatewayTargets skips configured", () => {
+    const discovery = [entry("claude", true, true), entry("codex", true, false)];
+    const { targets, skipped } = resolveGatewayTargets(discovery, {});
+    expect(targets).toEqual(["codex"]);
+    expect(skipped.some((s) => s.toolId === "claude" && s.reason === "already_configured")).toBe(
+      true
+    );
+  });
+
+  test("resolveGatewayTargets --force includes configured", () => {
+    const discovery = [entry("claude", true, true)];
+    const { targets } = resolveGatewayTargets(discovery, { force: true });
+    expect(targets).toEqual(["claude"]);
+  });
+
+  test("planGatewayInstall returns summary", async () => {
+    const plan = await planGatewayInstall();
+    expect(plan.summary.totalTools).toBe(13);
+    expect(Array.isArray(plan.targets)).toBe(true);
+    expect(Array.isArray(plan.tools)).toBe(true);
+  });
+});

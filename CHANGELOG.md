@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.19.0] — 2026-08-28
+
+### Added
+- **`stali gateway plan [--json]`** — xem kế hoạch cài gateway (targets/skipped) không cần API key
+- Shell completion cho `gateway`/`gw`, `bench`, `telemetry`, `info --offline/--online`
+
+### Changed
+- **`runPluginsDoctor`** — quét plugin song song (`Promise.all`)
+- Telemetry hook bỏ qua subcommand `telemetry status|on|off` và `bench`
+
 ## [3.18.0] — 2026-08-28
 
 ### Added

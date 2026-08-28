@@ -22,7 +22,10 @@ const SUBCOMMANDS = [
   "doctor",
   "update",
   "gateway",
+  "gw",
   "install",
+  "bench",
+  "telemetry",
   "configure",
   "configure-all",
   "export-env",
@@ -54,6 +57,11 @@ const CONFIGURE_ALL_FLAGS = [
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
 const DOCTOR_FLAGS = ["--json", "--plugins-only", "--tools-only", "--fix", "--dry-run", "--force", "--tools", "--ids", "--watch", "--notify", "-i", "--interval"];
+const GATEWAY_ACTIONS = ["scan", "install", "plan"];
+const GATEWAY_FLAGS = ["--json", "--dry-run", "--all", "--force", "-m", "--model", "--continue-on-error", "--include-plugins", "--no-plugins"];
+const INFO_FLAGS = ["--json", "--offline", "--online"];
+const BENCH_FLAGS = ["--json", "--strict", "--runs"];
+const TELEMETRY_SUB = ["status", "on", "off"];
 const CONFIG_SET_FLAGS = ["base-url", "--reset"];
 const PLUGINS_SUB = ["list", "sync", "--init"];
 const PLUGINS_SYNC_FLAGS = ["-k", "--key", "-m", "--model", "--dry-run", "--ids"];
@@ -95,6 +103,26 @@ _stali_completion() {
       ;;
     check)
       COMPREPLY=( $(compgen -W "${CHECK_FLAGS.join(" ")}" -- "\${cur}") )
+      ;;
+    gateway|gw)
+      if [[ "\${prev}" == "gateway" || "\${prev}" == "gw" ]]; then
+        COMPREPLY=( $(compgen -W "${GATEWAY_ACTIONS.join(" ")}" -- "\${cur}") )
+      else
+        COMPREPLY=( $(compgen -W "${GATEWAY_FLAGS.join(" ")}" -- "\${cur}") )
+      fi
+      ;;
+    info)
+      COMPREPLY=( $(compgen -W "${INFO_FLAGS.join(" ")}" -- "\${cur}") )
+      ;;
+    bench)
+      COMPREPLY=( $(compgen -W "${BENCH_FLAGS.join(" ")}" -- "\${cur}") )
+      ;;
+    telemetry)
+      if [[ "\${prev}" == "telemetry" ]]; then
+        COMPREPLY=( $(compgen -W "${TELEMETRY_SUB.join(" ")}" -- "\${cur}") )
+      else
+        COMPREPLY=( $(compgen -W "--json" -- "\${cur}") )
+      fi
       ;;
     config)
       if [[ "\${prev}" == "config" ]]; then
@@ -210,6 +238,30 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
         wizard)
           _arguments '(-k --key)'{-k,--key}'[API key khởi tạo wizard]'
           ;;
+        gateway|gw)
+          _arguments \\
+            '1:action:(scan plan install)' \\
+            '--json[JSON output]' \\
+            '--dry-run[Preview install]' \\
+            '--all[Cả 13 tool]' \\
+            '--force[Ghi đè đã gateway]' \\
+            '(-m --model)'{-m,--model}'[Model]'
+          ;;
+        info)
+          _arguments \\
+            '--json[JSON]' \\
+            '--offline[Không gọi mạng]' \\
+            '--online[Validate auth + npm]'
+          ;;
+        bench)
+          _arguments \\
+            '--json[JSON]' \\
+            '--strict[Fail nếu vượt ngưỡng]' \\
+            '--runs[Số lần chạy]'
+          ;;
+        telemetry)
+          _arguments '1:sub:(status on off)' '--json[JSON với status]'
+          ;;
         completion)
           _arguments '1:shell:(bash zsh fish)'
           ;;
@@ -283,6 +335,24 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from init' -l no-plugins",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from plugins' -l init",
+    "",
+    "complete -c stali -n '__fish_seen_subcommand_from gateway' -a 'scan plan install'",
+    "complete -c stali -n '__fish_seen_subcommand_from gw' -a 'scan plan install'",
+    "complete -c stali -n '__fish_seen_subcommand_from gateway' -l json",
+    "complete -c stali -n '__fish_seen_subcommand_from gateway' -l dry-run",
+    "complete -c stali -n '__fish_seen_subcommand_from gateway' -l all",
+    "complete -c stali -n '__fish_seen_subcommand_from gateway' -l force",
+    "",
+    "complete -c stali -n '__fish_seen_subcommand_from info' -l json",
+    "complete -c stali -n '__fish_seen_subcommand_from info' -l offline",
+    "complete -c stali -n '__fish_seen_subcommand_from info' -l online",
+    "",
+    "complete -c stali -n '__fish_seen_subcommand_from bench' -l json",
+    "complete -c stali -n '__fish_seen_subcommand_from bench' -l strict",
+    "complete -c stali -n '__fish_seen_subcommand_from bench' -l runs",
+    "",
+    "complete -c stali -n '__fish_seen_subcommand_from telemetry' -a 'status on off'",
+    "complete -c stali -n '__fish_seen_subcommand_from telemetry' -l json",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from completion' -l install -d 'Cài completion vào shell config'",
     "complete -c stali -n '__fish_seen_subcommand_from completion' -l all -d 'Cài bash+fish+zsh (với --install)'",

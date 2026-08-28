@@ -188,6 +188,18 @@ async function main() {
     }
   }
 
+  const gatewayPlan = run(["gateway", "plan", "--json"]);
+  assert("gateway plan --json exit 0", gatewayPlan.status === 0);
+  if (gatewayPlan.status === 0) {
+    try {
+      const parsed = JSON.parse(gatewayPlan.stdout || "{}");
+      assert("gateway plan JSON has targets", Array.isArray(parsed.targets));
+      assert("gateway plan JSON has summary", typeof parsed.summary === "object");
+    } catch {
+      assert("gateway plan JSON parseable", false);
+    }
+  }
+
   const gatewayDryJson = run([
     "gateway",
     "install",

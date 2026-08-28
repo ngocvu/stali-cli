@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { runGatewayInstall, runGatewayScan } from "../services/gateway-install";
+import { runGatewayInstall, runGatewayPlan, runGatewayScan } from "../services/gateway-install";
 
 export async function runGatewayCommand(
   sub: string | undefined,
@@ -19,6 +19,15 @@ export async function runGatewayCommand(
 
   if (action === "scan") {
     await runGatewayScan({ json: opts.json });
+    process.exit(0);
+  }
+
+  if (action === "plan") {
+    await runGatewayPlan({
+      json: opts.json,
+      all: opts.all,
+      force: opts.force,
+    });
     process.exit(0);
   }
 
@@ -89,6 +98,7 @@ export async function runGatewayCommand(
 
   console.error(chalk.red(`❌ Lệnh gateway không hợp lệ: ${action}`));
   console.log(chalk.cyan("  stali gateway scan [--json]"));
+  console.log(chalk.cyan("  stali gateway plan [--json] [--all] [--force]"));
   console.log(chalk.cyan("  stali gateway install [-k] [--dry-run] [--json] [--all] [--force]\n"));
   process.exit(1);
 }

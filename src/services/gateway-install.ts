@@ -25,6 +25,101 @@ export interface GatewayInstallOptions {
   includePlugins?: boolean;
 }
 
+export interface GatewayPlanOptions {
+  all?: boolean;
+  force?: boolean;
+}
+
+export interface GatewayPlan {
+  summary: {
+    totalTools: number;
+    installed: number;
+    configured: number;
+    pending: number;
+  };
+  targets: string[];
+  skipped: Array<{ toolId: string; toolName: string; reason: string }>;
+  tools: ToolDiscoveryEntry[];
+}
+
+export function resolveGatewayTargets(
+  discovery: ToolDiscoveryEntry[],
+  opts: GatewayPlanOptions
+): { targets: string[]; skipped: GatewayPlan["skipped"] } {
+  const skipped: GatewayPlan["skipped"] = [];
+  let targets: string[];
+
+  if (opts.all) {
+    targets = SUPPORTED_TOOLS.map((t) => t.id);
+    for (const tool of SUPPORTED_TOOLS) {
+      const entry = discovery.find((d) => d.toolId === tool.id);
+      if (!opts.force && entry?.configuredForStali) {
+        skipped.push({
+          toolId: tool.id,
+          toolName: tool.name,
+          reason: "already_configured",
+        });
+      }
+    }
+    if (!opts.force) {
+      targets = targets.filter((id) => {
+        const entry = discovery.find((d) => d.toolId === id);
+        return !entry?.configuredForStali;
+      });
+    }
+    return { targets, skipped };
+  }
+
+  const installed = discovery.filter((e) => e.installed);
+  targets = installed.map((e) => e.toolId);
+
+  for (const e of installed) {
+    if (!opts.force && e.configuredForStali) {
+      skipped.push({
+        toolId: e.toolId,
+        toolName: e.toolName,
+        reason: "already_configured",
+      });
+    }
+  }
+
+  if (!opts.force) {
+    targets = targets.filter((id) => {
+      const e = discovery.find((d) => d.toolId === id);
+      return !e?.configuredForStali;
+    });
+  }
+
+  for (const e of discovery.filter((d) => !d.installed)) {
+    skipped.push({
+      toolId: e.toolId,
+      toolName: e.toolName,
+      reason: "not_installed",
+    });
+  }
+
+  return { targets, skipped };
+}
+
+export async function planGatewayInstall(opts?: GatewayPlanOptions): Promise<GatewayPlan> {
+  const discovery = await discoverInstalledTools();
+  const installed = discovery.filter((e) => e.installed);
+  const configured = installed.filter((e) => e.configuredForStali);
+  const { targets, skipped } = resolveGatewayTargets(discovery, opts ?? {});
+
+  return {
+    summary: {
+      totalTools: SUPPORTED_TOOLS.length,
+      installed: installed.length,
+      configured: configured.length,
+      pending: installed.length - configured.length,
+    },
+    targets,
+    skipped,
+    tools: discovery,
+  };
+}
+
 export async function runGatewayScan(opts?: GatewayScanOptions): Promise<ToolDiscoveryEntry[]> {
   const entries = await discoverInstalledTools();
   if (opts?.json) {
@@ -74,23 +169,45 @@ export async function runGatewayScan(opts?: GatewayScanOptions): Promise<ToolDis
   return entries;
 }
 
+export async function runGatewayPlan(opts?: {
+  json?: boolean;
+  all?: boolean;
+  force?: boolean;
+}): Promise<GatewayPlan> {
+  const plan = await planGatewayInstall({ all: opts?.all, force: opts?.force });
+
+  if (opts?.json) {
+    console.log(JSON.stringify(plan, null, 2));
+    return plan;
+  }
+
+  console.log(chalk.bold.cyan("\n📋 STALI GATEWAY — KẾ HOẠCH CÀI\n"));
+  console.log(
+    `Phát hiện: ${chalk.white(String(plan.summary.installed))}/${plan.summary.totalTools} · ` +
+      `${chalk.green(String(plan.summary.configured))} đã gateway · ` +
+      `${chalk.yellow(String(plan.targets.length))} sẽ cài\n`
+  );
+
+  if (plan.targets.length > 0) {
+    console.log(chalk.white("Targets:"));
+    for (const id of plan.targets) {
+      const e = plan.tools.find((t) => t.toolId === id);
+      const sig = e ? formatDiscoverySignal(e.signals) : "";
+      console.log(`  • ${e?.toolName || id} ${chalk.gray(`(${sig})`)}`);
+    }
+    console.log(chalk.cyan(`\nChạy: stali gateway install -k sk-stali-...\n`));
+  } else {
+    console.log(chalk.green("✅ Không có app cần cài gateway.\n"));
+  }
+
+  return plan;
+}
+
 export async function runGatewayInstall(
   opts: GatewayInstallOptions
 ): Promise<{ items: ConfigureBatchItem[]; allOk: boolean; targets: string[] }> {
   const discovery = await discoverInstalledTools();
-  let targets: string[];
-
-  if (opts.all) {
-    targets = SUPPORTED_TOOLS.map((t) => t.id);
-  } else {
-    targets = discovery.filter((e) => e.installed).map((e) => e.toolId);
-    if (!opts.force) {
-      targets = targets.filter((id) => {
-        const e = discovery.find((d) => d.toolId === id);
-        return !e?.configuredForStali;
-      });
-    }
-  }
+  const { targets } = resolveGatewayTargets(discovery, opts);
 
   if (targets.length === 0) {
     const msg = opts.all

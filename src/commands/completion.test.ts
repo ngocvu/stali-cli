@@ -9,6 +9,14 @@ describe("renderCompletion", () => {
     expect(bash).toMatch(/wizard/);
   });
 
+  test("bash includes gateway plan và bench", () => {
+    const bash = renderCompletion("bash");
+    expect(bash).toContain("gateway|gw)");
+    expect(bash).toContain("plan");
+    expect(bash).toContain("bench)");
+    expect(bash).toContain("telemetry)");
+  });
+
   test("fish includes check scoped flags", () => {
     const fish = renderCompletion("fish");
     expect(fish).toContain("__fish_seen_subcommand_from check");

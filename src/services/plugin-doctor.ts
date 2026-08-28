@@ -125,11 +125,7 @@ export async function runPluginsDoctor(): Promise<PluginsDoctorOutput> {
   const cfg = await loadStaliConfig();
   const urls = resolveStaliUrls(cfg?.baseUrl);
   const plugins = await loadPlugins();
-  const statuses: PluginHealthStatus[] = [];
-
-  for (const entry of plugins) {
-    statuses.push(await detectPluginHealth(entry, urls));
-  }
+  const statuses = await Promise.all(plugins.map((entry) => detectPluginHealth(entry, urls)));
 
   return {
     meta: {
