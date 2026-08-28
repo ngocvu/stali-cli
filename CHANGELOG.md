@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.27.0] — 2026-08-28
+
+### Added
+- **`stali telemetry flush`** — gửi lại event trong `telemetry-queue.jsonl`
+- **`stali init -y`** — gateway auto không banner (CI/script)
+- **`stali info --json`** — field `telemetry.enabled` + `telemetry.queueDepth`
+
+### Fixed
+- **`stali init`** — dùng `runGatewayAuto` (quét + cài) thay `runGatewayInstall` trực tiếp
+
+### Changed
+- Admin SSE telemetry: push ngay khi POST (notify) + poll dự phòng 10s
+- Postinstall hints: `stali gw` default auto, `telemetry on`
+
 ## [3.26.0] — 2026-08-28
 
 ### Added

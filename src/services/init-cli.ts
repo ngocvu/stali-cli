@@ -12,8 +12,10 @@ export interface InitOptions {
   skipCompletion?: boolean;
   skipCliCheck?: boolean;
   upgradeCli?: boolean;
-  /** Chỉ configure app đã phát hiện trên máy */
+  /** Chỉ configure app đã phát hiện trên máy (mặc định). false = --all-apps */
   installedOnly?: boolean;
+  /** Không in banner gateway (CI/script) */
+  yes?: boolean;
 }
 
 export interface InitResult {
@@ -92,14 +94,16 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
       noPlugins: opts.noPlugins,
     });
     const useInstalledOnly = opts.installedOnly !== false;
-    const { runGatewayInstall } = await import("./gateway-install");
-    const gw = await runGatewayInstall({
+    const { runGatewayAuto } = await import("./gateway-install");
+    const batch = await runGatewayAuto({
       apiKey: opts.apiKey,
       baseUrl,
       all: !useInstalledOnly,
       continueOnError: true,
       includePlugins,
+      yes: opts.yes,
     });
+    const gw = batch.install ?? { items: [], allOk: true, targets: [] as string[] };
     const okCount = gw.items.filter((i) => i.success).length;
     const label = includePlugins ? "apps+plugins" : "apps";
     steps.push({

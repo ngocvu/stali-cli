@@ -149,6 +149,7 @@ export function registerCommands(program: Command): void {
     .option("--skip-cli-check", "Bỏ qua kiểm tra phiên bản stali-cli")
     .option("--upgrade-cli", "Nâng cấp stali-cli qua npm nếu có bản mới")
     .option("--all-apps", "Configure cả 13 tool (bỏ qua quét app đang dùng)")
+    .option("-y, --yes", "Gateway không in banner kế hoạch (CI/script)")
     .action(async (opts: {
       key?: string;
       skipConfigure?: boolean;
@@ -158,6 +159,7 @@ export function registerCommands(program: Command): void {
       skipCliCheck?: boolean;
       upgradeCli?: boolean;
       allApps?: boolean;
+      yes?: boolean;
     }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = opts.key || globals.key;
@@ -177,6 +179,7 @@ export function registerCommands(program: Command): void {
         skipCliCheck: opts.skipCliCheck,
         upgradeCli: opts.upgradeCli,
         installedOnly: !opts.allApps,
+        yes: opts.yes,
       });
       for (const step of result.steps) {
         const icon = step.ok ? chalk.green("✓") : chalk.red("✗");
@@ -747,6 +750,24 @@ export function registerCommands(program: Command): void {
       }
       console.log(chalk.gray("\nChỉ gửi: tên lệnh, phiên bản CLI, platform. Không gửi API key.\n"));
       process.exit(0);
+    });
+
+  telemetryCmd
+    .command("flush")
+    .description("Gửi lại event telemetry trong hàng đợi")
+    .option("--json", "JSON output")
+    .action(async (opts: { json?: boolean }) => {
+      const { flushTelemetryQueue, readTelemetryQueueDepth } = await import("../services/telemetry");
+      const before = await readTelemetryQueueDepth();
+      const result = await flushTelemetryQueue();
+      const after = await readTelemetryQueueDepth();
+      if (opts.json) {
+        console.log(JSON.stringify({ before, ...result, after }, null, 2));
+        process.exit(after === 0 ? 0 : 1);
+      }
+      console.log(chalk.bold.cyan("\n📡 TELEMETRY FLUSH\n"));
+      console.log(`Đã gửi: ${chalk.green(String(result.sent))} · còn lại: ${after}`);
+      process.exit(after === 0 ? 0 : 1);
     });
 
   telemetryCmd

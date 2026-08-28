@@ -261,6 +261,9 @@ async function main() {
   const telemetryStatus = run(["telemetry", "status", "--json"]);
   assert("telemetry status --json exit 0", telemetryStatus.status === 0);
 
+  const telemetryFlush = run(["telemetry", "flush", "--json"]);
+  assert("telemetry flush --json exit 0", telemetryFlush.status === 0);
+
   const prom = run(["doctor", "--tools-only", "--prometheus"]);
   assert("doctor --prometheus", prom.status === 0 || prom.status === 1);
   assert(

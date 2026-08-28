@@ -61,7 +61,7 @@ const GATEWAY_ACTIONS = ["auto", "scan", "plan", "install"];
 const GATEWAY_FLAGS = ["--json", "--dry-run", "--all", "--force", "-y", "--yes", "-m", "--model", "--continue-on-error", "--include-plugins", "--no-plugins"];
 const INFO_FLAGS = ["--json", "--offline", "--online"];
 const BENCH_FLAGS = ["--json", "--strict", "--runs"];
-const TELEMETRY_SUB = ["status", "on", "off"];
+const TELEMETRY_SUB = ["status", "flush", "on", "off"];
 const CONFIG_SET_FLAGS = ["base-url", "--reset"];
 const PLUGINS_SUB = ["list", "sync", "--init"];
 const PLUGINS_SYNC_FLAGS = ["-k", "--key", "-m", "--model", "--dry-run", "--ids"];
@@ -231,6 +231,7 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
         init)
           _arguments \\
             '(-k --key)'{-k,--key}'[API key]' \\
+            '(-y --yes)'{-y,--yes}'[Gateway không banner]' \\
             '--skip-configure[Bỏ configure-all]' \\
             '--include-plugins[Đồng bộ plugin]' \\
             '--no-plugins[Bỏ plugin]'
@@ -261,7 +262,7 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
             '--runs[Số lần chạy]'
           ;;
         telemetry)
-          _arguments '1:sub:(status on off)' '--json[JSON với status]'
+          _arguments '1:sub:(status flush on off)' '--json[JSON với status/flush]'
           ;;
         completion)
           _arguments '1:shell:(bash zsh fish)'
@@ -353,7 +354,7 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from bench' -l strict",
     "complete -c stali -n '__fish_seen_subcommand_from bench' -l runs",
     "",
-    "complete -c stali -n '__fish_seen_subcommand_from telemetry' -a 'status on off'",
+    "complete -c stali -n '__fish_seen_subcommand_from telemetry' -a 'status flush on off'",
     "complete -c stali -n '__fish_seen_subcommand_from telemetry' -l json",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from completion' -l install -d 'Cài completion vào shell config'",

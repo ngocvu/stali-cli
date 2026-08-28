@@ -57,6 +57,10 @@ export interface CliInfoSnapshot {
   };
   npm?: VersionCheckResult;
   gateway: CliGatewaySummary;
+  telemetry?: {
+    enabled: boolean;
+    queueDepth: number;
+  };
   /** true khi không validate auth / npm (stali info --json mặc định) */
   offline?: boolean;
 }
@@ -130,12 +134,15 @@ export async function gatherCliInfo(options?: GatherCliInfoOptions): Promise<Cli
     ? fetchNpmLatestVersion()
     : Promise.resolve(undefined as VersionCheckResult | undefined);
 
-  const [auth, pluginSummary, installInfo, gatewayEntries, npm] = await Promise.all([
+  const [auth, pluginSummary, installInfo, gatewayEntries, npm, telemetryCfg, telemetryQueue] =
+    await Promise.all([
     authPromise,
     pluginPromise,
     detectInstallMode(),
     discoverInstalledTools(),
     npmPromise,
+    import("./telemetry").then((m) => m.readTelemetryConfig()),
+    import("./telemetry").then((m) => m.readTelemetryQueueDepth()),
   ]);
   const configured = gatewayEntries.filter((e) => e.configuredForStali).length;
 
@@ -167,6 +174,10 @@ export async function gatherCliInfo(options?: GatherCliInfoOptions): Promise<Cli
     },
     npm: npm ?? undefined,
     gateway: summarizeGateway(gatewayEntries),
+    telemetry: {
+      enabled: telemetryCfg.enabled,
+      queueDepth: telemetryQueue,
+    },
     offline: offline || (!validateAuth && !checkNpm),
   };
 }

@@ -27,6 +27,8 @@ describe("cli-info", () => {
       const ms = performance.now() - t0;
       expect(info.installMode).toBeDefined();
       expect(info.gateway).toBeDefined();
+      expect(info.telemetry).toBeDefined();
+      expect(typeof info.telemetry?.enabled).toBe("boolean");
       expect(ms).toBeLessThan(500);
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
