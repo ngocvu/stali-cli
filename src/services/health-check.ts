@@ -29,6 +29,8 @@ export interface HealthCheckResult {
   gatewayConfigured: number;
   pendingGateway: string[];
   pendingGatewayCount: number;
+  /** JSON output schema (stali check --json) */
+  schemaVersion: 2;
 }
 
 function resolveScope(opts: HealthCheckOptions): HealthCheckScope {
@@ -142,5 +144,6 @@ export async function runHealthCheck(
     gatewayConfigured: gatewaySummary.configured,
     pendingGateway: gatewaySummary.pendingGateway,
     pendingGatewayCount: gatewaySummary.pendingGatewayCount,
+    schemaVersion: 2,
   };
 }

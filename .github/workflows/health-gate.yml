@@ -41,6 +41,17 @@ jobs:
           test -s /tmp/doctor-strict.json
           bun dist/index.js check --tools-only --json | rg -q '"pendingGateway"'
           bun dist/index.js check --tools-only --json | rg -q '"pendingGatewayCount"'
+          bun dist/index.js check --tools-only --json | rg -q '"schemaVersion": 2'
+
+      - name: Pre-commit hook dry-run
+        run: |
+          mkdir -p /tmp/stali-bin
+          printf '%s\n' '#!/usr/bin/env bash' "exec bun \"$PWD/dist/index.js\" \"\$@\"" > /tmp/stali-bin/stali
+          chmod +x /tmp/stali-bin/stali
+          export PATH="/tmp/stali-bin:$PATH"
+          bash -n scripts/examples/git-hooks/pre-commit-stali-doctor.sh
+          bash scripts/examples/git-hooks/pre-commit-stali-doctor.sh; code=$?
+          test "$code" -eq 0 -o "$code" -eq 1
 
   live-gate:
     runs-on: ubuntu-latest

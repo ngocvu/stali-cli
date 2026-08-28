@@ -38,7 +38,7 @@ try {
   if (!pkg.version) fail("missing version");
   ok(`package ${pkg.name}@${pkg.version}`);
 
-  const required = ["bin/stali.js", "dist/index.js", "CHANGELOG.md", "scripts/npm-postinstall.cjs"];
+  const required = ["bin/stali.js", "dist/index.js", "CHANGELOG.md", "docs/ONBOARDING.md", "scripts/npm-postinstall.cjs"];
   for (const rel of required) {
     const p = join(pkgDir, rel);
     if (!statSync(p, { throwIfNoEntry: false })) fail(`missing in tarball: ${rel}`);

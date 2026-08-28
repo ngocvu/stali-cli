@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.42.0] — 2026-08-28
+
+### Added
+- **`check --json`** — `schemaVersion: 2` (đồng bộ doctor/status)
+- **`stali user`** — link hướng dẫn [ONBOARDING](docs/ONBOARDING.md) trên GitHub + gợi ý path npm
+- **Health Gate CI** — assert `check` schemaVersion; dry-run mẫu pre-commit hook
+- **`verify-npm-pack`** — bắt buộc `docs/ONBOARDING.md` trong tarball
+
 ## [3.41.0] — 2026-08-28
 
 ### Added

@@ -97,6 +97,7 @@ async function main() {
         "check JSON pendingGatewayCount",
         typeof parsed.pendingGatewayCount === "number"
       );
+      assert("check JSON schemaVersion", parsed.schemaVersion === 2);
     } catch {
       assert("check JSON parseable", false, "invalid JSON");
     }

@@ -1,7 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { deriveSetupNextCommand } from "./user-cli";
+import { deriveSetupNextCommand, printUserQuickReference, ONBOARDING_DOC_URL } from "./user-cli";
 
 describe("user-cli", () => {
+  test("printUserQuickReference links onboarding doc", () => {
+    const lines: string[] = [];
+    const orig = console.log;
+    console.log = (...args: unknown[]) => {
+      lines.push(args.map(String).join(" "));
+    };
+    try {
+      printUserQuickReference();
+      const out = lines.join("\n");
+      expect(out).toContain(ONBOARDING_DOC_URL);
+      expect(out).toContain("stali status");
+    } finally {
+      console.log = orig;
+    }
+  });
+
   test("deriveSetupNextCommand success → status", () => {
     expect(
       deriveSetupNextCommand({

@@ -16,6 +16,7 @@ describe("runHealthCheck", () => {
       expect(r.scope).toBe("full");
       expect(Array.isArray(r.pendingGateway)).toBe(true);
       expect(r.pendingGatewayCount).toBe(r.pendingGateway.length);
+      expect(r.schemaVersion).toBe(2);
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
