@@ -62,9 +62,10 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 ## 🚀 Cài đặt
 
 ```bash
-# Nhanh nhất — npm global (prebuilt dist, chỉ cần Node >= 18)
+# Nhanh nhất — npm global (prebuilt dist, ~0 transitive deps, chỉ cần Node >= 18)
+npm install -g stali-cli
+# hoặc tắt fund/audit của npm CLI:
 npm install -g stali-cli --no-fund --no-audit
-# hoặc:
 bash scripts/npm-install-global.sh
 
 # curl installer (git source / standalone / npm auto)

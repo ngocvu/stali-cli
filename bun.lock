@@ -4,7 +4,10 @@
   "workspaces": {
     "": {
       "name": "stali-cli",
-      "dependencies": {
+      "devDependencies": {
+        "@types/bun": "^1.4.0",
+        "@types/node": "^26.2.0",
+        "@types/react": "^19.2.18",
         "chalk": "^6.0.0",
         "cli-table3": "^0.6.5",
         "commander": "^15.0.0",
@@ -15,13 +18,8 @@
         "ink-text-input": "^6.0.0",
         "react": "^19.2.8",
         "react-devtools-core": "file:./scripts/stubs/react-devtools-core-pkg",
-        "zod": "^4.4.3",
-      },
-      "devDependencies": {
-        "@types/bun": "^1.4.0",
-        "@types/node": "^26.2.0",
-        "@types/react": "^19.2.18",
         "typescript": "^7.0.2",
+        "zod": "^4.4.3",
       },
     },
   },
@@ -189,6 +187,8 @@
     "cli-truncate/string-width": ["string-width@8.2.2", "", { "dependencies": { "get-east-asian-width": "^1.5.0", "strip-ansi": "^7.1.2" } }, "sha512-GaPUh5gfdrYzqeVNZvUfT23vYYxXzKYidUcnMtJg/3rxRV63EFZy3k6xfKlmfeJD0176lnUV/Usr3XcwSvFzpg=="],
 
     "ink/chalk": ["chalk@5.6.2", "", {}, "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="],
+
+    "ink/react-devtools-core": ["react-devtools-core@file:scripts/stubs/react-devtools-core-pkg", {}],
 
     "ink/string-width": ["string-width@8.2.2", "", { "dependencies": { "get-east-asian-width": "^1.5.0", "strip-ansi": "^7.1.2" } }, "sha512-GaPUh5gfdrYzqeVNZvUfT23vYYxXzKYidUcnMtJg/3rxRV63EFZy3k6xfKlmfeJD0176lnUV/Usr3XcwSvFzpg=="],
 

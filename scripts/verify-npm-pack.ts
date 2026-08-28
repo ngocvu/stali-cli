@@ -31,6 +31,7 @@ try {
     version: string;
     files?: string[];
     bin?: Record<string, string>;
+    dependencies?: Record<string, string>;
   };
 
   if (pkg.name !== "stali-cli") fail(`wrong package name: ${pkg.name}`);
@@ -61,6 +62,12 @@ try {
     fail("package.json files must include bin and dist");
   }
   ok("files field OK");
+
+  const depCount = Object.keys(pkg.dependencies || {}).length;
+  if (depCount > 0) {
+    fail(`tarball must have 0 runtime dependencies (prebuilt dist), got ${depCount}`);
+  }
+  ok("zero runtime dependencies (fast npm install)");
 } finally {
   rmSync(stage, { recursive: true, force: true });
   rmSync(join(root, tgzName), { force: true });

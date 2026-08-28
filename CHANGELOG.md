@@ -3,11 +3,15 @@
 ## [3.15.0] — 2026-08-28
 
 ### Added
+- **`stali gateway scan|install`** — tự quét app AI đang dùng (binary/config/VS Code) và cài Stali gateway
+- **`--installed-only`** — `doctor --fix`, `configure-all`, `init` chỉ target app phát hiện
 - **macOS LaunchAgent** — `stali update --install-launchd` / `--install-cron` dùng launchd 04:00 trên macOS
 - **`stali init --skip-cli-check` / `--upgrade-cli`** — kiểm tra hoặc nâng cấp CLI trong onboarding
 - **npm dist-tag `beta`** — release workflow tự gắn tag `beta` cho phiên bản `-beta`/`-rc`/`-alpha`
 
 ### Changed
+- **npm install nhanh** — `dependencies: {}` (dist prebuilt); `npm i stali-cli` không kéo ~72 packages React/Ink
+- Postinstall gợi ý `stali gateway scan` sau cài npm
 - `--cron-status` hiển thị LaunchAgent trên macOS
 - `installAutoUpdateCron` trên macOS dùng launchd thay crontab
 
