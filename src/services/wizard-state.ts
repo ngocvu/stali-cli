@@ -3,8 +3,10 @@ import path from "path";
 import { getStaliHome } from "../constants/paths";
 
 export interface WizardState {
-  /** Đã hiển thị gateway onboarding sau login lần đầu. */
+  /** Đã chạy gateway onboarding sau login lần đầu. */
   gatewayOnboardingSeen?: boolean;
+  /** ISO timestamp lần chạy gateway auto trong wizard. */
+  gatewayAutoRanAt?: string;
 }
 
 function statePath(): string {

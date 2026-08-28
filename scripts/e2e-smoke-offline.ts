@@ -203,6 +203,23 @@ async function main() {
     }
   }
 
+  const gatewayDefaultDry = run([
+    "gateway",
+    "--dry-run",
+    "--json",
+    "-k",
+    "sk-stali-test-key-for-dry-run-only-000000000000",
+  ]);
+  assert("gateway default dry-run --json exit 0|1", gatewayDefaultDry.status === 0 || gatewayDefaultDry.status === 1);
+  if (gatewayDefaultDry.status === 0) {
+    try {
+      const parsed = JSON.parse(gatewayDefaultDry.stdout || "{}");
+      assert("gateway default JSON has plan", typeof parsed.plan === "object");
+    } catch {
+      assert("gateway default JSON parseable", false);
+    }
+  }
+
   const gatewayAutoDry = run([
     "gateway",
     "auto",

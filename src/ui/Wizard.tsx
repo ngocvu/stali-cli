@@ -187,15 +187,36 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       const [plan, wizardState] = await Promise.all([planGatewayInstall(), loadWizardState()]);
 
       if (!wizardState.gatewayOnboardingSeen && plan.targets.length > 0) {
-        setGatewaySummary({
-          installed: plan.summary.installed,
-          configured: plan.summary.configured,
-          pending: plan.summary.pending,
-          targets: plan.targets.length,
+        await saveWizardState({
+          gatewayOnboardingSeen: true,
+          gatewayAutoRanAt: new Date().toISOString(),
         });
         setGatewayFirstRun(true);
-        setStep("gateway");
-        await saveWizardState({ gatewayOnboardingSeen: true });
+        setLoading(true);
+        try {
+          const gw = await import("../services/gateway-install");
+          const { mapGatewayItemsToSyncerResults } = await import("../services/wizard-gateway");
+          const batch = await gw.runGatewayAuto({ apiKey: token, continueOnError: true });
+          const { items, allOk } = batch.install ?? {
+            items: [],
+            allOk: true,
+          };
+          setResults(mapGatewayItemsToSyncerResults(items));
+          setSelectedModel("Gateway auto");
+          setStep("done");
+          if (!allOk) setError("Một số app chưa cài gateway thành công");
+        } catch (e: unknown) {
+          setGatewaySummary({
+            installed: plan.summary.installed,
+            configured: plan.summary.configured,
+            pending: plan.summary.pending,
+            targets: plan.targets.length,
+          });
+          setError(e instanceof Error ? e.message : String(e));
+          setStep("gateway");
+        } finally {
+          setLoading(false);
+        }
       } else {
         setGatewayFirstRun(false);
         setStep("menu");
@@ -539,6 +560,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       }
       if (action === "install" || action === "auto") {
         const gw = await import("../services/gateway-install");
+        const { mapGatewayItemsToSyncerResults } = await import("../services/wizard-gateway");
         const batch =
           action === "auto"
             ? await gw.runGatewayAuto({ apiKey, continueOnError: true })
@@ -548,16 +570,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           allOk: true,
           targets: [] as string[],
         };
-        setResults(
-          items.map((item) => ({
-            toolId: item.toolId || "gateway",
-            toolName: item.toolName || "gateway",
-            success: item.success,
-            message: item.message,
-            configPath: item.configPath,
-            error: item.error,
-          }))
-        );
+        setResults(mapGatewayItemsToSyncerResults(items));
         setSelectedModel(action === "auto" ? "Gateway auto" : "Gateway install");
         setStep("done");
         if (!allOk) setError("Một số app chưa cài gateway thành công");

@@ -50,6 +50,7 @@ function benchCase(
     "--help": Number(process.env.STALI_BENCH_MAX_HELP_MS || 150),
     "gateway plan --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_PLAN_MS || 180),
     "gateway scan --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_MS || 250),
+    "gateway --dry-run --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_AUTO_MS || 300),
     "info --json": Number(process.env.STALI_BENCH_MAX_INFO_MS || 180),
   };
   const limit = limits[name];
@@ -69,7 +70,17 @@ export function runColdStartBench(options?: {
     { name: "--help", args: ["--help"] },
     { name: "info --json", args: ["info", "--json"] },
     { name: "gateway plan --json", args: ["gateway", "plan", "--json"] },
-    { name: "gateway auto --dry-run --json", args: ["gateway", "auto", "--dry-run", "--json"] },
+    {
+      name: "gateway --dry-run --json",
+      args: [
+        "gateway",
+        "--dry-run",
+        "--json",
+        "-k",
+        "sk-stali-test-key-for-dry-run-only-000000000000",
+      ],
+    },
+    { name: "gateway auto --dry-run --json", args: ["gateway", "auto", "--dry-run", "--json", "-k", "sk-stali-test-key-for-dry-run-only-000000000000"] },
     { name: "gateway scan --json", args: ["gateway", "scan", "--json"] },
     { name: "doctor --json", args: ["doctor", "--json"] },
     { name: "doctor --tools-only --json", args: ["doctor", "--tools-only", "--json"] },

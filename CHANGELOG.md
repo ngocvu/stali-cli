@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.25.0] — 2026-08-28
+
+### Added
+- **Wizard first-run auto gateway** — sau login lần đầu tự chạy `gateway auto` (fallback menu nếu lỗi)
+- **Bench `gateway --dry-run`** — đo default subcommand (= auto khi có `-k`)
+- **Admin CSV export** — `GET /api/admin/cli-telemetry?format=csv`
+
+### Changed
+- **Telemetry GET public** — chỉ `?ping=1`; aggregate yêu cầu admin (dashboard `/admin/cli-telemetry`)
+- `wizard-gateway` helper — map kết quả install cho wizard
+
 ## [3.24.0] — 2026-08-28
 
 ### Added

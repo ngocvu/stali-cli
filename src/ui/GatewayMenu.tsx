@@ -29,7 +29,7 @@ export const GatewayMenu: React.FC<GatewayMenuProps> = ({ summary, firstRun, onS
       <Box flexDirection="column" gap={1}>
         {firstRun ? (
           <Text color="yellow">
-            Lần đầu đăng nhập — chọn Quét & cài tự động để trỏ Stali API vào app AI của bạn.
+            Tự động cài gateway thất bại — chọn Quét & cài tự động hoặc xem kế hoạch.
           </Text>
         ) : null}
         {summary ? (
