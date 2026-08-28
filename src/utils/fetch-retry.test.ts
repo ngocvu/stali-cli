@@ -8,7 +8,7 @@ describe("fetchWithRetry", () => {
     globalThis.fetch = (async () => {
       calls += 1;
       return new Response(null, { status: 204 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     try {
       const res = await fetchWithRetry("https://example.test", { method: "POST" }, { attempts: 3 });
       expect(res.ok).toBe(true);
@@ -25,7 +25,7 @@ describe("fetchWithRetry", () => {
       calls += 1;
       if (calls < 3) throw new Error("network");
       return new Response(null, { status: 204 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     try {
       const res = await fetchWithRetry(
         "https://example.test",

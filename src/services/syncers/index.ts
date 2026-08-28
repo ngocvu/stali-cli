@@ -159,14 +159,16 @@ export async function getToolHealthStatus(
 }
 
 export async function runDoctorScan(ctx?: DoctorStatusContext): Promise<ToolHealthStatus[]> {
-  let statusCtx = ctx;
-  if (!statusCtx?.urls) {
+  let statusCtx: DoctorStatusContext = ctx ?? {};
+  let urls = statusCtx.urls;
+  if (!urls) {
     const { loadStaliConfig } = await import("../config");
     const config = await loadStaliConfig();
-    statusCtx = { urls: resolveStaliUrls(config?.baseUrl) };
+    urls = resolveStaliUrls(config?.baseUrl);
+    statusCtx = { ...statusCtx, urls };
   }
 
-  const cacheKey = statusCtx.urls.modelsEndpoint;
+  const cacheKey = urls.modelsEndpoint;
   if (
     !ctx?.bypassCache &&
     doctorScanCache &&

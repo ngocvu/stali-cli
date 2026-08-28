@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.34.1] — 2026-08-28
+
+### Fixed
+- CI typecheck — `runDoctorScan` đảm bảo `statusCtx.urls`; mock `fetch` trong tests dùng `unknown` cast
+
 ## [3.34.0] — 2026-08-28
 
 ### Added

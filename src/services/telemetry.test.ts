@@ -65,7 +65,7 @@ describe("telemetry", () => {
     globalThis.fetch = (async () => {
       if (mode === "fail") throw new Error("network");
       return new Response(null, { status: 204 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     try {
       const { setTelemetryEnabled, recordCliTelemetry, readTelemetryQueueDepth } =
         await import("./telemetry");
