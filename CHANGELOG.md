@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.4.0] — 2026-08-28
+
+### Added
+- **Zsh completion** — đồng bộ subcommands (`wizard`, `check`, `init`, …) và cờ scoped
+- **CI docs** — mẫu `check --strict --tools-only/--plugins-only` trong README
+- **Tests** — `completion.test.ts`, e2e validate `scope` JSON và cờ xung đột
+
+### Changed
+- Benchmark thêm `check --plugins-only --json`
+
 ## [3.3.0] — 2026-08-28
 
 ### Added

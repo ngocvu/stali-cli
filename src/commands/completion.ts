@@ -133,6 +133,7 @@ complete -F _stali_completion stali
 
 function zshCompletion(): string {
   const tools = [...TOOL_IDS, ...TOOL_ALIASES];
+  const subcmdLines = SUBCOMMANDS.map((s) => `    '${s}'`).join("\n");
   return `#compdef stali
 # stali zsh completion — thêm vào ~/.zshrc:
 #   eval "$(stali completion zsh)"
@@ -140,15 +141,7 @@ function zshCompletion(): string {
 _stali() {
   local -a subcmds flags configure_tools
   subcmds=(
-    'paths:Hiển thị ~/.stali'
-    'tools:Liệt kê 13 công cụ'
-    'doctor:Kiểm tra cấu hình Stali'
-    'update:Cập nhật CLI'
-    'configure:Cấu hình một tool'
-    'configure-all:Cấu hình hàng loạt'
-    'restore:Khôi phục backup'
-    'completion:Shell completion'
-    'ls:Bảng giá model'
+${subcmdLines}
   )
   configure_tools=(
 ${tools.map((t) => `    '${t}'`).join("\n")}
@@ -179,15 +172,41 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
             '--dry-run[Preview]' \\
             '--tools[Danh sách tool, cách nhau bởi dấu phẩy]' \\
             '--continue-on-error[Tiếp tục khi lỗi]' \\
-            '--skip-advanced[Bỏ qua claude/codex]'
+            '--skip-advanced[Bỏ qua claude/codex]' \\
+            '--include-plugins[Đồng bộ plugin sau configure]' \\
+            '--no-plugins[Bỏ qua plugin]'
           ;;
         restore)
           _arguments \\
             '(-t --tool)'{-t,--tool}'[Tool ID]:tool:($configure_tools)' \\
             '(-b --backup)'{-b,--backup}'[Đường dẫn backup]'
           ;;
+        check)
+          _arguments \\
+            '--strict[Yêu cầu tất cả tool/plugin OK]' \\
+            '--tools-only[Chỉ 13 tool]' \\
+            '--plugins-only[Chỉ plugin]' \\
+            '--json[Xuất JSON]'
+          ;;
         doctor)
-          _arguments '--json[Xuất JSON]'
+          _arguments \\
+            '--json[Xuất JSON]' \\
+            '--plugins-only[Chỉ plugin]' \\
+            '--tools-only[Chỉ tool]' \\
+            '--fix[Tự sửa cấu hình]' \\
+            '--watch[Theo dõi liên tục]' \\
+            '--notify[Desktop notify với --watch]' \\
+            '(-i --interval)'{-i,--interval}'[Chu kỳ giây]'
+          ;;
+        init)
+          _arguments \\
+            '(-k --key)'{-k,--key}'[API key]' \\
+            '--skip-configure[Bỏ configure-all]' \\
+            '--include-plugins[Đồng bộ plugin]' \\
+            '--no-plugins[Bỏ plugin]'
+          ;;
+        wizard)
+          _arguments '(-k --key)'{-k,--key}'[API key khởi tạo wizard]'
           ;;
         completion)
           _arguments '1:shell:(bash zsh fish)'

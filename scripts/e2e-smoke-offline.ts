@@ -54,6 +54,20 @@ async function main() {
 
   const checkTools = run(["check", "--tools-only", "--json"]);
   assert("check --tools-only --json", checkTools.status === 0 || checkTools.status === 1);
+  if (checkTools.status === 0 || checkTools.status === 1) {
+    try {
+      const parsed = JSON.parse(checkTools.stdout || "{}");
+      assert("check JSON has scope", parsed.scope === "tools");
+    } catch {
+      assert("check JSON parseable", false, "invalid JSON");
+    }
+  }
+
+  const checkConflict = run(["check", "--tools-only", "--plugins-only"]);
+  assert("check conflicting flags exit 1", checkConflict.status === 1);
+
+  const wizardHelp = run(["wizard", "--help"]);
+  assert("wizard --help exit 0", wizardHelp.status === 0);
 
   const failed = results.filter((r) => !r.ok);
   for (const r of results) {

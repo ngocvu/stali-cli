@@ -36,6 +36,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
+- 📦 **v3.4**: zsh completion đầy đủ, CI docs, e2e check scope/conflict
 - 📦 **v3.3**: `check --tools-only/--plugins-only`, `stali wizard`, multi-entry build
 - 📦 **v3.2**: `doctor --tools-only`, dual-entry CLI/wizard, gỡ forward `plugins doctor --json`
 - 📦 **v3.1**: `doctor --plugins-only`, lazy-load subcommands
@@ -112,6 +113,21 @@ stali uninstall --purge-path    # Windows: gỡ khỏi User PATH
 stali restore -t claude  # Khôi phục backup gần nhất
 stali --reset            # Xóa token ~/.stali
 ```
+
+### CI / automation
+
+```bash
+# Gate deploy: auth + toàn bộ 13 tool (bỏ plugin nếu chưa dùng)
+stali check --strict --tools-only --json
+
+# Gate plugin sync (plugins.json phải có entry và đã trỏ Stali)
+stali check --strict --plugins-only --json
+
+# Diagnostic đầy đủ (tools + plugins + meta)
+stali doctor --json
+```
+
+Exit code: `0` = pass, `1` = fail health, `2` = lỗi CLI (vd. cờ xung đột).
 
 ---
 
