@@ -13,6 +13,8 @@ export interface InitOptions {
   skipCompletion?: boolean;
   skipCliCheck?: boolean;
   upgradeCli?: boolean;
+  /** Chỉ configure app đã phát hiện trên máy */
+  installedOnly?: boolean;
 }
 
 export interface InitResult {
@@ -92,12 +94,23 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
       includePlugins: opts.includePlugins,
       noPlugins: opts.noPlugins,
     });
+    const useInstalledOnly = opts.installedOnly !== false;
+    let installedIds: string[] = [];
+    if (useInstalledOnly) {
+      const { discoverInstalledToolIds } = await import("./tool-discovery");
+      installedIds = await discoverInstalledToolIds();
+    }
+    const skipAdvanced =
+      installedIds.length > 0
+        ? !installedIds.includes("claude") && !installedIds.includes("codex")
+        : true;
     const batch = await runConfigureBatch({
       apiKey: opts.apiKey,
       baseUrl,
-      skipAdvanced: true,
+      skipAdvanced,
       continueOnError: true,
       includePlugins,
+      toolInputs: installedIds.length > 0 ? installedIds : undefined,
     });
     const okCount = batch.items.filter((i) => i.success).length;
     const label = includePlugins ? "tools+plugins" : "tools";

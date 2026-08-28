@@ -179,6 +179,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       | "open-keys"
       | "update"
       | "install"
+      | "gateway"
       | "completion"
       | "plugins"
       | "exit"
@@ -214,6 +215,53 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         await refreshInstallMode();
         setStep("install");
         break;
+      case "gateway": {
+        setLoading(true);
+        setError(undefined);
+        try {
+          const { discoverInstalledTools } = await import("../services/tool-discovery");
+          const { runGatewayInstall } = await import("../services/gateway-install");
+          const entries = await discoverInstalledTools();
+          const needs = entries.filter((e) => e.installed && !e.configuredForStali);
+          if (needs.length === 0) {
+            setResults([
+              {
+                toolId: "gateway",
+                toolName: "Stali gateway",
+                success: true,
+                message: "Mọi app đang dùng đã trỏ Stali gateway",
+                configPath: "stali gateway scan",
+              },
+            ]);
+            setSelectedModel("Gateway");
+            setStep("done");
+            break;
+          }
+          const { items, allOk } = await runGatewayInstall({
+            apiKey,
+            continueOnError: true,
+          });
+          setResults(
+            items.map((item) => ({
+              toolId: item.toolId || "gateway",
+              toolName: item.toolName || "gateway",
+              success: item.success,
+              message: item.message,
+              configPath: item.configPath,
+              error: item.error,
+            }))
+          );
+          setSelectedModel("Gateway install");
+          setStep("done");
+          if (!allOk) setError("Một số app chưa cài gateway thành công");
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : String(e));
+          setStep("menu");
+        } finally {
+          setLoading(false);
+        }
+        break;
+      }
       case "update": {
         setLoading(true);
         setError(undefined);

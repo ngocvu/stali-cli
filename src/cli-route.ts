@@ -10,6 +10,7 @@ export const STALI_SUBCOMMANDS = new Set([
   "info",
   "doctor",
   "update",
+  "gateway",
   "install",
   "configure",
   "configure-all",

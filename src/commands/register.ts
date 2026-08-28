@@ -129,7 +129,7 @@ export function registerCommands(program: Command): void {
 
   program
     .command("init")
-    .description("Khởi tạo nhanh: auth login + configure-all (11 tool) + check")
+    .description("Khởi tạo nhanh: auth + configure app đang dùng + check")
     .option("-k, --key <token>", "Stali API key")
     .option("--skip-configure", "Chỉ lưu API key, không configure-all")
     .option("--include-plugins", "Đồng bộ plugin (mặc định: bật nếu plugins.json có entry)")
@@ -137,6 +137,7 @@ export function registerCommands(program: Command): void {
     .option("--skip-completion", "Bỏ qua cài shell completion (bash/fish/zsh)")
     .option("--skip-cli-check", "Bỏ qua kiểm tra phiên bản stali-cli")
     .option("--upgrade-cli", "Nâng cấp stali-cli qua npm nếu có bản mới")
+    .option("--all-apps", "Configure cả 13 tool (bỏ qua quét app đang dùng)")
     .action(async (opts: {
       key?: string;
       skipConfigure?: boolean;
@@ -145,6 +146,7 @@ export function registerCommands(program: Command): void {
       skipCompletion?: boolean;
       skipCliCheck?: boolean;
       upgradeCli?: boolean;
+      allApps?: boolean;
     }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = opts.key || globals.key;
@@ -163,6 +165,7 @@ export function registerCommands(program: Command): void {
         skipCompletion: opts.skipCompletion,
         skipCliCheck: opts.skipCliCheck,
         upgradeCli: opts.upgradeCli,
+        installedOnly: !opts.allApps,
       });
       for (const step of result.steps) {
         const icon = step.ok ? chalk.green("✓") : chalk.red("✗");
@@ -513,6 +516,7 @@ export function registerCommands(program: Command): void {
     .option("--fix", "Tự cấu hình lại tool chưa trỏ Stali")
     .option("--dry-run", "Với --fix: chỉ liệt kê, không ghi file")
     .option("--force", "Với --fix: cấu hình lại cả tool đã OK")
+    .option("--installed-only", "Với --fix: chỉ app đã phát hiện trên máy (binary/config/VS Code)")
     .option("--tools <list>", "Với --fix: chỉ các tool (cách nhau bởi dấu phẩy)")
     .option("--ids <list>", "Với --plugins-only --fix: chỉ các plugin id (cách nhau bởi dấu phẩy)")
     .option("-m, --model <model>", "Với --fix: model áp dụng")
@@ -531,6 +535,7 @@ export function registerCommands(program: Command): void {
       fix?: boolean;
       dryRun?: boolean;
       force?: boolean;
+      installedOnly?: boolean;
       tools?: string;
       ids?: string;
       model?: string;
@@ -590,10 +595,39 @@ export function registerCommands(program: Command): void {
         dryRun: opts.dryRun,
         force: opts.force,
         tools: opts.tools,
+        installedOnly: opts.installedOnly,
         ids: opts.ids,
         model: opts.model,
       }, view, opts.prometheus);
       process.exit(code);
+    });
+
+  program
+    .command("gateway")
+    .description("Quét app AI đang dùng và cài Stali gateway (base URL + API key)")
+    .argument("[action]", "scan | install (mặc định: scan)")
+    .option("--json", "JSON output (scan)")
+    .option("--dry-run", "Với install: preview, không ghi file")
+    .option("--all", "Cài gateway cho cả 13 tool (bỏ qua quét)")
+    .option("--force", "Cài lại cả tool đã trỏ Stali")
+    .option("-m, --model <model>", "Model áp dụng khi install")
+    .option("--continue-on-error", "Tiếp tục khi một tool lỗi")
+    .option("--include-plugins", "Đồng bộ plugin khi install")
+    .option("--no-plugins", "Bỏ qua plugin khi install")
+    .action(async (action: string | undefined, opts: {
+      json?: boolean;
+      dryRun?: boolean;
+      all?: boolean;
+      force?: boolean;
+      model?: string;
+      continueOnError?: boolean;
+      includePlugins?: boolean;
+      noPlugins?: boolean;
+    }) => {
+      const globals = program.opts<{ key?: string }>();
+      const apiKey = await resolveApiKey(globals.key);
+      const { runGatewayCommand } = await import("./gateway-cmd");
+      await runGatewayCommand(action, opts, apiKey);
     });
 
   program
@@ -818,6 +852,7 @@ export function registerCommands(program: Command): void {
     .option("--dry-run", "Xem preview, không ghi file")
     .option("--continue-on-error", "Tiếp tục khi một tool lỗi")
     .option("--skip-advanced", "Bỏ qua claude/codex (mặc định bật khi không chỉ định --tools)")
+    .option("--installed-only", "Chỉ app đã phát hiện trên máy (binary/config/VS Code)")
     .option("--include-plugins", "Đồng bộ plugin (mặc định: bật nếu plugins.json có entry)")
     .option("--no-plugins", "Bỏ qua plugin")
     .action(
@@ -827,6 +862,7 @@ export function registerCommands(program: Command): void {
         dryRun?: boolean;
         continueOnError?: boolean;
         skipAdvanced?: boolean;
+        installedOnly?: boolean;
         includePlugins?: boolean;
         noPlugins?: boolean;
       }) => {
@@ -857,6 +893,7 @@ export function registerCommands(program: Command): void {
           continueOnError: opts.continueOnError,
           skipAdvanced,
           includePlugins,
+          installedOnly: opts.installedOnly,
         });
 
         if (opts.dryRun) {

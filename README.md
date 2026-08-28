@@ -15,6 +15,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
   - Grok Build, Cowork, jcode
 - 🛡️ **Backup timestamp**: `<file>.YYYYMMDD_HHmmss.bak` + `stali restore`
 - 🩺 **Doctor**: `stali doctor` — quét 13 tool với parser schema (không chỉ heuristic)
+- 🌐 **Gateway**: `stali gateway scan|install` — tự quét app đang dùng và cài Stali API gateway
 - 📋 **Tools**: `stali tools` — liệt kê 13 công cụ + đường dẫn config
 - ⚙️ **Batch**: `stali configure-all` — cấu hình hàng loạt (dry-run, filter tool)
 - 🐾 **OpenClaw menu**: wizard riêng với status live
@@ -97,6 +98,9 @@ stali                    # Wizard tương tác
 stali --models           # Bảng giá model
 stali ls -k sk-stali-... # Bảng giá với token
 stali doctor             # Kiểm tra cấu hình (13 tool, schema-aware)
+stali gateway scan       # Quét app AI đang dùng (binary, config, VS Code)
+stali gateway install -k sk-stali-...  # Cài gateway chỉ app đã phát hiện
+stali gateway install --all -k sk-stali-...  # Cài gateway cả 13 tool
 stali paths              # ~/.stali/cli, bin, config
 stali tools              # Liệt kê 13 công cụ + file config
 stali update             # Cập nhật từ GitHub
@@ -106,6 +110,9 @@ stali configure-all --tools openclaw,cline -k sk-stali-...
 stali export-env claude -k sk-stali-...           # export ANTHROPIC_* (shell)
 stali export-env codex -f json -k sk-stali-...
 stali doctor --fix -k sk-stali-...                # sửa tool chưa OK
+stali doctor --fix --installed-only -k sk-stali-...  # chỉ app đang dùng
+stali configure-all --installed-only -k sk-stali-...   # batch theo quét
+stali init -k sk-stali-...                         # mặc định chỉ configure app phát hiện
 stali doctor --json                              # JSON thống nhất: meta + tools + plugins
 stali doctor --plugins-only [--json]             # Chỉ plugin (~/.stali/plugins.json)
 stali doctor --tools-only [--json]               # Chỉ 13 tool (bỏ plugin)

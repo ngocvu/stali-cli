@@ -166,6 +166,17 @@ async function main() {
   const cronStatus = run(["update", "--cron-status"]);
   assert("update --cron-status exit 0", cronStatus.status === 0);
 
+  const gatewayScan = run(["gateway", "scan", "--json"]);
+  assert("gateway scan --json exit 0", gatewayScan.status === 0);
+  if (gatewayScan.status === 0) {
+    try {
+      const parsed = JSON.parse(gatewayScan.stdout || "{}");
+      assert("gateway JSON has tools array", Array.isArray(parsed.tools));
+    } catch {
+      assert("gateway JSON parseable", false);
+    }
+  }
+
   const prom = run(["doctor", "--tools-only", "--prometheus"]);
   assert("doctor --prometheus", prom.status === 0 || prom.status === 1);
   assert(

@@ -17,23 +17,30 @@ export interface DoctorFixOptions {
   dryRun?: boolean;
   /** Sửa cả tool đã OK (force re-sync) */
   force?: boolean;
+  /** Chỉ tool đã phát hiện trên máy (binary/config/vscode) */
+  installedOnly?: boolean;
 }
 
 export function resolveDoctorFixTargets(
   toolInputs?: string[],
   statuses?: Awaited<ReturnType<typeof runDoctorScan>>,
-  force = false
+  force = false,
+  installedIds?: string[]
 ): string[] {
   const scan = statuses || [];
   const configured = new Set(
     scan.filter((s) => s.configuredForStali).map((s) => s.toolId)
   );
+  const installedSet = installedIds?.length ? new Set(installedIds) : null;
 
   if (toolInputs && toolInputs.length > 0) {
     return [...new Set(toolInputs.map((t) => resolveToolId(t)).filter((id) => getToolById(id)))];
   }
 
-  return SUPPORTED_TOOLS.map((t) => t.id).filter((id) => force || !configured.has(id));
+  return SUPPORTED_TOOLS.map((t) => t.id).filter((id) => {
+    if (installedSet && !installedSet.has(id)) return false;
+    return force || !configured.has(id);
+  });
 }
 
 export async function runDoctorFix(
@@ -74,7 +81,12 @@ export async function runDoctorFix(
   }
 
   const statuses = await runDoctorScan();
-  const toolIds = resolveDoctorFixTargets(opts.toolInputs, statuses, opts.force);
+  let installedIds: string[] | undefined;
+  if (opts.installedOnly) {
+    const { discoverInstalledToolIds } = await import("./tool-discovery");
+    installedIds = await discoverInstalledToolIds();
+  }
+  const toolIds = resolveDoctorFixTargets(opts.toolInputs, statuses, opts.force, installedIds);
 
   if (toolIds.length === 0) {
     return {

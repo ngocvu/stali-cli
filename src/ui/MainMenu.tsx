@@ -19,6 +19,7 @@ interface MainMenuProps {
       | "open-keys"
       | "update"
       | "install"
+      | "gateway"
       | "completion"
       | "plugins"
       | "exit"
@@ -35,6 +36,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, installMode, onSelec
     { label: "🔌 Plugin tùy chỉnh (sync / doctor)", value: "plugins" as const },
     { label: "⬆️  Cập nhật stali-cli (update)", value: "update" as const },
     { label: "📦 Cài đặt / nâng cấp CLI (install)", value: "install" as const },
+    { label: "🌐 Quét & cài gateway Stali", value: "gateway" as const },
     { label: "⌨️  Cài shell completion (bash/fish/zsh)", value: "completion" as const },
     { label: "🔑 Cài đặt API Token", value: "change-key" as const },
     { label: "🔗 Mở Dashboard Keys (trình duyệt)", value: "open-keys" as const },

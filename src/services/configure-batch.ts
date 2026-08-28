@@ -17,6 +17,8 @@ export interface ConfigureBatchOptions {
   skipAdvanced?: boolean;
   /** Đồng bộ thêm plugin từ ~/.stali/plugins.json */
   includePlugins?: boolean;
+  /** Chỉ các tool đã phát hiện trên máy (qua tool-discovery) */
+  installedOnly?: boolean;
 }
 
 export interface ConfigureBatchItem {
@@ -32,7 +34,8 @@ export interface ConfigureBatchItem {
 
 export function resolveBatchToolIds(
   toolInputs?: string[],
-  skipAdvanced = false
+  skipAdvanced = false,
+  installedIds?: string[]
 ): string[] {
   if (toolInputs && toolInputs.length > 0) {
     const ids = toolInputs.map((t) => resolveToolId(t));
@@ -40,16 +43,39 @@ export function resolveBatchToolIds(
     return unique.filter((id) => getToolById(id));
   }
 
-  return SUPPORTED_TOOLS.map((t) => t.id).filter((id) => {
+  let ids = SUPPORTED_TOOLS.map((t) => t.id).filter((id) => {
     if (skipAdvanced && (id === "claude" || id === "codex")) return false;
     return true;
   });
+
+  if (installedIds && installedIds.length > 0) {
+    const set = new Set(installedIds);
+    ids = ids.filter((id) => set.has(id));
+  }
+
+  return ids;
+}
+
+export async function resolveBatchToolIdsAsync(
+  opts: Pick<ConfigureBatchOptions, "toolInputs" | "skipAdvanced" | "installedOnly">
+): Promise<string[]> {
+  if (opts.toolInputs && opts.toolInputs.length > 0) {
+    return resolveBatchToolIds(opts.toolInputs, opts.skipAdvanced ?? false);
+  }
+  let installedIds: string[] | undefined;
+  if (opts.installedOnly) {
+    const { discoverInstalledToolIds } = await import("./tool-discovery");
+    installedIds = await discoverInstalledToolIds();
+  }
+  return resolveBatchToolIds(undefined, opts.skipAdvanced ?? false, installedIds);
 }
 
 export async function runConfigureBatch(
   opts: ConfigureBatchOptions
 ): Promise<{ items: ConfigureBatchItem[]; allOk: boolean }> {
-  const toolIds = resolveBatchToolIds(opts.toolInputs, opts.skipAdvanced ?? false);
+  const toolIds = opts.installedOnly
+    ? await resolveBatchToolIdsAsync(opts)
+    : resolveBatchToolIds(opts.toolInputs, opts.skipAdvanced ?? false);
 
   if (toolIds.length === 0) {
     return {
@@ -58,7 +84,9 @@ export async function runConfigureBatch(
           toolId: "",
           toolName: "",
           success: false,
-          message: "Không có tool hợp lệ để cấu hình",
+          message: opts.installedOnly
+            ? "Không phát hiện app AI nào — thử stali gateway scan hoặc bỏ --installed-only"
+            : "Không có tool hợp lệ để cấu hình",
           error: "NO_TOOLS",
         },
       ],

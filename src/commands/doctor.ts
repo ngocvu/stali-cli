@@ -174,6 +174,7 @@ export async function runDoctor(
     fix?: boolean;
     dryRun?: boolean;
     force?: boolean;
+    installedOnly?: boolean;
     tools?: string;
     model?: string;
     ids?: string;
@@ -240,6 +241,7 @@ export async function runDoctor(
       toolInputs,
       dryRun: fixOpts.dryRun,
       force: fixOpts.force,
+      installedOnly: fixOpts.installedOnly,
     });
 
     if (view?.toolsOnly) {

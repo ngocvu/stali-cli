@@ -54,4 +54,13 @@ describe("resolveDoctorFixTargets", () => {
     const targets = resolveDoctorFixTargets(undefined, statuses, true);
     expect(targets.length).toBe(13);
   });
+
+  test("installed-only lọc theo danh sách phát hiện", () => {
+    const statuses = [
+      { toolId: "claude", configuredForStali: false },
+      { toolId: "openclaw", configuredForStali: false },
+    ] as any[];
+    const targets = resolveDoctorFixTargets(undefined, statuses, false, ["openclaw"]);
+    expect(targets).toEqual(["openclaw"]);
+  });
 });
