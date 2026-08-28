@@ -1,6 +1,6 @@
 {
   "name": "stali-cli",
-  "version": "3.12.0",
+  "version": "3.13.0",
   "description": "Interactive CLI tool and configuration manager for Stali API (https://api.stali.vn)",
   "type": "module",
   "main": "dist/index.js",
@@ -21,6 +21,7 @@
     "build": "bun scripts/build.ts",
     "postinstall": "node scripts/npm-postinstall.cjs",
     "pack:cli": "bun run build && npm pack",
+    "verify:pack": "bun run build && bun scripts/verify-npm-pack.ts",
     "publish:cli": "bun run build && npm publish",
     "prepublishOnly": "bun run build",
     "typecheck": "tsc --noEmit",

@@ -591,9 +591,32 @@ export function registerCommands(program: Command): void {
     });
 
   program
+    .command("install")
+    .description("Hướng dẫn hoặc thực hiện cài đặt stali-cli")
+    .option("--npm", "Cài qua npm global (Node >= 18)")
+    .option("--standalone", "Cài binary từ GitHub Release")
+    .option("--git", "Cài từ GitHub source + build")
+    .option("--version <ver>", "Phiên bản (vd. 3.13.0 hoặc latest)")
+    .option("--dry-run", "Chỉ in lệnh, không thực hiện")
+    .option("--json", "JSON install plan")
+    .action(async (opts: {
+      npm?: boolean;
+      standalone?: boolean;
+      git?: boolean;
+      version?: string;
+      dryRun?: boolean;
+      json?: boolean;
+    }) => {
+      const { runInstallCli } = await import("../services/install-cli");
+      const code = await runInstallCli(opts);
+      process.exit(code);
+    });
+
+  program
     .command("update")
     .description("Cập nhật stali-cli từ GitHub (~/.stali/cli)")
     .option("--check", "Chỉ kiểm tra phiên bản mới (không cập nhật)")
+    .option("--json", "JSON output (với --check hoặc --dry-run)")
     .option("--channel <name>", "Kênh cập nhật: stable | beta", "stable")
     .option("--install-cron", "Cài cron 04:00 tự update (Linux/macOS)")
     .option("--uninstall-cron", "Gỡ cron auto-update")
@@ -610,6 +633,7 @@ export function registerCommands(program: Command): void {
       installSystemd?: boolean;
       uninstallSystemd?: boolean;
       dryRun?: boolean;
+      json?: boolean;
     }) => {
       if (opts.cronStatus) {
         const { getAutoUpdateCronStatus, readAutoUpdateConfig, getSystemdTimerStatus } = await import(
@@ -660,6 +684,24 @@ export function registerCommands(program: Command): void {
         const ver = await fetchLatestVersion(channelCfg.versionUrl);
         const { detectInstallMode } = await import("../services/install-mode");
         const installInfo = await detectInstallMode();
+        if (opts.json) {
+          console.log(
+            JSON.stringify(
+              {
+                channel: channelCfg.label,
+                ref: channelCfg.releaseTag || channelCfg.branch,
+                installMode: installInfo.mode,
+                installVersion: installInfo.version ?? null,
+                current: ver.current,
+                latest: ver.latest,
+                updateAvailable: ver.updateAvailable,
+              },
+              null,
+              2
+            )
+          );
+          process.exit(ver.updateAvailable ? 1 : 0);
+        }
         console.log(chalk.bold.cyan("\n⬆️  STALI CLI VERSION CHECK\n"));
         const refLabel = channelCfg.releaseTag || channelCfg.branch;
         console.log(`Kênh:      ${chalk.white(channelCfg.label)} (${refLabel})`);
@@ -671,6 +713,12 @@ export function registerCommands(program: Command): void {
           process.exit(1);
         }
         console.log(chalk.green(`\n${t("update_latest")}\n`));
+        process.exit(0);
+      }
+      if (opts.dryRun && opts.json) {
+        const { planSelfUpdate } = await import("../services/self-update");
+        const plan = await planSelfUpdate({ channel: opts.channel });
+        console.log(JSON.stringify({ dryRun: true, channel: channelCfg.label, plan }, null, 2));
         process.exit(0);
       }
       console.log(

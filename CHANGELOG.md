@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.13.0] — 2026-08-28
+
+### Added
+- **`stali install`** — hướng dẫn cài đặt; `--npm`, `--standalone`, `--git`, `--json`, `--dry-run`
+- **`stali update --check --json`** / **`update --dry-run --json`** — kế hoạch update có cấu trúc
+- **`scripts/verify-npm-pack.ts`** + CI/release gate — tarball chỉ bin/dist, không src/
+- **`docs/NPM_PUBLISH.md`** — hướng dẫn `NPM_TOKEN` + provenance
+- **`.npmrc`** — `fund=false`, `audit=false` (cài npm nhanh hơn)
+
+### Changed
+- `install.sh` mặc định `STALI_CLI_INSTALL_METHOD=auto` (npm trước, git fallback)
+- `install.sh` wrapper global ưu tiên **Node** trước Bun
+- Release workflow: `npm publish --provenance` + verify `npm view` sau publish
+- **api.stali.vn** `install/stali-cli.ps1` — npm-first với Node, standalone Windows
+
 ## [3.12.0] — 2026-08-28
 
 ### Added

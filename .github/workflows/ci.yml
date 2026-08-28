@@ -45,3 +45,6 @@ jobs:
 
       - name: Verify dist exists
         run: test -f dist/index.js
+
+      - name: Verify npm pack
+        run: bun scripts/verify-npm-pack.ts

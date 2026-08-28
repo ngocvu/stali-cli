@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   verify:
@@ -35,7 +36,7 @@ jobs:
         run: bun scripts/e2e-smoke-offline.ts
 
       - name: npm pack dry-run
-        run: bun run pack:cli && test -f stali-cli-*.tgz
+        run: bun scripts/verify-npm-pack.ts
 
   build-standalone:
     needs: verify
@@ -122,10 +123,22 @@ jobs:
             echo "::warning::NPM_TOKEN secret chưa cấu hình — bỏ qua npm publish"
             echo "Thêm NPM_TOKEN trong GitHub → Secrets → Actions"
           else
-            npm publish --access public
+            npm publish --access public --provenance
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify npm registry
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "skip npm verify (no NPM_TOKEN)"
+            exit 0
+          fi
+          VER=$(node -p "require('./package.json').version")
+          npm view "stali-cli@${VER}" version
+          test "$(npm view stali-cli@${VER} version)" = "$VER"
 
       - name: Create GitHub Release + assets
         uses: softprops/action-gh-release@v2

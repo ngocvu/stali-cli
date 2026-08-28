@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-METHOD="${STALI_CLI_INSTALL_METHOD:-git}"
+METHOD="${STALI_CLI_INSTALL_METHOD:-auto}"
 NPM_PKG="stali-cli"
 REPO="${STALI_CLI_REPO:-https://github.com/ngocvu/stali-cli.git}"
 BRANCH="${STALI_CLI_BRANCH:-main}"
@@ -59,12 +59,18 @@ register_global_stali() {
     return 0
   fi
   [[ -f "$stali_js" ]] || die "Thiếu bin/stali hoặc bin/stali.js"
-  local bun_bin
-  bun_bin="$(command -v bun)"
-  log "Cài wrapper: $STALI_BIN/stali (bun + stali.js)"
+  local runtime_bin runtime_name
+  if command -v node >/dev/null 2>&1; then
+    runtime_bin="$(command -v node)"
+    runtime_name="node"
+  else
+    runtime_bin="$(command -v bun)"
+    runtime_name="bun"
+  fi
+  log "Cài wrapper: $STALI_BIN/stali (${runtime_name} + stali.js)"
   cat >"$STALI_BIN/stali" <<EOF
 #!/usr/bin/env bash
-exec "$bun_bin" "$stali_js" "\$@"
+exec "$runtime_bin" "$stali_js" "\$@"
 EOF
   chmod +x "$STALI_BIN/stali"
 }

@@ -141,6 +141,28 @@ async function main() {
   assert("update --dry-run exit 0", dryRun.status === 0);
   assert("update dry-run mentions Dry-run", (dryRun.stdout || "").includes("Dry-run"));
 
+  const dryRunJson = run(["update", "--dry-run", "--json", "--channel", "stable"]);
+  assert("update --dry-run --json exit 0", dryRunJson.status === 0);
+  if (dryRunJson.status === 0) {
+    try {
+      const parsed = JSON.parse(dryRunJson.stdout || "{}");
+      assert("update dry-run JSON has plan", typeof parsed.plan === "object");
+    } catch {
+      assert("update dry-run JSON parseable", false);
+    }
+  }
+
+  const installJson = run(["install", "--json"]);
+  assert("install --json exit 0", installJson.status === 0);
+  if (installJson.status === 0) {
+    try {
+      const parsed = JSON.parse(installJson.stdout || "{}");
+      assert("install JSON recommended npm", parsed.recommended === "npm");
+    } catch {
+      assert("install JSON parseable", false);
+    }
+  }
+
   const cronStatus = run(["update", "--cron-status"]);
   assert("update --cron-status exit 0", cronStatus.status === 0);
 

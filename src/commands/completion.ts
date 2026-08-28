@@ -21,6 +21,7 @@ const SUBCOMMANDS = [
   "info",
   "doctor",
   "update",
+  "install",
   "configure",
   "configure-all",
   "export-env",
