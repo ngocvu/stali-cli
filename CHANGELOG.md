@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.37.1] — 2026-08-28
+
+### Fixed
+- Windows CI: test `STALI_HOME` dùng `os.tmpdir()`; ngưỡng `gatherCliInfo` offline phù hợp Windows runner
+
 ## [3.37.0] — 2026-08-28
 
 ### Added

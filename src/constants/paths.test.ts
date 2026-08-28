@@ -19,10 +19,11 @@ describe("paths constants", () => {
 
   test("STALI_HOME override", () => {
     const prev = process.env.STALI_HOME;
-    process.env.STALI_HOME = "/tmp/stali-test-home";
+    const customHome = path.join(os.tmpdir(), "stali-test-home");
+    process.env.STALI_HOME = customHome;
     try {
-      expect(getStaliHome()).toBe("/tmp/stali-test-home");
-      expect(getStaliCliInstallDir()).toBe("/tmp/stali-test-home/cli");
+      expect(getStaliHome()).toBe(customHome);
+      expect(getStaliCliInstallDir()).toBe(path.join(customHome, "cli"));
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;

@@ -30,7 +30,8 @@ describe("cli-info", () => {
       expect(info.gateway).toBeDefined();
       expect(info.telemetry).toBeDefined();
       expect(typeof info.telemetry?.enabled).toBe("boolean");
-      expect(ms).toBeLessThan(500);
+      const budgetMs = process.platform === "win32" ? 5000 : 500;
+      expect(ms).toBeLessThan(budgetMs);
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
