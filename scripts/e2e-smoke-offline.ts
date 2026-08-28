@@ -70,7 +70,7 @@ async function main() {
   assert("wizard --help exit 0", wizardHelp.status === 0);
 
   const subBundle = await fs.readFile(
-    path.join(CLI_ROOT, "dist/subcommand/subcommand-cli.js"),
+    path.join(CLI_ROOT, "dist/runtime/subcommand-cli.js"),
     "utf8"
   );
   assert(
@@ -78,11 +78,16 @@ async function main() {
     !subBundle.includes("Wizard-") && !subBundle.includes("wizard-launcher")
   );
 
+  assert("bin/stali wrapper exists", await fs.access(path.join(CLI_ROOT, "bin/stali")).then(() => true).catch(() => false));
+
   const checksums = await fs
     .access(path.join(CLI_ROOT, "dist/checksums.json"))
     .then(() => true)
     .catch(() => false);
   assert("dist/checksums.json exists", checksums);
+
+  const compDoctor = run(["completion", "--doctor", "--json"]);
+  assert("completion --doctor --json", compDoctor.status === 0 || compDoctor.status === 1);
 
   const compUninstall = run(["completion", "fish", "--uninstall"]);
   assert("completion uninstall exit 0", compUninstall.status === 0);

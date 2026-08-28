@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import os from "os";
 import path from "path";
 import fs from "fs/promises";
-import { detectShellFromEnv, installCompletion, uninstallCompletion, normalizeCompletionShell } from "./completion-install";
+import { detectShellFromEnv, installCompletion, uninstallCompletion, diagnoseCompletion, normalizeCompletionShell } from "./completion-install";
 
 describe("completion-install", () => {
   test("normalizeCompletionShell", () => {
@@ -23,14 +23,6 @@ describe("completion-install", () => {
     }
   });
 
-  test("detectShellFromEnv respects SHELL", () => {
-    const prev = process.env.SHELL;
-    process.env.SHELL = "/usr/bin/zsh";
-    expect(detectShellFromEnv()).toBe("zsh");
-    if (prev === undefined) delete process.env.SHELL;
-    else process.env.SHELL = prev;
-  });
-
   test("uninstall fish (isolated dir)", async () => {
     const tmp = path.join(os.tmpdir(), `stali-comp-un-${Date.now()}`);
     await installCompletion("fish", tmp);
@@ -44,5 +36,20 @@ describe("completion-install", () => {
       stillExists = false;
     }
     expect(stillExists).toBe(false);
+  });
+
+  test("diagnoseCompletion fish absent", async () => {
+    const tmp = path.join(os.tmpdir(), `stali-comp-diag-${Date.now()}`);
+    const rows = await diagnoseCompletion("fish", tmp);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe("absent");
+  });
+
+  test("detectShellFromEnv respects SHELL", () => {
+    const prev = process.env.SHELL;
+    process.env.SHELL = "/usr/bin/zsh";
+    expect(detectShellFromEnv()).toBe("zsh");
+    if (prev === undefined) delete process.env.SHELL;
+    else process.env.SHELL = prev;
   });
 });

@@ -17,6 +17,7 @@ import { renderAppGuide, listGuideIds } from "../constants/guides";
 import { STALI_DOCS_URL } from "../constants/api";
 import { runHealthCheck } from "../services/health-check";
 import { fetchLatestVersion } from "../services/version-check";
+import { resolveUpdateChannel } from "../services/update-channel";
 import { maskToken } from "../utils/token";
 import { getToolById, resolveToolId } from "../utils/tool-utils";
 import { VERSION } from "../version";
@@ -549,10 +550,13 @@ export function registerCommands(program: Command): void {
     .command("update")
     .description("Cập nhật stali-cli từ GitHub (~/.stali/cli)")
     .option("--check", "Chỉ kiểm tra phiên bản mới (không cập nhật)")
-    .action(async (opts: { check?: boolean }) => {
+    .option("--channel <name>", "Kênh cập nhật: stable | beta", "stable")
+    .action(async (opts: { check?: boolean; channel?: string }) => {
+      const channelCfg = resolveUpdateChannel(opts.channel);
       if (opts.check) {
-        const ver = await fetchLatestVersion();
+        const ver = await fetchLatestVersion(channelCfg.versionUrl);
         console.log(chalk.bold.cyan("\n⬆️  STALI CLI VERSION CHECK\n"));
+        console.log(`Kênh:      ${chalk.white(channelCfg.label)} (${channelCfg.branch})`);
         console.log(`Hiện tại: ${chalk.white(ver.current)}`);
         console.log(`Mới nhất:  ${chalk.white(ver.latest)}`);
         if (ver.updateAvailable) {
@@ -562,9 +566,9 @@ export function registerCommands(program: Command): void {
         console.log(chalk.green(`\n${t("update_latest")}\n`));
         process.exit(0);
       }
-      console.log(chalk.cyan("\n⬇️  Đang cập nhật stali-cli…\n"));
+      console.log(chalk.cyan(`\n⬇️  Đang cập nhật stali-cli (${channelCfg.label})…\n`));
       const { selfUpdate } = await import("../services/self-update");
-      const result = await selfUpdate();
+      const result = await selfUpdate({ channel: opts.channel });
       if (result.success) {
         console.log(chalk.green(`✅ ${result.message}`));
         console.log(chalk.gray(`   Chạy lại: stali --version\n`));
@@ -674,10 +678,30 @@ export function registerCommands(program: Command): void {
     .argument("[shell]", "bash | zsh | fish | auto (mặc định khi --install)")
     .option("--install", "Ghi completion vào shell config (idempotent)")
     .option("--uninstall", "Gỡ completion đã cài (idempotent)")
-    .action(async (shell: string | undefined, cmdOpts: { install?: boolean; uninstall?: boolean }) => {
+    .option("--doctor", "Kiểm tra completion đã cài (bash/fish/zsh)")
+    .option("--json", "JSON output (với --doctor)")
+    .action(async (shell: string | undefined, cmdOpts: { install?: boolean; uninstall?: boolean; doctor?: boolean; json?: boolean }) => {
       if (cmdOpts.install && cmdOpts.uninstall) {
         console.error(chalk.red("❌ --install và --uninstall không dùng cùng lúc"));
         process.exit(1);
+      }
+      if (cmdOpts.doctor) {
+        const { diagnoseCompletion } = await import("../services/completion-install");
+        const rows = await diagnoseCompletion(shell || "auto");
+        if (cmdOpts.json) {
+          console.log(JSON.stringify({ shells: rows }, null, 2));
+        } else {
+          console.log(chalk.bold.cyan("\n🔍 STALI COMPLETION DOCTOR\n"));
+          for (const row of rows) {
+            const icon =
+              row.status === "ok" ? chalk.green("✓") : row.status === "stale" ? chalk.yellow("○") : chalk.red("✗");
+            console.log(`${icon} ${chalk.white(row.shell)} — ${row.message}`);
+            console.log(chalk.gray(`   ${row.path}`));
+          }
+          console.log("");
+        }
+        const ok = rows.every((r) => r.status === "ok" || r.status === "absent");
+        process.exit(ok ? 0 : 1);
       }
       if (cmdOpts.uninstall) {
         const { uninstallCompletion } = await import("../services/completion-install");

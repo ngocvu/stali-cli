@@ -6,6 +6,8 @@ import {
   getStaliBinDir,
   getStaliCliInstallDir,
 } from "../constants/paths";
+import { verifyDistChecksums } from "./checksum-verify";
+import { resolveUpdateChannel, type UpdateChannel } from "./update-channel";
 
 const DEFAULT_REPO = "https://github.com/ngocvu/stali-cli.git";
 const DEFAULT_BRANCH = "main";
@@ -36,6 +38,10 @@ function githubZipUrl(repo: string, branch: string): string {
   const repoUrl = repo.replace(/\.git$/, "");
   const m = repoUrl.match(/github\.com[:/]([^/]+)\/([^/]+)$/);
   if (!m) throw new Error(`Cannot derive zip URL from ${repo}`);
+  if (/^v?\d/.test(branch)) {
+    const tag = branch.startsWith("v") ? branch : `v${branch}`;
+    return `https://github.com/${m[1]}/${m[2]}/archive/refs/tags/${tag}.zip`;
+  }
   return `https://github.com/${m[1]}/${m[2]}/archive/refs/heads/${branch}.zip`;
 }
 
@@ -81,11 +87,21 @@ async function pullGit(installRoot: string, branch: string) {
 }
 
 export async function registerStaliShim(installRoot: string): Promise<void> {
+  const shellShim = path.join(installRoot, "bin", "stali");
   const staliJs = path.join(installRoot, "bin", "stali.js");
+  const distEntry = path.join(installRoot, "dist", "index.js");
+
+  let entry = distEntry;
   try {
-    await fs.access(staliJs);
+    await fs.access(shellShim);
+    entry = shellShim;
   } catch {
-    throw new Error(`Missing ${staliJs} after build`);
+    try {
+      await fs.access(staliJs);
+      entry = staliJs;
+    } catch {
+      await fs.access(distEntry);
+    }
   }
 
   const binDir = getStaliBinDir();
@@ -96,23 +112,29 @@ export async function registerStaliShim(installRoot: string): Promise<void> {
       ?.trim()
       .split(/\r?\n/)[0] || "bun";
     const cmdPath = path.join(binDir, "stali.cmd");
-    const shim = ["@echo off", "setlocal", `"${bunExe}" "${staliJs}" %*`].join("\r\n");
+    const shim = ["@echo off", "setlocal", `"${bunExe}" "${entry}" %*`].join("\r\n");
     await fs.writeFile(cmdPath, shim, "utf8");
     return;
   }
 
   const bun = bunBin();
   const shimPath = path.join(binDir, "stali");
-  const body = `#!/usr/bin/env bash\nexec "${bun}" "${staliJs}" "$@"\n`;
+  const body =
+    entry.endsWith("bin/stali") && !entry.endsWith(".js")
+      ? `#!/usr/bin/env bash\nexec "${entry}" "$@"\n`
+      : `#!/usr/bin/env bash\nexec "${bun}" "${entry}" "$@"\n`;
   await fs.writeFile(shimPath, body, { mode: 0o755 });
 }
 
 export async function selfUpdate(options?: {
   repo?: string;
   branch?: string;
+  channel?: UpdateChannel | string;
+  skipChecksum?: boolean;
 }): Promise<SelfUpdateResult> {
   const repo = options?.repo || process.env.STALI_CLI_REPO || DEFAULT_REPO;
-  const branch = options?.branch || process.env.STALI_CLI_BRANCH || DEFAULT_BRANCH;
+  const channelCfg = resolveUpdateChannel(options?.channel);
+  const branch = options?.branch || channelCfg.branch;
   const installRoot = getStaliCliInstallDir();
 
   try {
@@ -135,11 +157,23 @@ export async function selfUpdate(options?: {
       return { success: false, message: "build failed", installDir: installRoot, error: build.detail };
     }
 
+    if (!options?.skipChecksum) {
+      const verify = await verifyDistChecksums(installRoot);
+      if (!verify.ok) {
+        return {
+          success: false,
+          message: "checksum verify failed sau build",
+          installDir: installRoot,
+          error: verify.errors.slice(0, 3).join("; "),
+        };
+      }
+    }
+
     await registerStaliShim(installRoot);
 
     return {
       success: true,
-      message: `Đã cập nhật stali-cli tại ${installRoot}`,
+      message: `Đã cập nhật stali-cli (${channelCfg.label}) tại ${installRoot}`,
       installDir: installRoot,
     };
   } catch (e: any) {

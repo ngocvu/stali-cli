@@ -379,8 +379,15 @@ export async function runDoctorWatch(
     prevHash = hash;
 
     if (jsonOut) {
-      const out = view?.pluginsOnly ? toLegacyPluginsDoctorJson(payload) : payload;
-      console.log(JSON.stringify(out, null, 2));
+      const data = view?.pluginsOnly ? toLegacyPluginsDoctorJson(payload) : payload;
+      const record = {
+        ts: new Date().toISOString(),
+        event: "doctor.snapshot",
+        hash,
+        scope: view?.pluginsOnly ? "plugins" : view?.toolsOnly ? "tools" : "full",
+        data,
+      };
+      console.log(JSON.stringify(record));
     } else if (view?.pluginsOnly) {
       const pOk = payload.plugins.filter((p) => p.configuredForStali).length;
       console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — PLUGINS\n"));

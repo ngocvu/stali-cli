@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.7.0] — 2026-08-28
+
+### Added
+- **Shared runtime build** — `dist/runtime/` dedupe chunks subcommand + wizard (~giảm tarball)
+- **`stali completion --doctor`** — kiểm tra bash/fish/zsh đã cài / stale
+- **`doctor --watch --json`** — NDJSON stream (`doctor.snapshot` events)
+- **`stali update --channel beta|stable`** — kênh cập nhật + verify `checksums.json` sau build
+- **`bin/stali`** — shell wrapper tìm Bun + `dist/index.js` (không cần global bun link)
+
+### Changed
+- `package.json` bin → `./bin/stali`
+- Checksum manifest paths: `dist/runtime/*`, `dist/index.js`
+
 ## [3.6.0] — 2026-08-28
 
 ### Added

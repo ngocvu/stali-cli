@@ -273,3 +273,131 @@ export async function uninstallCompletion(
       return uninstallZsh(home);
   }
 }
+
+export type CompletionDiagStatus = "ok" | "missing" | "stale" | "absent";
+
+export interface CompletionDiagnostic {
+  shell: CompletionShell;
+  installed: boolean;
+  status: CompletionDiagStatus;
+  path: string;
+  message: string;
+}
+
+async function diagnoseBash(home: string): Promise<CompletionDiagnostic> {
+  const rcPath = path.join(home, ".bashrc");
+  try {
+    const existing = await fs.readFile(rcPath, "utf8");
+    if (!existing.includes(MARKER_START)) {
+      return {
+        shell: "bash",
+        installed: false,
+        status: "absent",
+        path: rcPath,
+        message: "Chưa có block stali-cli trong ~/.bashrc",
+      };
+    }
+    return {
+      shell: "bash",
+      installed: true,
+      status: "ok",
+      path: rcPath,
+      message: "Block completion có trong ~/.bashrc",
+    };
+  } catch {
+    return {
+      shell: "bash",
+      installed: false,
+      status: "missing",
+      path: rcPath,
+      message: "Không có ~/.bashrc",
+    };
+  }
+}
+
+async function diagnoseFish(home: string): Promise<CompletionDiagnostic> {
+  const target = path.join(home, ".config", "fish", "completions", "stali.fish");
+  const expected = renderCompletion("fish") || "";
+  try {
+    const prev = await fs.readFile(target, "utf8");
+    if (prev === expected) {
+      return {
+        shell: "fish",
+        installed: true,
+        status: "ok",
+        path: target,
+        message: "Fish completion khớp phiên bản hiện tại",
+      };
+    }
+    return {
+      shell: "fish",
+      installed: true,
+      status: "stale",
+      path: target,
+      message: "Fish completion cũ — chạy: stali completion install fish",
+    };
+  } catch {
+    return {
+      shell: "fish",
+      installed: false,
+      status: "absent",
+      path: target,
+      message: "Chưa cài fish completion",
+    };
+  }
+}
+
+async function diagnoseZsh(home: string): Promise<CompletionDiagnostic> {
+  const target = path.join(home, ".config", "zsh", "completions", "_stali");
+  const expected = renderCompletion("zsh") || "";
+  try {
+    const prev = await fs.readFile(target, "utf8");
+    if (prev === expected) {
+      return {
+        shell: "zsh",
+        installed: true,
+        status: "ok",
+        path: target,
+        message: "Zsh completion khớp phiên bản hiện tại",
+      };
+    }
+    return {
+      shell: "zsh",
+      installed: true,
+      status: "stale",
+      path: target,
+      message: "Zsh completion cũ — chạy: stali completion install zsh",
+    };
+  } catch {
+    return {
+      shell: "zsh",
+      installed: false,
+      status: "absent",
+      path: target,
+      message: "Chưa cài zsh completion",
+    };
+  }
+}
+
+export async function diagnoseCompletion(
+  shellInput?: string,
+  homeDir?: string
+): Promise<CompletionDiagnostic[]> {
+  const home = homeDir || os.homedir();
+  const shell = shellInput && shellInput !== "auto" ? normalizeCompletionShell(shellInput) : null;
+  if (shell) {
+    switch (shell) {
+      case "bash":
+        return [await diagnoseBash(home)];
+      case "fish":
+        return [await diagnoseFish(home)];
+      case "zsh":
+        return [await diagnoseZsh(home)];
+    }
+  }
+  return Promise.all([
+    diagnoseBash(home),
+    diagnoseFish(home),
+    diagnoseZsh(home),
+  ]);
+}

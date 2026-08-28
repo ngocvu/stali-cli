@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Portable stali launcher — resolves Bun + dist/index.js from package root.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENTRY="$ROOT/dist/index.js"
+
+if [[ ! -f "$ENTRY" ]]; then
+  echo "stali-cli: missing $ENTRY — run: bun run build" >&2
+  exit 1
+fi
+
+if [[ -n "${BUN_BIN:-}" && -x "${BUN_BIN}" ]]; then
+  exec "$BUN_BIN" "$ENTRY" "$@"
+fi
+
+if command -v bun >/dev/null 2>&1; then
+  exec bun "$ENTRY" "$@"
+fi
+
+if [[ -x "$HOME/.bun/bin/bun" ]]; then
+  exec "$HOME/.bun/bin/bun" "$ENTRY" "$@"
+fi
+
+echo "stali-cli: Bun runtime not found. Install: https://bun.sh" >&2
+exit 1
