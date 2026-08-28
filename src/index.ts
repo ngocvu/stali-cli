@@ -1,4 +1,4 @@
-import { resolveCliMode } from "./cli-route";
+import { resolveCliMode, rewriteArgvForKeySetup } from "./cli-route";
 import { VERSION } from "./version";
 
 const earlyArgs = process.argv.slice(2);
@@ -9,6 +9,8 @@ if (
   console.log(VERSION);
   process.exit(0);
 }
+
+rewriteArgvForKeySetup(process.argv);
 
 const mode = resolveCliMode(process.argv);
 

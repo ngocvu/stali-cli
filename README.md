@@ -32,7 +32,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🔗 **Open**: `stali open keys` · **Guide**: `stali guide cursor`
 - ⚙️ **Wizard configure-all**: batch 11/13 tool từ menu chính
 - 🟣 **13/13 menu riêng**: Qwen, Droid, Cowork — không còn generic fallback
-- 🚀 **Setup**: `stali setup -k sk-stali-...` — **lệnh khuyến nghị** (auth + gateway + check, ~vài giây)
+- 🚀 **Setup**: `stali setup -k sk-stali-...` hoặc chỉ `stali -k sk-stali-...` — **lệnh khuyến nghị**
 - 🚀 **Init**: `stali init` — đầy đủ hơn (completion, version check)
 - 🔌 **Plugins**: `stali plugins list|sync` — registry `~/.stali/plugins.json` + syncer tự động
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted

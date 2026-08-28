@@ -1,13 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { resolveCliMode } from "./cli-route";
+import { resolveCliMode, rewriteArgvForKeySetup } from "./cli-route";
 
 describe("resolveCliMode", () => {
   test("không args → wizard", () => {
     expect(resolveCliMode(["bun", "stali"])).toBe("wizard");
   });
 
-  test("chỉ -k → wizard", () => {
-    expect(resolveCliMode(["bun", "stali", "-k", "sk-stali-x"])).toBe("wizard");
+  test("chỉ -k → subcommand (fast setup)", () => {
+    expect(resolveCliMode(["bun", "stali", "-k", "sk-stali-x"])).toBe("subcommand");
+  });
+
+  test("rewriteArgvForKeySetup chèn setup", () => {
+    const argv = ["bun", "stali", "-k", "sk-stali-abc"];
+    expect(rewriteArgvForKeySetup(argv)).toBe(true);
+    expect(argv).toEqual(["bun", "stali", "setup", "-k", "sk-stali-abc"]);
+  });
+
+  test("wizard vẫn wizard khi có subcommand wizard", () => {
+    expect(resolveCliMode(["bun", "stali", "wizard"])).toBe("wizard");
   });
 
   test("doctor → subcommand", () => {

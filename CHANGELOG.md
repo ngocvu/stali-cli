@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.29.0] — 2026-08-28
+
+### Changed
+- **`stali -k sk-stali-...`** — tự chạy `setup` (không mở wizard Ink); nhanh nhất cho user mới
+
 ## [3.28.0] — 2026-08-28
 
 ### Added
