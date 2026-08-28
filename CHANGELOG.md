@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.5.0] — 2026-08-28
+
+### Added
+- **`stali configure-all --include-plugins`** — batch tool + plugin trong một lệnh
+- **`stali plugins doctor [--json]`** — health check plugin tùy chỉnh + meta API
+- **Wizard** — menu Plugin (sync / doctor), configure-all + plugins
+- **`bun run bench`** — benchmark cold-start (`scripts/benchmark-cold-start.ts`)
+
+### Fixed
+- **`doctor --fix` / configure dry-run** — validate token format trước khi scan tool
+
 ## [2.4.0] — 2026-08-28
 
 ### Added

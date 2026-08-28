@@ -4,6 +4,7 @@ import { syncTool } from "./syncers";
 import { buildToolConfigPreview } from "./syncers/preview";
 import { getToolById, resolveToolDefaultModel, resolveToolId } from "../utils/tool-utils";
 import type { SyncerResult } from "../types";
+import { validateTokenFormat } from "../utils/token";
 
 export interface ConfigureBatchOptions {
   apiKey: string;
@@ -14,6 +15,8 @@ export interface ConfigureBatchOptions {
   continueOnError?: boolean;
   /** Bỏ qua claude/codex (cần wizard nâng cao) */
   skipAdvanced?: boolean;
+  /** Đồng bộ thêm plugin từ ~/.stali/plugins.json */
+  includePlugins?: boolean;
 }
 
 export interface ConfigureBatchItem {
@@ -64,7 +67,22 @@ export async function runConfigureBatch(
   }
 
   const validation = opts.dryRun
-    ? { valid: true, defaultModel: "claude-fable-5", models: [] as { id: string; supported_endpoint_types: string[] }[] }
+    ? (() => {
+        const formatError = validateTokenFormat(opts.apiKey.trim());
+        if (formatError) {
+          return {
+            valid: false as const,
+            error: formatError,
+            models: [] as { id: string; supported_endpoint_types: string[] }[],
+            defaultModel: "",
+          };
+        }
+        return {
+          valid: true as const,
+          defaultModel: "claude-fable-5",
+          models: [] as { id: string; supported_endpoint_types: string[] }[],
+        };
+      })()
     : await validateApiKeyAndFetchModels(opts.apiKey, { baseUrl: opts.baseUrl });
 
   if (!validation.valid) {
@@ -134,6 +152,27 @@ export async function runConfigureBatch(
     });
 
     if (!result.success && !opts.continueOnError) break;
+  }
+
+  if (opts.includePlugins) {
+    const { runPluginsSync } = await import("./plugin-sync");
+    const pluginResult = await runPluginsSync({
+      apiKey: opts.apiKey,
+      baseUrl: opts.baseUrl,
+      model: opts.model,
+      dryRun: opts.dryRun,
+    });
+    for (const plugin of pluginResult.items) {
+      items.push({
+        toolId: plugin.pluginId ? `plugin:${plugin.pluginId}` : "",
+        toolName: plugin.pluginName || `Plugin ${plugin.pluginId}`,
+        success: plugin.success,
+        message: plugin.message,
+        configPath: plugin.configPath,
+        backupPath: plugin.backupPath,
+        error: plugin.error,
+      });
+    }
   }
 
   return { items, allOk: items.every((i) => i.success) };

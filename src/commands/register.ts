@@ -32,6 +32,7 @@ import { setLocale, resolveLocale, t } from "../i18n";
 import { runInit } from "../services/init-cli";
 import { loadPlugins, writePluginsExample, getPluginsPath } from "../services/plugins";
 import { runPluginsSync } from "../services/plugin-sync";
+import { runPluginsDoctor } from "../services/plugin-doctor";
 import { selfUpdate } from "../services/self-update";
 import { resolveApiKey } from "./context";
 import { displayModelsTable } from "./models";
@@ -199,6 +200,44 @@ export function registerCommands(program: Command): void {
       }
       console.log("");
       process.exit(allOk ? 0 : 1);
+    });
+
+  pluginsCmd
+    .command("doctor")
+    .description("Kiểm tra plugin đã trỏ Stali API chưa")
+    .option("--json", "Xuất JSON (meta + plugins)")
+    .action(async (opts: { json?: boolean }) => {
+      const report = await runPluginsDoctor();
+      if (opts.json) {
+        console.log(JSON.stringify(report, null, 2));
+        const ok = report.plugins.every((p) => p.configuredForStali);
+        process.exit(ok ? 0 : 1);
+      }
+      const configured = report.plugins.filter((p) => p.configuredForStali);
+      console.log(chalk.bold.cyan("\n🔌 PLUGINS DOCTOR\n"));
+      console.log(chalk.gray(`API: ${report.meta.modelsEndpoint}\n`));
+      if (report.plugins.length === 0) {
+        console.log(chalk.yellow("Không có plugin — stali plugins list --init\n"));
+        process.exit(1);
+      }
+      console.log(
+        chalk.green(`✅ Đã trỏ Stali: ${configured.length}/${report.plugins.length}\n`)
+      );
+      for (const p of report.plugins) {
+        const icon = p.configuredForStali ? chalk.green("✓") : chalk.yellow("○");
+        const state = p.configuredForStali
+          ? chalk.green("Stali OK")
+          : p.exists
+          ? chalk.yellow("chưa trỏ Stali")
+          : chalk.gray("chưa có file");
+        console.log(
+          `${icon} ${chalk.white(p.pluginName)} (${p.patchStyle}) — ${state}${p.model ? chalk.gray(` (${p.model})`) : ""}`
+        );
+        if (p.endpoint) console.log(chalk.gray(`   ${p.endpoint}`));
+        console.log(chalk.gray(`   ${p.configPath}`));
+      }
+      console.log(chalk.gray("\nSync: stali plugins sync -k sk-stali-...\n"));
+      process.exit(configured.length === report.plugins.length ? 0 : 1);
     });
 
   const configCmd = program
@@ -552,6 +591,7 @@ export function registerCommands(program: Command): void {
     .option("--dry-run", "Xem preview, không ghi file")
     .option("--continue-on-error", "Tiếp tục khi một tool lỗi")
     .option("--skip-advanced", "Bỏ qua claude/codex (mặc định bật khi không chỉ định --tools)")
+    .option("--include-plugins", "Đồng bộ thêm plugin từ ~/.stali/plugins.json")
     .action(
       async (opts: {
         model?: string;
@@ -559,6 +599,7 @@ export function registerCommands(program: Command): void {
         dryRun?: boolean;
         continueOnError?: boolean;
         skipAdvanced?: boolean;
+        includePlugins?: boolean;
       }) => {
         const globals = program.opts<{ key?: string }>();
         const apiKey = await resolveApiKey(globals.key);
@@ -581,6 +622,7 @@ export function registerCommands(program: Command): void {
           dryRun: opts.dryRun,
           continueOnError: opts.continueOnError,
           skipAdvanced,
+          includePlugins: opts.includePlugins,
         });
 
         if (opts.dryRun) {

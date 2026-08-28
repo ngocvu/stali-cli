@@ -6,6 +6,7 @@ import { SUPPORTED_TOOLS } from "../constants/tools";
 
 export type ConfigureAllAction =
   | "batch-11"
+  | "batch-11-plugins"
   | "batch-13"
   | "dry-run-11"
   | "back";
@@ -19,6 +20,10 @@ export const ConfigureAllMenu: React.FC<ConfigureAllMenuProps> = ({ onSelect }) 
     {
       label: "⚡ Cấu hình 11 tool (bỏ Claude/Codex — khuyến nghị)",
       value: "batch-11" as const,
+    },
+    {
+      label: "⚡ Cấu hình 11 tool + plugin (~/.stali/plugins.json)",
+      value: "batch-11-plugins" as const,
     },
     {
       label: "🔧 Cấu hình cả 13 tool (gồm Claude + Codex)",

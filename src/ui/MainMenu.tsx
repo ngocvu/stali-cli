@@ -17,6 +17,7 @@ interface MainMenuProps {
       | "fix-all"
       | "open-keys"
       | "update"
+      | "plugins"
       | "exit"
   ) => void;
 }
@@ -28,6 +29,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, onSelect }) => {
     { label: "📊 Xem bảng giá & danh sách Model Stali API", value: "models" as const },
     { label: "🩺 Kiểm tra trạng thái cấu hình (doctor)", value: "doctor" as const },
     { label: "🔧 Sửa tất cả tool chưa OK (doctor fix)", value: "fix-all" as const },
+    { label: "🔌 Plugin tùy chỉnh (sync / doctor)", value: "plugins" as const },
     { label: "⬆️  Cập nhật stali-cli (update)", value: "update" as const },
     { label: "🔑 Cài đặt API Token", value: "change-key" as const },
     { label: "🔗 Mở Dashboard Keys (trình duyệt)", value: "open-keys" as const },

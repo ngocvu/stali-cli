@@ -32,6 +32,11 @@ import { buildToolConfigPreview } from "../services/syncers/preview";
 import { runDoctorFix } from "../services/doctor-fix";
 import { runConfigureBatch } from "../services/configure-batch";
 import { ConfigureAllMenu, ConfigureAllAction } from "./ConfigureAllMenu";
+import { PluginsMenu, PluginsMenuAction } from "./PluginsMenu";
+import { PluginsDoctorView } from "./PluginsDoctorView";
+import { runPluginsDoctor, type PluginHealthStatus } from "../services/plugin-doctor";
+import { runPluginsSync } from "../services/plugin-sync";
+import { loadPlugins } from "../services/plugins";
 import { getToolById } from "../utils/tool-utils";
 import { resolveToolDefaultModel } from "../utils/tool-utils";
 
@@ -45,6 +50,8 @@ type WizardStep =
   | "pricing"
   | "doctor"
   | "configure-all"
+  | "plugins"
+  | "plugins-doctor"
   | "app"
   | "tool-detail"
   | "model"
@@ -78,6 +85,8 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     subagentModel: "",
   });
   const [doctorStatuses, setDoctorStatuses] = useState<Awaited<ReturnType<typeof runDoctorScan>>>([]);
+  const [pluginStatuses, setPluginStatuses] = useState<PluginHealthStatus[]>([]);
+  const [pluginCount, setPluginCount] = useState(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | undefined>();
   const [results, setResults] = useState<SyncerResult[]>([]);
@@ -150,6 +159,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       | "fix-all"
       | "open-keys"
       | "update"
+      | "plugins"
       | "exit"
   ) => {
     switch (action) {
@@ -171,6 +181,12 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       case "fix-all":
         await handleDoctorFix();
         break;
+      case "plugins": {
+        const plugins = await loadPlugins();
+        setPluginCount(plugins.length);
+        setStep("plugins");
+        break;
+      }
       case "update": {
         setLoading(true);
         setError(undefined);
@@ -249,11 +265,13 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     setError(undefined);
     const skipAdvanced = action !== "batch-13";
     const dryRun = action === "dry-run-11";
+    const includePlugins = action === "batch-11-plugins";
     const batch = await runConfigureBatch({
       apiKey,
       skipAdvanced,
       dryRun,
       continueOnError: true,
+      includePlugins,
     });
     setResults(
       batch.items.map((item) => ({
@@ -266,7 +284,66 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         error: item.error,
       }))
     );
-    setSelectedModel(dryRun ? "Configure-all (dry-run)" : "Configure-all");
+    setSelectedModel(
+      dryRun
+        ? "Configure-all (dry-run)"
+        : includePlugins
+        ? "Configure-all + plugins"
+        : "Configure-all"
+    );
+    setLoading(false);
+    setStep("done");
+  };
+
+  const handlePluginsMenuSelect = async (action: PluginsMenuAction) => {
+    if (action === "back") {
+      setStep("menu");
+      return;
+    }
+    if (action === "doctor") {
+      setLoading(true);
+      const report = await runPluginsDoctor();
+      setPluginStatuses(report.plugins);
+      setLoading(false);
+      setStep("plugins-doctor");
+      return;
+    }
+    if (action === "sync") {
+      setLoading(true);
+      setError(undefined);
+      const syncRes = await runPluginsSync({ apiKey });
+      setResults(
+        syncRes.items.map((item) => ({
+          toolId: item.pluginId || "plugin",
+          toolName: item.pluginName || "Plugin",
+          success: item.success,
+          message: item.message,
+          configPath: item.configPath,
+          backupPath: item.backupPath,
+          error: item.error,
+        }))
+      );
+      setSelectedModel("Plugins sync");
+      setLoading(false);
+      setStep("done");
+    }
+  };
+
+  const handlePluginsSyncAll = async () => {
+    setLoading(true);
+    const syncRes = await runPluginsSync({ apiKey });
+    setResults(
+      syncRes.items.map((item) => ({
+        toolId: item.pluginId || "plugin",
+        toolName: item.pluginName || "Plugin",
+        success: item.success,
+        message: item.message,
+        configPath: item.configPath,
+        backupPath: item.backupPath,
+        error: item.error,
+      }))
+    );
+    setSelectedModel("Plugins sync");
     setLoading(false);
     setStep("done");
   };
@@ -651,6 +728,18 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
       {step === "configure-all" && (
         <ConfigureAllMenu onSelect={handleConfigureAllSelect} />
+      )}
+
+      {step === "plugins" && (
+        <PluginsMenu pluginCount={pluginCount} onSelect={handlePluginsMenuSelect} />
+      )}
+
+      {step === "plugins-doctor" && (
+        <PluginsDoctorView
+          statuses={pluginStatuses}
+          onBack={() => setStep("plugins")}
+          onSyncAll={handlePluginsSyncAll}
+        />
       )}
 
       {step === "app" && <AppSelect onSelect={handleAppSelect} />}
