@@ -313,6 +313,9 @@ export function registerCommands(program: Command): void {
       console.log(chalk.bold.cyan("\n📋 STALI CLI INFO\n"));
       console.log(`${chalk.white("Version")}     ${info.version}`);
       console.log(`${chalk.white("Platform")}    ${info.platform}`);
+      console.log(
+        `${chalk.white("Install")}     ${info.installMode}${info.installVersion ? chalk.gray(` (${info.installVersion})`) : ""}`
+      );
       if (info.bunVersion) console.log(`${chalk.white("Bun")}         ${info.bunVersion}`);
       const ver = await fetchLatestVersion();
       if (ver.updateAvailable) {
@@ -512,6 +515,7 @@ export function registerCommands(program: Command): void {
     .option("--watch", "Theo dõi liên tục (Ctrl+C thoát)")
     .option("--notify", "Với --watch: chuông + desktop notify khi thay đổi")
     .option("--prometheus", "Xuất metrics Prometheus text (one-shot hoặc --watch)")
+    .option("--metrics-port <port>", "Với --watch: HTTP /metrics trên 127.0.0.1:PORT")
     .option("-i, --interval <seconds>", "Với --watch: chu kỳ giây (mặc định 10)", "10")
     .option("--max-cycles <n>", "Với --watch: số lần quét rồi thoát (CI)")
     .option("--duration <seconds>", "Với --watch: chạy tối đa N giây rồi thoát (CI)")
@@ -526,6 +530,7 @@ export function registerCommands(program: Command): void {
       watch?: boolean;
       notify?: boolean;
       prometheus?: boolean;
+      metricsPort?: string;
       interval?: string;
       maxCycles?: string;
       duration?: string;
@@ -555,10 +560,19 @@ export function registerCommands(program: Command): void {
           console.error(chalk.red("❌ --duration phải là số giây ≥ 1"));
           process.exit(2);
         }
+        const metricsPort = opts.metricsPort ? parseInt(opts.metricsPort, 10) : undefined;
+        if (metricsPort !== undefined && (!Number.isFinite(metricsPort) || metricsPort < 1 || metricsPort > 65535)) {
+          console.error(chalk.red("❌ --metrics-port phải là 1–65535"));
+          process.exit(2);
+        }
+        if (metricsPort && !opts.watch) {
+          console.error(chalk.red("❌ --metrics-port chỉ dùng với --watch"));
+          process.exit(2);
+        }
         await runDoctorWatch(sec, opts.json, opts.notify, view, {
           maxCycles,
           durationSec,
-        }, opts.prometheus);
+        }, opts.prometheus, metricsPort);
         return;
       }
       const code = await runDoctor(opts.json, {
@@ -578,7 +592,41 @@ export function registerCommands(program: Command): void {
     .description("Cập nhật stali-cli từ GitHub (~/.stali/cli)")
     .option("--check", "Chỉ kiểm tra phiên bản mới (không cập nhật)")
     .option("--channel <name>", "Kênh cập nhật: stable | beta", "stable")
-    .action(async (opts: { check?: boolean; channel?: string }) => {
+    .option("--install-cron", "Cài cron 04:00 tự update (Linux/macOS)")
+    .option("--uninstall-cron", "Gỡ cron auto-update")
+    .option("--cron-status", "Trạng thái cron auto-update")
+    .action(async (opts: {
+      check?: boolean;
+      channel?: string;
+      installCron?: boolean;
+      uninstallCron?: boolean;
+      cronStatus?: boolean;
+    }) => {
+      if (opts.cronStatus) {
+        const { getAutoUpdateCronStatus, readAutoUpdateConfig } = await import("../services/auto-update");
+        const status = getAutoUpdateCronStatus();
+        const cfg = await readAutoUpdateConfig();
+        console.log(chalk.bold.cyan("\n⏰ STALI AUTO-UPDATE\n"));
+        console.log(`Cron:      ${status.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")}`);
+        if (status.line) console.log(chalk.gray(`  ${status.line}`));
+        console.log(`Log:       ${status.logPath}`);
+        if (cfg) console.log(`Config:    channel=${cfg.channel || "stable"} enabled=${cfg.enabled}`);
+        console.log("");
+        process.exit(0);
+      }
+      if (opts.installCron) {
+        const { installAutoUpdateCron } = await import("../services/auto-update");
+        const r = await installAutoUpdateCron(opts.channel);
+        console.log(r.ok ? chalk.green(`✅ ${r.message}`) : chalk.red(`❌ ${r.message}`));
+        if (r.error) console.error(chalk.red(r.error));
+        process.exit(r.ok ? 0 : 1);
+      }
+      if (opts.uninstallCron) {
+        const { uninstallAutoUpdateCron } = await import("../services/auto-update");
+        const r = await uninstallAutoUpdateCron();
+        console.log(chalk.green(`✅ ${r.message}`));
+        process.exit(0);
+      }
       const channelCfg = await resolveUpdateChannelResolved(opts.channel);
       if (opts.check) {
         const ver = await fetchLatestVersion(channelCfg.versionUrl);

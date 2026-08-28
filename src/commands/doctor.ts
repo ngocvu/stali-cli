@@ -7,6 +7,8 @@ import { runDoctorScan } from "../services/syncers";
 import { doctorSnapshotHash, notifyChange } from "../services/notify";
 import { resolveStaliUrls } from "../utils/stali-urls";
 import { t, getLocale } from "../i18n";
+import { startDoctorMetricsServer, stopDoctorMetricsServer } from "../services/doctor-metrics-server";
+import type { Server } from "http";
 import type { ToolHealthStatus } from "../services/syncers";
 
 export interface DoctorJsonOutput {
@@ -416,7 +418,8 @@ export async function runDoctorWatch(
   notify?: boolean,
   view?: DoctorViewOptions,
   limits?: DoctorWatchLimits,
-  prometheusOut?: boolean
+  prometheusOut?: boolean,
+  metricsPort?: number
 ) {
   const sec = Math.max(1, intervalSec);
   let running = true;
@@ -425,15 +428,27 @@ export async function runDoctorWatch(
   let prevHash = "";
   let peakScore = 0;
   let degraded = false;
+  let latestPrometheus = "";
+  let metricsServer: Server | null = null;
   const stop = () => {
     running = false;
   };
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
 
-  const finish = (code: number) => {
+  const finish = async (code: number) => {
+    if (metricsServer) {
+      await stopDoctorMetricsServer(metricsServer).catch(() => {});
+    }
     process.exit(code);
   };
+
+  if (metricsPort && metricsPort > 0) {
+    metricsServer = startDoctorMetricsServer(() => latestPrometheus, metricsPort);
+    if (!jsonOut && !prometheusOut) {
+      console.log(chalk.gray(`Metrics: http://127.0.0.1:${metricsPort}/metrics`));
+    }
+  }
 
   const hitLimit = () => {
     if (limits?.maxCycles && cycles >= limits.maxCycles) return true;
@@ -454,6 +469,7 @@ export async function runDoctorWatch(
     const statuses = payload.tools;
     const hash = scopedDoctorHash(payload, view);
     const score = configuredScore(payload, view);
+    latestPrometheus = formatDoctorPrometheus(payload, view);
     if (score > peakScore) peakScore = score;
     else if (score < peakScore) {
       degraded = true;
@@ -522,5 +538,5 @@ export async function runDoctorWatch(
     if (!running) break;
     await new Promise((r) => setTimeout(r, sec * 1000));
   }
-  finish(degraded ? 1 : 0);
+  await finish(degraded ? 1 : 0);
 }

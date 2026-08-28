@@ -10,12 +10,16 @@ import {
 import { runDoctorScan } from "./syncers";
 import { authStatus } from "./auth-cli";
 import { runPluginsDoctor } from "./plugin-doctor";
+import { detectInstallMode, type InstallMode } from "./install-mode";
 
 export interface CliInfoSnapshot {
   version: string;
   platform: string;
   nodeVersion: string;
   bunVersion?: string;
+  installMode: InstallMode;
+  installDetail?: string;
+  installVersion?: string;
   staliHome: string;
   cliInstallDir: string;
   binDir: string;
@@ -49,10 +53,11 @@ export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
     .then(() => true)
     .catch(() => false);
 
-  const [auth, doctorStatuses, pluginReport] = await Promise.all([
+  const [auth, doctorStatuses, pluginReport, installInfo] = await Promise.all([
     authStatus(),
     runDoctorScan(),
     runPluginsDoctor(),
+    detectInstallMode(),
   ]);
   const configured = doctorStatuses.filter((s) => s.configuredForStali).length;
   const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
@@ -62,6 +67,9 @@ export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
     platform: `${process.platform} ${process.arch}`,
     nodeVersion: process.version,
     bunVersion: detectBunVersion(),
+    installMode: installInfo.mode,
+    installDetail: installInfo.detail,
+    installVersion: installInfo.version,
     staliHome: getStaliHome(),
     cliInstallDir: getStaliCliInstallDir(),
     binDir: getStaliBinDir(),

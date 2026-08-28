@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.11.0] — 2026-08-28
+
+### Added
+- **Wizard menu: Cài completion** — cài bash/fish/zsh từ menu chính
+- **`stali info --json`** — thêm `installMode`, `installDetail`, `installVersion`
+- **`doctor --watch --metrics-port`** — HTTP `/metrics` + `/healthz` trên 127.0.0.1
+- **`stali update --install-cron`** — cron 04:00 tự update (Linux/macOS) + `auto-update.json`
+- **`stali update --cron-status` / `--uninstall-cron`**
+- **Windows standalone** — `stali-standalone-win-x64` + CI matrix `windows-latest`
+
+### Changed
+- `info` human output hiển thị install mode
+- PE/MZ header detection cho standalone binary trên Windows
+
 ## [3.10.0] — 2026-08-28
 
 ### Added

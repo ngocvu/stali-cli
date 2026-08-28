@@ -167,6 +167,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       | "fix-all"
       | "open-keys"
       | "update"
+      | "completion"
       | "plugins"
       | "exit"
   ) => {
@@ -217,6 +218,31 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         } else {
           setError(res.error || res.message);
           setStep("menu");
+        }
+        break;
+      }
+      case "completion": {
+        setLoading(true);
+        setError(undefined);
+        try {
+          const { installAllCompletions } = await import("../services/completion-install");
+          const rows = await installAllCompletions();
+          setResults(
+            rows.map((r) => ({
+              toolId: r.shell,
+              toolName: `completion ${r.shell}`,
+              success: true,
+              message: r.message,
+              configPath: r.path,
+            }))
+          );
+          setSelectedModel("Shell completion");
+          setStep("done");
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : String(e));
+          setStep("menu");
+        } finally {
+          setLoading(false);
         }
         break;
       }

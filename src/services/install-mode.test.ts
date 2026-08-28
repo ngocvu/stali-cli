@@ -13,6 +13,10 @@ describe("install-mode", () => {
     expect(resolveStandaloneAssetName("darwin", "arm64")).toBe("stali-standalone-darwin-arm64");
   });
 
+  test("resolveStandaloneAssetName win32", () => {
+    expect(resolveStandaloneAssetName("win32", "x64")).toBe("stali-standalone-win-x64");
+  });
+
   test("pickStandaloneAsset prefers platform name", () => {
     const assets = [
       { name: "stali-standalone", url: "https://x/legacy", size: 1 },

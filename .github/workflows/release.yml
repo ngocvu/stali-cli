@@ -56,6 +56,9 @@ jobs:
           - runner: macos-13
             target: bun-darwin-x64
             asset: stali-standalone-darwin-x64
+          - runner: windows-latest
+            target: bun-windows-x64
+            asset: stali-standalone-win-x64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4

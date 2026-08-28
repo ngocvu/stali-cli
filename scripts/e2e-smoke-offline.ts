@@ -126,6 +126,20 @@ async function main() {
     await fs.rm(tmp, { recursive: true, force: true }).catch(() => {});
   }
 
+  const infoJson = run(["info", "--json"]);
+  assert("info --json exit 0", infoJson.status === 0);
+  if (infoJson.status === 0) {
+    try {
+      const parsed = JSON.parse(infoJson.stdout || "{}");
+      assert("info JSON has installMode", typeof parsed.installMode === "string");
+    } catch {
+      assert("info JSON parseable", false);
+    }
+  }
+
+  const cronStatus = run(["update", "--cron-status"]);
+  assert("update --cron-status exit 0", cronStatus.status === 0);
+
   const prom = run(["doctor", "--tools-only", "--prometheus"]);
   assert("doctor --prometheus", prom.status === 0 || prom.status === 1);
   assert(

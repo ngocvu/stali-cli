@@ -265,6 +265,7 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l watch",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l notify",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l prometheus -d 'Metrics Prometheus text'",
+    "complete -c stali -n '__fish_seen_subcommand_from doctor' -l metrics-port -d 'HTTP /metrics (với --watch)'",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l max-cycles -d 'Số lần quét (CI)'",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l duration -d 'Giới hạn giây (CI)'",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -s i -l interval",

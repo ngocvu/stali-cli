@@ -24,6 +24,9 @@ export function resolveStandaloneAssetName(
   platform: NodeJS.Platform = process.platform,
   arch: string = process.arch
 ): string {
+  if (platform === "win32") {
+    return "stali-standalone-win-x64";
+  }
   const os =
     platform === "darwin" ? "darwin" : platform === "linux" ? "linux" : platform.replace(/[^a-z0-9-]/gi, "");
   const cpu = arch === "x64" ? "x64" : arch === "arm64" ? "arm64" : arch;
@@ -46,7 +49,8 @@ export function pickStandaloneAsset(
 }
 
 function isCompiledBinaryHeader(buf: Buffer): boolean {
-  if (buf.length < 4) return false;
+  if (buf.length < 2) return false;
+  if (buf[0] === 0x4d && buf[1] === 0x5a) return true;
   if (buf[0] === 0x7f && buf[1] === 0x45 && buf[2] === 0x4c && buf[3] === 0x46) return true;
   const le = buf.readUInt32LE(0);
   const be = buf.readUInt32BE(0);
