@@ -7,7 +7,14 @@ import {
   getStaliCliInstallDir,
 } from "../constants/paths";
 import { verifyDistChecksums } from "./checksum-verify";
+import {
+  detectInstallMode,
+  resolveStandaloneDownloadUrl,
+  resolveStandaloneAssetName,
+  writeInstallModeMarker,
+} from "./install-mode";
 import { resolveUpdateChannelResolved, type UpdateChannel } from "./update-channel";
+import type { UpdateChannelConfig } from "./update-channel";
 
 const DEFAULT_REPO = "https://github.com/ngocvu/stali-cli.git";
 const DEFAULT_BRANCH = "main";
@@ -150,18 +157,79 @@ export async function registerStaliShim(installRoot: string): Promise<void> {
   await fs.writeFile(shimPath, body, { mode: 0o755 });
 }
 
+async function updateStandaloneInstall(
+  channelCfg: UpdateChannelConfig,
+  tag: string
+): Promise<SelfUpdateResult> {
+  const binPath = path.join(getStaliBinDir(), "stali");
+  const assetName = resolveStandaloneAssetName();
+  const resolved = await resolveStandaloneDownloadUrl(tag);
+  if (!resolved) {
+    return {
+      success: false,
+      message: "Không tìm thấy standalone binary trên GitHub Release",
+      error: `Thiếu asset ${assetName} (tag ${tag})`,
+    };
+  }
+
+  const res = await fetch(resolved.url, { signal: AbortSignal.timeout(120_000) });
+  if (!res.ok) {
+    return {
+      success: false,
+      message: "Tải standalone thất bại",
+      error: `HTTP ${res.status}`,
+    };
+  }
+
+  const buf = Buffer.from(await res.arrayBuffer());
+  await fs.mkdir(getStaliBinDir(), { recursive: true });
+  const backup = `${binPath}.bak`;
+  try {
+    await fs.copyFile(binPath, backup);
+  } catch {
+    /* first install */
+  }
+  await fs.writeFile(binPath, buf, { mode: 0o755 });
+  await writeInstallModeMarker({
+    mode: "standalone",
+    version: tag,
+    asset: resolved.assetName,
+  });
+
+  return {
+    success: true,
+    message: `Đã cập nhật standalone (${channelCfg.label}) → ${resolved.assetName}`,
+    installDir: getStaliBinDir(),
+  };
+}
+
 export async function selfUpdate(options?: {
   repo?: string;
   branch?: string;
   channel?: UpdateChannel | string;
   skipChecksum?: boolean;
+  forceStandalone?: boolean;
 }): Promise<SelfUpdateResult> {
   const repo = options?.repo || process.env.STALI_CLI_REPO || DEFAULT_REPO;
   const channelCfg = await resolveUpdateChannelResolved(options?.channel);
   const branch = options?.branch || channelCfg.branch;
   const installRoot = getStaliCliInstallDir();
+  const installInfo = await detectInstallMode();
+  const tag = channelCfg.releaseTag || branch;
 
   try {
+    if (installInfo.mode === "standalone" || options?.forceStandalone) {
+      if (!/^v?\d/.test(tag)) {
+        return {
+          success: false,
+          message: "Standalone update cần release tag",
+          error: `Ref hiện tại: ${tag}`,
+        };
+      }
+      const releaseTag = tag.startsWith("v") ? tag : `v${tag}`;
+      return updateStandaloneInstall(channelCfg, releaseTag);
+    }
+
     const hasGit = spawnSync("git", ["--version"], { encoding: "utf8" }).status === 0;
     const isGitCheckout = hasGit && (await fs.access(path.join(installRoot, ".git")).then(() => true).catch(() => false));
 

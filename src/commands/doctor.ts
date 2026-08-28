@@ -176,7 +176,8 @@ export async function runDoctor(
     model?: string;
     ids?: string;
   },
-  view?: DoctorViewOptions
+  view?: DoctorViewOptions,
+  prometheusOut?: boolean
 ): Promise<number> {
   if (fixOpts?.fix) {
     const apiKey = fixOpts.apiKey;
@@ -271,6 +272,11 @@ export async function runDoctor(
 
   const payload = await buildDoctorJsonOutput(view);
 
+  if (prometheusOut) {
+    console.log(formatDoctorPrometheus(payload, view));
+    return computeDoctorExitCode(payload, view);
+  }
+
   if (jsonOut) {
     const out = view?.pluginsOnly ? toLegacyPluginsDoctorJson(payload) : payload;
     console.log(JSON.stringify(out, null, 2));
@@ -362,6 +368,43 @@ export function configuredScore(
   );
 }
 
+function scopeLabel(view?: DoctorViewOptions): string {
+  if (view?.pluginsOnly) return "plugins";
+  if (view?.toolsOnly) return "tools";
+  return "full";
+}
+
+/** Prometheus text exposition (doctor metrics). */
+export function formatDoctorPrometheus(
+  payload: DoctorJsonOutput,
+  view?: DoctorViewOptions
+): string {
+  const scope = scopeLabel(view);
+  const configured = configuredScore(payload, view);
+  const toolsTotal = payload.tools.length;
+  const pluginsTotal = payload.plugins.length;
+  const total =
+    scope === "plugins" ? pluginsTotal : scope === "tools" ? toolsTotal : toolsTotal + pluginsTotal;
+  const toolsConfigured = payload.tools.filter((s) => s.configuredForStali).length;
+  const pluginsConfigured = payload.plugins.filter((p) => p.configuredForStali).length;
+
+  const lines = [
+    "# HELP stali_doctor_configured Items configured for Stali API",
+    "# TYPE stali_doctor_configured gauge",
+    `stali_doctor_configured{scope="${scope}"} ${configured}`,
+    "# HELP stali_doctor_total Total items in scope",
+    "# TYPE stali_doctor_total gauge",
+    `stali_doctor_total{scope="${scope}"} ${total}`,
+    "# HELP stali_doctor_tools_configured Tools pointing to Stali",
+    "# TYPE stali_doctor_tools_configured gauge",
+    `stali_doctor_tools_configured ${toolsConfigured}`,
+    "# HELP stali_doctor_plugins_configured Plugins pointing to Stali",
+    "# TYPE stali_doctor_plugins_configured gauge",
+    `stali_doctor_plugins_configured ${pluginsConfigured}`,
+  ];
+  return lines.join("\n") + "\n";
+}
+
 export interface DoctorWatchLimits {
   maxCycles?: number;
   durationSec?: number;
@@ -372,7 +415,8 @@ export async function runDoctorWatch(
   jsonOut?: boolean,
   notify?: boolean,
   view?: DoctorViewOptions,
-  limits?: DoctorWatchLimits
+  limits?: DoctorWatchLimits,
+  prometheusOut?: boolean
 ) {
   const sec = Math.max(1, intervalSec);
   let running = true;
@@ -398,7 +442,7 @@ export async function runDoctorWatch(
   };
 
   while (running) {
-    if (!jsonOut) {
+    if (!jsonOut && !prometheusOut) {
       const locale = getLocale() === "en" ? "en-US" : "vi-VN";
       console.log(
         chalk.gray(
@@ -439,9 +483,13 @@ export async function runDoctorWatch(
         event: "doctor.snapshot",
         hash,
         scope: view?.pluginsOnly ? "plugins" : view?.toolsOnly ? "tools" : "full",
+        score,
+        peakScore,
         data,
       };
       console.log(JSON.stringify(record));
+    } else if (prometheusOut) {
+      console.log(formatDoctorPrometheus(payload, view));
     } else if (view?.pluginsOnly) {
       const pOk = payload.plugins.filter((p) => p.configuredForStali).length;
       console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — PLUGINS\n"));

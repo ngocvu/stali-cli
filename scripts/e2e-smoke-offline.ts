@@ -118,6 +118,21 @@ async function main() {
   assert("completion install fish (implicit) exit 0", installFish.status === 0);
   await fs.rm(tmpHomeFish, { recursive: true, force: true }).catch(() => {});
 
+  for (const shell of ["bash", "fish", "zsh"] as const) {
+    const tmp = path.join(CLI_ROOT, `.e2e-comp-${shell}`);
+    await fs.mkdir(tmp, { recursive: true });
+    const r = run(["completion", "install", shell], { HOME: tmp });
+    assert(`completion matrix ${shell}`, r.status === 0);
+    await fs.rm(tmp, { recursive: true, force: true }).catch(() => {});
+  }
+
+  const prom = run(["doctor", "--tools-only", "--prometheus"]);
+  assert("doctor --prometheus", prom.status === 0 || prom.status === 1);
+  assert(
+    "doctor prometheus metrics",
+    (prom.stdout || "").includes("stali_doctor_configured")
+  );
+
   const failed = results.filter((r) => !r.ok);
   for (const r of results) {
     const icon = r.ok ? "✓" : "✗";

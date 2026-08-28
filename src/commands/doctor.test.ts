@@ -5,6 +5,7 @@ import {
   buildDoctorJsonOutput,
   combinedDoctorHash,
   configuredScore,
+  formatDoctorPrometheus,
   scopedDoctorHash,
   toLegacyPluginsDoctorJson,
 } from "../commands/doctor";
@@ -92,6 +93,21 @@ describe("doctor unified JSON", () => {
       );
       expect(tools).toBe(payload.tools.filter((s) => s.configuredForStali).length);
       expect(plugins).toBe(payload.plugins.filter((p) => p.configuredForStali).length);
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
+    }
+  });
+
+  test("formatDoctorPrometheus emits gauge lines", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-prom-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    try {
+      const payload = await buildDoctorJsonOutput({ toolsOnly: true });
+      const text = formatDoctorPrometheus(payload, { toolsOnly: true });
+      expect(text).toContain("stali_doctor_configured{scope=\"tools\"}");
+      expect(text).toContain("stali_doctor_tools_configured");
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;

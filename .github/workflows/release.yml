@@ -37,8 +37,52 @@ jobs:
       - name: npm pack dry-run
         run: bun run pack:cli && test -f stali-cli-*.tgz
 
-  publish:
+  build-standalone:
     needs: verify
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: bun-linux-x64
+            asset: stali-standalone-linux-x64
+          - runner: ubuntu-latest
+            target: bun-linux-arm64
+            asset: stali-standalone-linux-arm64
+          - runner: macos-latest
+            target: bun-darwin-arm64
+            asset: stali-standalone-darwin-arm64
+          - runner: macos-13
+            target: bun-darwin-x64
+            asset: stali-standalone-darwin-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build standalone (${{ matrix.asset }})
+        run: |
+          STALI_BUILD_STANDALONE=1 \
+          STALI_STANDALONE_NAME=${{ matrix.asset }} \
+          STALI_COMPILE_TARGET=${{ matrix.target }} \
+          bun run build
+
+      - name: Upload standalone artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: warn
+
+  publish:
+    needs: [verify, build-standalone]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -56,17 +100,24 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Build (with standalone binary)
-        run: STALI_BUILD_STANDALONE=1 bun run build
+      - name: Build
+        run: bun run build
 
       - name: npm pack
         run: npm pack
+
+      - name: Download standalone artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: stali-standalone-*
+          merge-multiple: true
+          path: release-assets
 
       - name: Publish to npm
         run: |
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
             echo "::warning::NPM_TOKEN secret chưa cấu hình — bỏ qua npm publish"
-            echo "Thêm NPM_TOKEN trong GitHub → Settings → Secrets → Actions"
+            echo "Thêm NPM_TOKEN trong GitHub → Secrets → Actions"
           else
             npm publish --access public
           fi
@@ -79,5 +130,5 @@ jobs:
           generate_release_notes: true
           files: |
             stali-cli-*.tgz
-            dist/stali-standalone
             dist/checksums.json
+            release-assets/*

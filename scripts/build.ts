@@ -143,6 +143,11 @@ function writeChecksumManifest(version: string) {
   if (fs.existsSync(standalone)) {
     entries["dist/stali-standalone"] = sha256File(standalone);
   }
+  for (const f of fs.readdirSync(distDir)) {
+    if (f.startsWith("stali-standalone-") && !f.endsWith(".js")) {
+      entries[`dist/${f}`] = sha256File(path.join(distDir, f));
+    }
+  }
   for (const rel of listJsFiles(runtimeDir)) {
     entries[`dist/runtime/${rel.replace(/\\/g, "/")}`] = sha256File(path.join(runtimeDir, rel));
   }
@@ -236,15 +241,25 @@ if (mode === "wizard") {
   );
 
   if (process.env.STALI_BUILD_STANDALONE === "1") {
-    console.log("4️⃣  Standalone binary (subcommand entry)…");
-    const out = path.join(distDir, "stali-standalone");
+    const standaloneName =
+      process.env.STALI_STANDALONE_NAME || "stali-standalone-linux-x64";
+    const compileTarget = process.env.STALI_COMPILE_TARGET || "";
+    const targetFlag = compileTarget ? `--target=${compileTarget}` : "";
+    console.log(`4️⃣  Standalone binary (${standaloneName}${compileTarget ? `, ${compileTarget}` : ""})…`);
+    const out = path.join(distDir, standaloneName);
     try {
       execSync(
-        `bun build "${path.join(runtimeDir, "subcommand-cli.js")}" --compile --outfile "${out}"`,
+        `bun build "${path.join(runtimeDir, "subcommand-cli.js")}" --compile ${targetFlag} --outfile "${out}"`.replace(
+          /\s+/g,
+          " "
+        ).trim(),
         { cwd: rootDir, stdio: "inherit" }
       );
       fs.chmodSync(out, 0o755);
-      console.log(`   → dist/stali-standalone (${(fs.statSync(out).size / 1024 / 1024).toFixed(1)} MB)`);
+      console.log(`   → dist/${standaloneName} (${(fs.statSync(out).size / 1024 / 1024).toFixed(1)} MB)`);
+      if (standaloneName === "stali-standalone-linux-x64") {
+        fs.copyFileSync(out, path.join(distDir, "stali-standalone"));
+      }
     } catch (e) {
       console.warn("   ⚠️  Standalone compile skipped:", (e as Error).message);
     }

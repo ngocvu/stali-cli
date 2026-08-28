@@ -10,6 +10,7 @@ export interface InitOptions {
   baseUrl?: string;
   includePlugins?: boolean;
   noPlugins?: boolean;
+  skipCompletion?: boolean;
 }
 
 export interface InitResult {
@@ -81,6 +82,25 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
     ok: health.authOk,
     detail: formatHealthDetail(health),
   });
+
+  if (!opts.skipCompletion) {
+    try {
+      const { installAllCompletions } = await import("./completion-install");
+      const results = await installAllCompletions();
+      const shells = results.map((r) => r.shell).join(",");
+      steps.push({
+        name: "completion install",
+        ok: true,
+        detail: shells,
+      });
+    } catch (e: unknown) {
+      steps.push({
+        name: "completion install",
+        ok: false,
+        detail: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
 
   return {
     success: evaluateInitSuccess(steps, { skipConfigure: opts.skipConfigure }),

@@ -36,6 +36,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
+- 📦 **v3.10**: install mode detect, standalone update, multi-platform binary, doctor --prometheus
 - 📦 **v3.9**: GitHub Release assets, doctor watch CI, standalone install, completion install fix
 - 📦 **v3.8**: wizard-only chunks, completion install --all, doctor watch exit code, GitHub Release tags
 - 📦 **v3.7**: shared runtime dedupe, completion doctor, update --channel, bin/stali wrapper
@@ -126,8 +127,11 @@ stali doctor --plugins-only --fix --ids my-agent  # Sửa plugin cụ thể
 stali doctor --tools-only --watch --max-cycles 2 -i 3 --json  # CI smoke
 stali doctor --watch --notify -i 10 # Theo dõi + cảnh báo desktop (exit 1 nếu configured giảm)
 
-# Cài standalone từ GitHub Release (không cần Bun)
-STALI_CLI_VERSION=v3.9.0 STALI_CLI_STANDALONE=1 bash scripts/install.sh
+stali doctor --tools-only --prometheus          # Metrics cho Prometheus/Grafana
+stali update --check                            # Hiển thị install mode + version
+
+# Cài standalone theo platform (linux/darwin x64/arm64)
+STALI_CLI_VERSION=v3.10.0 STALI_CLI_STANDALONE=1 bash scripts/install.sh
 stali update --check              # Có bản mới?
 stali uninstall --purge-path    # Windows: gỡ khỏi User PATH
 stali restore -t claude  # Khôi phục backup gần nhất

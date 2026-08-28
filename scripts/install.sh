@@ -77,11 +77,39 @@ install_standalone_binary() {
   if [[ "$REPO" =~ github\.com[:/]([^/]+)/([^/.]+) ]]; then
     repo_slug="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
   fi
-  local url="https://github.com/${repo_slug}/releases/download/${version}/stali-standalone"
+  local os arch asset
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64) arch="x64" ;;
+    aarch64|arm64) arch="arm64" ;;
+  esac
+  case "$os" in
+    linux) asset="stali-standalone-linux-${arch}" ;;
+    darwin) asset="stali-standalone-darwin-${arch}" ;;
+    *) die "Standalone chưa hỗ trợ OS: $os" ;;
+  esac
+  local url="https://github.com/${repo_slug}/releases/download/${version}/${asset}"
   mkdir -p "$STALI_BIN"
   log "Tải standalone binary: ${url}"
-  curl -fsSL "$url" -o "$STALI_BIN/stali"
+  if ! curl -fsSL "$url" -o "$STALI_BIN/stali"; then
+    if [[ "$asset" != "stali-standalone" && "$os" == "linux" && "$arch" == "x64" ]]; then
+      url="https://github.com/${repo_slug}/releases/download/${version}/stali-standalone"
+      log "Fallback legacy asset: ${url}"
+      curl -fsSL "$url" -o "$STALI_BIN/stali" || die "Không tải được standalone"
+    else
+      die "Không tải được ${asset}"
+    fi
+  fi
   chmod +x "$STALI_BIN/stali"
+  mkdir -p "$STALI_HOME"
+  cat >"$STALI_HOME/install-mode.json" <<EOF
+{
+  "mode": "standalone",
+  "version": "${version}",
+  "asset": "${asset}"
+}
+EOF
   export PATH="$STALI_BIN:$PATH"
   command -v stali >/dev/null 2>&1 || die "Không cài được stali standalone"
   log "Standalone OK: $(stali --version 2>/dev/null || true)"

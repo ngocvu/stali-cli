@@ -134,7 +134,14 @@ export function registerCommands(program: Command): void {
     .option("--skip-configure", "Chỉ lưu API key, không configure-all")
     .option("--include-plugins", "Đồng bộ plugin (mặc định: bật nếu plugins.json có entry)")
     .option("--no-plugins", "Bỏ qua plugin khi configure-all")
-    .action(async (opts: { key?: string; skipConfigure?: boolean; includePlugins?: boolean; noPlugins?: boolean }) => {
+    .option("--skip-completion", "Bỏ qua cài shell completion (bash/fish/zsh)")
+    .action(async (opts: {
+      key?: string;
+      skipConfigure?: boolean;
+      includePlugins?: boolean;
+      noPlugins?: boolean;
+      skipCompletion?: boolean;
+    }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = opts.key || globals.key;
       if (!apiKey?.trim()) {
@@ -149,6 +156,7 @@ export function registerCommands(program: Command): void {
         skipConfigure: opts.skipConfigure,
         includePlugins: opts.includePlugins,
         noPlugins: opts.noPlugins,
+        skipCompletion: opts.skipCompletion,
       });
       for (const step of result.steps) {
         const icon = step.ok ? chalk.green("✓") : chalk.red("✗");
@@ -503,6 +511,7 @@ export function registerCommands(program: Command): void {
     .option("--tools-only", "Chỉ kiểm tra 13 tool (bỏ qua plugin)")
     .option("--watch", "Theo dõi liên tục (Ctrl+C thoát)")
     .option("--notify", "Với --watch: chuông + desktop notify khi thay đổi")
+    .option("--prometheus", "Xuất metrics Prometheus text (one-shot hoặc --watch)")
     .option("-i, --interval <seconds>", "Với --watch: chu kỳ giây (mặc định 10)", "10")
     .option("--max-cycles <n>", "Với --watch: số lần quét rồi thoát (CI)")
     .option("--duration <seconds>", "Với --watch: chạy tối đa N giây rồi thoát (CI)")
@@ -516,6 +525,7 @@ export function registerCommands(program: Command): void {
       model?: string;
       watch?: boolean;
       notify?: boolean;
+      prometheus?: boolean;
       interval?: string;
       maxCycles?: string;
       duration?: string;
@@ -548,7 +558,7 @@ export function registerCommands(program: Command): void {
         await runDoctorWatch(sec, opts.json, opts.notify, view, {
           maxCycles,
           durationSec,
-        });
+        }, opts.prometheus);
         return;
       }
       const code = await runDoctor(opts.json, {
@@ -559,7 +569,7 @@ export function registerCommands(program: Command): void {
         tools: opts.tools,
         ids: opts.ids,
         model: opts.model,
-      }, view);
+      }, view, opts.prometheus);
       process.exit(code);
     });
 
@@ -572,9 +582,12 @@ export function registerCommands(program: Command): void {
       const channelCfg = await resolveUpdateChannelResolved(opts.channel);
       if (opts.check) {
         const ver = await fetchLatestVersion(channelCfg.versionUrl);
+        const { detectInstallMode } = await import("../services/install-mode");
+        const installInfo = await detectInstallMode();
         console.log(chalk.bold.cyan("\n⬆️  STALI CLI VERSION CHECK\n"));
         const refLabel = channelCfg.releaseTag || channelCfg.branch;
         console.log(`Kênh:      ${chalk.white(channelCfg.label)} (${refLabel})`);
+        console.log(`Cài đặt:   ${chalk.white(installInfo.mode)}${installInfo.version ? chalk.gray(` (${installInfo.version})`) : ""}`);
         console.log(`Hiện tại: ${chalk.white(ver.current)}`);
         console.log(`Mới nhất:  ${chalk.white(ver.latest)}`);
         if (ver.updateAvailable) {

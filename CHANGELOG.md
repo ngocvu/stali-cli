@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.10.0] — 2026-08-28
+
+### Added
+- **Install mode detection** — `standalone` | `git` | `source` | `npm-global` (`~/.stali/install-mode.json`)
+- **`stali update` auto-route** — standalone tải binary từ GitHub Release; git/source giữ flow cũ
+- **Multi-platform standalone** — `stali-standalone-{linux,darwin}-{x64,arm64}` + CI matrix build
+- **`doctor --prometheus`** — metrics text exposition (`stali_doctor_configured`, …)
+- **`stali init` completion** — tự `completion install --all` (bỏ qua với `--skip-completion`)
+
+### Fixed
+- **`stali completion install <shell>`** — positional `install`/`uninstall` hoạt động đúng
+
+### Changed
+- `update --check` hiển thị install mode
+- Release workflow: matrix build 4 standalone + gh release assets
+- `install.sh` standalone: asset theo platform + ghi `install-mode.json`
+- E2E: completion matrix bash/fish/zsh + doctor prometheus
+
 ## [3.9.0] — 2026-08-28
 
 ### Added
