@@ -3,11 +3,21 @@ import path from "path";
 import { z } from "zod";
 import { getStaliHome } from "../constants/paths";
 
+const PluginPatchStyleSchema = z.enum([
+  "anthropic-env",
+  "openai-toml",
+  "openai-json",
+  "vscode-agent",
+  "opencode",
+]);
+
 const PluginEntrySchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   configFile: z.string().min(1),
   protocol: z.enum(["anthropic", "openai", "both"]).default("openai"),
+  patchStyle: PluginPatchStyleSchema.optional(),
+  defaultModel: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -16,6 +26,7 @@ const PluginsFileSchema = z.object({
 });
 
 export type PluginEntry = z.infer<typeof PluginEntrySchema>;
+export type PluginPatchStyle = z.infer<typeof PluginPatchStyleSchema>;
 
 export function getPluginsPath(): string {
   return path.join(getStaliHome(), "plugins.json");
@@ -42,7 +53,9 @@ export async function writePluginsExample(): Promise<string> {
         name: "My Custom Agent",
         configFile: "~/.my-agent/config.json",
         protocol: "openai",
-        description: "Ví dụ plugin — chưa có syncer tự động",
+        patchStyle: "openai-json",
+        defaultModel: "gpt-5.6-sol",
+        description: "Plugin mẫu — sync: stali plugins sync",
       },
     ],
   };
@@ -54,4 +67,9 @@ export async function writePluginsExample(): Promise<string> {
     await fs.writeFile(filePath, JSON.stringify(example, null, 2) + "\n", "utf8");
     return filePath;
   }
+}
+
+export function getPluginById(id: string, plugins?: PluginEntry[]): PluginEntry | undefined {
+  const list = plugins || [];
+  return list.find((p) => p.id === id);
 }

@@ -28,5 +28,8 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: E2E smoke (offline)
+        run: bun scripts/e2e-smoke-offline.ts
+
       - name: Verify dist exists
         run: test -f dist/index.js

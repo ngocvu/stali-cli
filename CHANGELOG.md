@@ -1,5 +1,37 @@
 # Changelog
 
+## [2.4.0] — 2026-08-28
+
+### Added
+- **`stali config set base-url <url>`** / **`--reset`** — quản lý API endpoint từ CLI
+- **`stali plugins sync`** — đồng bộ plugin tùy chỉnh (`patchStyle`, `defaultModel`)
+- **`doctor --json`** — thêm `meta.baseUrl`, `modelsEndpoint`, `anthropicBaseUrl`, `openAiBaseUrl`
+- **Tách `commands/`** — `register.ts`, `doctor.ts`, `configure-cmd.ts`, … (index.ts gọn)
+- **Tests** — `doctor-fix.test.ts`, `plugin-sync.test.ts`
+- **CI E2E live** — workflow tùy chọn với `STALI_E2E_KEY`
+
+### Fixed
+- **Doctor** nhận diện custom `baseUrl` (staging/self-hosted) qua `isStaliLikeUrl`
+- **Preview dry-run** dùng `baseUrl` từ config
+
+### Changed
+- Shell completion: `config set`, `plugins sync`
+- `plugins.json` schema: `patchStyle`, `defaultModel`
+
+## [2.3.0] — 2026-08-28
+
+### Added
+- **`resolveStaliUrls()`** — `~/.stali/config.json` `baseUrl` được tôn trọng khi gọi API và patch syncer
+- **Tests** — `api.test.ts`, `stali-urls.test.ts`; mở rộng `init-cli.test.ts`
+
+### Fixed
+- **`stali init`** — `success=false` khi `configure-all` thất bại một phần (trước đây vẫn báo OK)
+- **`fetchRealtimeModels`** — trả lỗi cụ thể thay vì nuốt về `[]`; `stali ls` hiển thị endpoint + message
+
+### Changed
+- `auth login`, `configure-all`, `doctor --fix`, `export-env`, wizard dùng `baseUrl` từ config
+- Syncer 13 tool nhận `SyncOptions.baseUrl` (staging / self-hosted)
+
 ## [2.2.0] — 2026-08-22
 
 ### Added

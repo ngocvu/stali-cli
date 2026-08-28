@@ -1,9 +1,11 @@
 import path from "path";
 import os from "os";
 import { SyncerResult } from "../../types";
-import { STALI_ANTHROPIC_BASE_URL } from "../../constants/api";
+import { resolveStaliUrls } from "../../utils/stali-urls";
 import { readJsonFile, writeJsonFile, ensureParentDir } from "../../utils/file";
 import { createTimestampBackup } from "../../utils/backup";
+import type { SyncOptions } from "./sync-options";
+import { resolveSyncUrls } from "./sync-options";
 
 export const CLAUDE_SETTINGS_PATH = path.join(
   os.homedir(),
@@ -47,8 +49,10 @@ export async function patchClaudeSettings(
   apiKey: string,
   model?: string,
   modelType?: "fable" | "sonnet" | "opus" | "haiku" | "all",
-  maxContextTokens?: string
+  maxContextTokens?: string,
+  syncOptions?: SyncOptions
 ): Promise<SyncerResult> {
+  const urls = resolveSyncUrls(syncOptions);
   const settingsPath = CLAUDE_SETTINGS_PATH;
 
   try {
@@ -60,7 +64,7 @@ export async function patchClaudeSettings(
 
     // 3. Prepare env block
     const env = { ...(existing.env || {}) };
-    env.ANTHROPIC_BASE_URL = STALI_ANTHROPIC_BASE_URL;
+    env.ANTHROPIC_BASE_URL = urls.anthropicBaseUrl;
     env.ANTHROPIC_AUTH_TOKEN = apiKey.trim();
     env.API_TIMEOUT_MS = "600000";
 

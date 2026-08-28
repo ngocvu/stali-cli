@@ -1,8 +1,6 @@
-import {
-  STALI_ANTHROPIC_BASE_URL,
-  STALI_OPENAI_BASE_URL,
-} from "../../constants/api";
+import { isStaliLikeUrl } from "../../utils/stali-urls";
 import { readJsonFile, readTomlFile } from "../../utils/file";
+import type { DoctorStatusContext } from "./status-context";
 
 export interface ToolSyncStatus {
   configured: boolean;
@@ -11,19 +9,20 @@ export interface ToolSyncStatus {
   apiKeyPresent?: boolean;
 }
 
-function isStaliUrl(url?: string): boolean {
-  return Boolean(url?.includes("api.stali.vn") || url?.includes("stali"));
+function matchStali(url?: string, ctx?: DoctorStatusContext): boolean {
+  return isStaliLikeUrl(url, ctx?.urls);
 }
 
 export async function detectAnthropicEnvJsonStatus(
-  configPath: string
+  configPath: string,
+  ctx?: DoctorStatusContext
 ): Promise<ToolSyncStatus> {
   const data = await readJsonFile(configPath);
   const env = data?.env;
   if (!env || typeof env !== "object") {
     return { configured: false };
   }
-  const configured = isStaliUrl(env.ANTHROPIC_BASE_URL);
+  const configured = matchStali(env.ANTHROPIC_BASE_URL, ctx);
   return {
     configured,
     endpoint: env.ANTHROPIC_BASE_URL,
@@ -33,26 +32,28 @@ export async function detectAnthropicEnvJsonStatus(
 }
 
 export async function detectOpenAiProviderJsonStatus(
-  configPath: string
+  configPath: string,
+  ctx?: DoctorStatusContext
 ): Promise<ToolSyncStatus> {
   const data = await readJsonFile(configPath);
   const stali = data?.provider?.stali;
+  const endpoint = stali?.options?.baseURL;
   const configured =
-    data?.defaultProvider === "stali" ||
-    Boolean(stali?.options?.baseURL?.includes("stali"));
+    data?.defaultProvider === "stali" || matchStali(endpoint, ctx);
   return {
     configured,
-    endpoint: stali?.options?.baseURL,
+    endpoint,
     model: data?.model,
     apiKeyPresent: Boolean(stali?.options?.apiKey),
   };
 }
 
 export async function detectVsCodeAgentJsonStatus(
-  configPath: string
+  configPath: string,
+  ctx?: DoctorStatusContext
 ): Promise<ToolSyncStatus> {
   const data = await readJsonFile(configPath);
-  const configured = isStaliUrl(data?.anthropicBaseUrl);
+  const configured = matchStali(data?.anthropicBaseUrl, ctx);
   return {
     configured,
     endpoint: data?.anthropicBaseUrl,
@@ -62,17 +63,19 @@ export async function detectVsCodeAgentJsonStatus(
 }
 
 export async function detectOpenAiTomlStatus(
-  configPath: string
+  configPath: string,
+  ctx?: DoctorStatusContext
 ): Promise<ToolSyncStatus> {
   const data = await readTomlFile(configPath);
   if (!data) return { configured: false };
+  const endpoint = data.base_url || data.model_providers?.stali?.base_url;
   const configured =
-    isStaliUrl(data.base_url) ||
+    matchStali(endpoint, ctx) ||
     data.model_provider === "stali" ||
     Boolean(data.model_providers?.stali);
   return {
     configured,
-    endpoint: data.base_url || data.model_providers?.stali?.base_url,
+    endpoint,
     model: data.model,
     apiKeyPresent: Boolean(data.api_key),
   };
@@ -80,26 +83,31 @@ export async function detectOpenAiTomlStatus(
 
 export async function detectCodexTomlStatus(
   configPath: string,
-  authPath: string
+  authPath: string,
+  ctx?: DoctorStatusContext
 ): Promise<ToolSyncStatus> {
   const data = await readTomlFile(configPath);
   const auth = await readJsonFile(authPath);
   if (!data) return { configured: false, apiKeyPresent: Boolean(auth?.OPENAI_API_KEY) };
+  const endpoint = data.model_providers?.stali?.base_url;
   const configured =
-    data.model_provider === "stali" || Boolean(data.model_providers?.stali);
+    data.model_provider === "stali" ||
+    Boolean(data.model_providers?.stali) ||
+    matchStali(endpoint, ctx);
   return {
     configured,
-    endpoint: data.model_providers?.stali?.base_url,
+    endpoint,
     model: data.model,
     apiKeyPresent: Boolean(auth?.OPENAI_API_KEY),
   };
 }
 
 export async function detectDroidJsonStatus(
-  configPath: string
+  configPath: string,
+  ctx?: DoctorStatusContext
 ): Promise<ToolSyncStatus> {
   const data = await readJsonFile(configPath);
-  const configured = isStaliUrl(data?.provider?.baseUrl);
+  const configured = matchStali(data?.provider?.baseUrl, ctx);
   return {
     configured,
     endpoint: data?.provider?.baseUrl,
@@ -109,10 +117,11 @@ export async function detectDroidJsonStatus(
 }
 
 export async function detectCoworkJsonStatus(
-  configPath: string
+  configPath: string,
+  ctx?: DoctorStatusContext
 ): Promise<ToolSyncStatus> {
   const data = await readJsonFile(configPath);
-  const configured = isStaliUrl(data?.openai?.baseUrl);
+  const configured = matchStali(data?.openai?.baseUrl, ctx);
   return {
     configured,
     endpoint: data?.openai?.baseUrl,
@@ -122,11 +131,12 @@ export async function detectCoworkJsonStatus(
 }
 
 export async function detectQwenJsonStatus(
-  configPath: string
+  configPath: string,
+  ctx?: DoctorStatusContext
 ): Promise<ToolSyncStatus> {
   const data = await readJsonFile(configPath);
   const auth = data?.security?.auth;
-  const configured = isStaliUrl(auth?.baseUrl);
+  const configured = matchStali(auth?.baseUrl, ctx);
   return {
     configured,
     endpoint: auth?.baseUrl,

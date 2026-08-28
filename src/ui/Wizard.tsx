@@ -105,7 +105,9 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       if (config?.apiKey) {
         setApiKey(config.apiKey);
         setLoading(true);
-        const res = await validateApiKeyAndFetchModels(config.apiKey);
+        const res = await validateApiKeyAndFetchModels(config.apiKey, {
+          baseUrl: config.baseUrl,
+        });
         setLoading(false);
         if (res.valid) {
           setModels(res.models);

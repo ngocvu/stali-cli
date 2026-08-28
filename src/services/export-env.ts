@@ -1,7 +1,4 @@
-import {
-  STALI_ANTHROPIC_BASE_URL,
-  STALI_OPENAI_BASE_URL,
-} from "../constants/api";
+import { resolveStaliUrls } from "../utils/stali-urls";
 import { getToolById } from "../utils/tool-utils";
 
 export type ExportEnvFormat = "shell" | "dotenv" | "json" | "powershell";
@@ -15,8 +12,10 @@ export interface EnvEntry {
 export function buildToolEnvEntries(
   toolId: string,
   apiKey: string,
-  model: string
+  model: string,
+  baseUrl?: string
 ): EnvEntry[] {
+  const urls = resolveStaliUrls(baseUrl);
   const tool = getToolById(toolId);
   if (!tool) return [];
 
@@ -24,7 +23,7 @@ export function buildToolEnvEntries(
     case "claude":
     case "openclaw":
       return [
-        { key: "ANTHROPIC_BASE_URL", value: STALI_ANTHROPIC_BASE_URL },
+        { key: "ANTHROPIC_BASE_URL", value: urls.anthropicBaseUrl },
         { key: "ANTHROPIC_AUTH_TOKEN", value: apiKey.trim() },
         { key: "ANTHROPIC_MODEL", value: model },
         { key: "API_TIMEOUT_MS", value: "600000", comment: "10 phút timeout" },
@@ -43,7 +42,7 @@ export function buildToolEnvEntries(
         },
         {
           key: "STALI_CODEX_BASE_URL",
-          value: STALI_OPENAI_BASE_URL,
+          value: urls.openAiBaseUrl,
           comment: "model_providers.stali.base_url",
         },
       ];
@@ -51,7 +50,7 @@ export function buildToolEnvEntries(
     case "grok-build":
     case "jcode":
       return [
-        { key: "OPENAI_BASE_URL", value: STALI_OPENAI_BASE_URL },
+        { key: "OPENAI_BASE_URL", value: urls.openAiBaseUrl },
         { key: "OPENAI_API_KEY", value: apiKey.trim() },
         { key: "OPENAI_MODEL", value: model },
       ];
@@ -64,13 +63,13 @@ export function buildToolEnvEntries(
           value: "anthropic",
           comment: `JSON field trong ${tool.configFile}`,
         },
-        { key: "STALI_VSCODE_ANTHROPIC_BASE_URL", value: STALI_ANTHROPIC_BASE_URL },
+        { key: "STALI_VSCODE_ANTHROPIC_BASE_URL", value: urls.anthropicBaseUrl },
         { key: "STALI_VSCODE_ANTHROPIC_API_KEY", value: apiKey.trim() },
         { key: "STALI_VSCODE_ANTHROPIC_MODEL_ID", value: model },
       ];
     case "qwen":
       return [
-        { key: "QWEN_OPENAI_BASE_URL", value: STALI_OPENAI_BASE_URL },
+        { key: "QWEN_OPENAI_BASE_URL", value: urls.openAiBaseUrl },
         { key: "QWEN_OPENAI_API_KEY", value: apiKey.trim() },
         { key: "QWEN_MODEL", value: model },
       ];
@@ -78,7 +77,7 @@ export function buildToolEnvEntries(
     case "droid":
     case "cowork":
       return [
-        { key: "STALI_OPENAI_BASE_URL", value: STALI_OPENAI_BASE_URL },
+        { key: "STALI_OPENAI_BASE_URL", value: urls.openAiBaseUrl },
         { key: "STALI_OPENAI_API_KEY", value: apiKey.trim() },
         { key: "STALI_MODEL", value: model },
       ];
@@ -86,7 +85,7 @@ export function buildToolEnvEntries(
       return [
         { key: "STALI_API_KEY", value: apiKey.trim() },
         { key: "STALI_MODEL", value: model },
-        { key: "STALI_BASE_URL", value: STALI_OPENAI_BASE_URL },
+        { key: "STALI_BASE_URL", value: urls.openAiBaseUrl },
       ];
   }
 }
@@ -100,10 +99,11 @@ export function renderEnvExport(
   toolId: string,
   apiKey: string,
   model: string,
-  format: ExportEnvFormat
+  format: ExportEnvFormat,
+  baseUrl?: string
 ): string {
   const tool = getToolById(toolId);
-  const entries = buildToolEnvEntries(toolId, apiKey, model);
+  const entries = buildToolEnvEntries(toolId, apiKey, model, baseUrl);
   const header = `# Stali export-env — ${tool?.name || toolId} (${model})\n`;
 
   switch (format) {

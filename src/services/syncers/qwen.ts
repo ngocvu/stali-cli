@@ -1,17 +1,20 @@
 import path from "path";
 import os from "os";
 import { SyncerResult } from "../../types";
-import { STALI_OPENAI_BASE_URL } from "../../constants/api";
 import { readJsonFile, writeJsonFile } from "../../utils/file";
 import { createTimestampBackup } from "../../utils/backup";
 import { restoreToolConfig } from "./common";
+import type { SyncOptions } from "./sync-options";
+import { resolveSyncUrls } from "./sync-options";
 
 export const QWEN_CONFIG_PATH = path.join(os.homedir(), ".qwen", "settings.json");
 
 export async function patchQwenSettings(
   apiKey: string,
-  model = "stali/qwen3-codex"
+  model = "stali/qwen3-codex",
+  syncOptions?: SyncOptions
 ): Promise<SyncerResult> {
+  const urls = resolveSyncUrls(syncOptions);
   const configPath = QWEN_CONFIG_PATH;
   try {
     const backupPath = await createTimestampBackup(configPath);
@@ -20,7 +23,7 @@ export async function patchQwenSettings(
     data.security.auth = {
       selectedType: "openai",
       apiKey: apiKey.trim(),
-      baseUrl: STALI_OPENAI_BASE_URL,
+      baseUrl: urls.openAiBaseUrl,
     };
     data.model = { name: model };
     await writeJsonFile(configPath, data);

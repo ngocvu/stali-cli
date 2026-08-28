@@ -1,5 +1,6 @@
 import { runDoctorScan, syncTool } from "./syncers";
 import { validateApiKeyAndFetchModels } from "./api";
+import { validateTokenFormat } from "../utils/token";
 import {
   getToolById,
   resolveToolDefaultModel,
@@ -11,6 +12,7 @@ import type { ConfigureBatchItem } from "./configure-batch";
 export interface DoctorFixOptions {
   apiKey: string;
   model?: string;
+  baseUrl?: string;
   toolInputs?: string[];
   dryRun?: boolean;
   /** Sửa cả tool đã OK (force re-sync) */
@@ -37,6 +39,40 @@ export function resolveDoctorFixTargets(
 export async function runDoctorFix(
   opts: DoctorFixOptions
 ): Promise<{ items: ConfigureBatchItem[]; allOk: boolean }> {
+  const validation = opts.dryRun
+    ? (() => {
+        const formatError = validateTokenFormat(opts.apiKey.trim());
+        if (formatError) {
+          return {
+            valid: false as const,
+            error: formatError,
+            models: [] as { id: string; supported_endpoint_types: string[] }[],
+            defaultModel: "",
+          };
+        }
+        return {
+          valid: true as const,
+          defaultModel: "claude-fable-5",
+          models: [] as { id: string; supported_endpoint_types: string[] }[],
+        };
+      })()
+    : await validateApiKeyAndFetchModels(opts.apiKey, { baseUrl: opts.baseUrl });
+
+  if (!validation.valid) {
+    return {
+      items: [
+        {
+          toolId: "",
+          toolName: "",
+          success: false,
+          message: (validation as { error?: string }).error || "Token không hợp lệ",
+          error: "INVALID_KEY",
+        },
+      ],
+      allOk: false,
+    };
+  }
+
   const statuses = await runDoctorScan();
   const toolIds = resolveDoctorFixTargets(opts.toolInputs, statuses, opts.force);
 
@@ -51,25 +87,6 @@ export async function runDoctorFix(
         },
       ],
       allOk: true,
-    };
-  }
-
-  const validation = opts.dryRun
-    ? { valid: true, defaultModel: "claude-fable-5", models: [] as { id: string; supported_endpoint_types: string[] }[] }
-    : await validateApiKeyAndFetchModels(opts.apiKey);
-
-  if (!validation.valid) {
-    return {
-      items: [
-        {
-          toolId: "",
-          toolName: "",
-          success: false,
-          message: (validation as { error?: string }).error || "Token không hợp lệ",
-          error: "INVALID_KEY",
-        },
-      ],
-      allOk: false,
     };
   }
 
@@ -107,7 +124,9 @@ export async function runDoctorFix(
       continue;
     }
 
-    const result = await syncTool(toolId, opts.apiKey, resolvedModel);
+    const result = await syncTool(toolId, opts.apiKey, resolvedModel, {
+      baseUrl: opts.baseUrl,
+    });
     items.push({
       toolId,
       toolName: tool.name,

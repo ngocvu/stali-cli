@@ -21,6 +21,9 @@ import { patchGrokSettings, resetGrokSettings, GROK_CONFIG_PATH } from "./grok";
 import { patchCoworkSettings, resetCoworkSettings, COWORK_CONFIG_PATH } from "./cowork";
 import { patchJcodeSettings, resetJcodeSettings, JCODE_CONFIG_PATH } from "./jcode";
 import { restoreToolConfig } from "./common";
+import type { SyncOptions } from "./sync-options";
+import type { DoctorStatusContext } from "./status-context";
+import { isStaliLikeUrl, resolveStaliUrls } from "../../utils/stali-urls";
 import {
   detectAnthropicEnvJsonStatus,
   detectCodexTomlStatus,
@@ -73,7 +76,10 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-type StatusDetector = (configPath: string) => Promise<ToolSyncStatus>;
+type StatusDetector = (
+  configPath: string,
+  ctx?: DoctorStatusContext
+) => Promise<ToolSyncStatus>;
 
 const STATUS_BY_TOOL: Record<string, StatusDetector | "claude" | "codex"> = {
   claude: "claude",
@@ -91,7 +97,10 @@ const STATUS_BY_TOOL: Record<string, StatusDetector | "claude" | "codex"> = {
   jcode: detectOpenAiTomlStatus,
 };
 
-export async function getToolSyncStatus(toolId: string): Promise<ToolSyncStatus | null> {
+export async function getToolSyncStatus(
+  toolId: string,
+  ctx?: DoctorStatusContext
+): Promise<ToolSyncStatus | null> {
   const tool = getToolById(toolId);
   if (!tool) return null;
 
@@ -103,8 +112,9 @@ export async function getToolSyncStatus(toolId: string): Promise<ToolSyncStatus 
   const detector = STATUS_BY_TOOL[toolId];
   if (detector === "claude") {
     const s = await getClaudeStatus();
+    const configured = ctx?.urls ? isStaliLikeUrl(s.endpoint, ctx.urls) : s.configured;
     return {
-      configured: s.configured,
+      configured,
       endpoint: s.endpoint,
       model: s.defaultModel,
       apiKeyPresent: Boolean(s.apiKey),
@@ -112,26 +122,30 @@ export async function getToolSyncStatus(toolId: string): Promise<ToolSyncStatus 
   }
   if (detector === "codex") {
     const s = await getCodexStatus();
+    const configured = ctx?.urls ? isStaliLikeUrl(s.endpoint, ctx.urls) : s.configured;
     return {
-      configured: s.configured,
+      configured,
       endpoint: s.endpoint,
       model: s.model,
       apiKeyPresent: Boolean(s.apiKey),
     };
   }
   if (typeof detector === "function") {
-    return detector(configPath);
+    return detector(configPath, ctx);
   }
   return { configured: false };
 }
 
-export async function getToolHealthStatus(toolId: string): Promise<ToolHealthStatus | null> {
+export async function getToolHealthStatus(
+  toolId: string,
+  ctx?: DoctorStatusContext
+): Promise<ToolHealthStatus | null> {
   const tool = getToolById(toolId);
   if (!tool) return null;
 
   const configPath = resolveHomePath(tool.configFile);
   const exists = await fileExists(configPath);
-  const sync = await getToolSyncStatus(toolId);
+  const sync = await getToolSyncStatus(toolId, ctx);
 
   return {
     toolId,
@@ -144,11 +158,18 @@ export async function getToolHealthStatus(toolId: string): Promise<ToolHealthSta
   };
 }
 
-export async function runDoctorScan(): Promise<ToolHealthStatus[]> {
+export async function runDoctorScan(ctx?: DoctorStatusContext): Promise<ToolHealthStatus[]> {
+  let statusCtx = ctx;
+  if (!statusCtx?.urls) {
+    const { loadStaliConfig } = await import("../config");
+    const config = await loadStaliConfig();
+    statusCtx = { urls: resolveStaliUrls(config?.baseUrl) };
+  }
+
   const { SUPPORTED_TOOLS } = await import("../../constants/tools");
   const results: ToolHealthStatus[] = [];
   for (const tool of SUPPORTED_TOOLS) {
-    const status = await getToolHealthStatus(tool.id);
+    const status = await getToolHealthStatus(tool.id, statusCtx);
     if (status) results.push(status);
   }
   return results;
@@ -157,35 +178,36 @@ export async function runDoctorScan(): Promise<ToolHealthStatus[]> {
 export async function syncTool(
   toolId: string,
   apiKey: string,
-  model?: string
+  model?: string,
+  syncOptions?: SyncOptions
 ): Promise<SyncerResult> {
   switch (toolId) {
     case "claude":
-      return patchClaudeSettings(apiKey, model);
+      return patchClaudeSettings(apiKey, model, undefined, undefined, syncOptions);
     case "codex":
-      return patchCodexSettings(apiKey, model);
+      return patchCodexSettings(apiKey, model, undefined, syncOptions);
     case "openclaw":
-      return patchOpenClawSettings(apiKey, model);
+      return patchOpenClawSettings(apiKey, model, syncOptions);
     case "deepseek-tui":
-      return patchDeepSeekSettings(apiKey, model);
+      return patchDeepSeekSettings(apiKey, model, syncOptions);
     case "qwen":
-      return patchQwenSettings(apiKey, model);
+      return patchQwenSettings(apiKey, model, syncOptions);
     case "opencode":
-      return patchOpenCodeSettings(apiKey, model);
+      return patchOpenCodeSettings(apiKey, model, syncOptions);
     case "kilo":
-      return patchKiloSettings(apiKey, model);
+      return patchKiloSettings(apiKey, model, syncOptions);
     case "droid":
-      return patchDroidSettings(apiKey, model);
+      return patchDroidSettings(apiKey, model, syncOptions);
     case "cline":
-      return patchClineSettings(apiKey, model);
+      return patchClineSettings(apiKey, model, syncOptions);
     case "roo":
-      return patchRooSettings(apiKey, model);
+      return patchRooSettings(apiKey, model, syncOptions);
     case "grok-build":
-      return patchGrokSettings(apiKey, model);
+      return patchGrokSettings(apiKey, model, syncOptions);
     case "cowork":
-      return patchCoworkSettings(apiKey, model);
+      return patchCoworkSettings(apiKey, model, syncOptions);
     case "jcode":
-      return patchJcodeSettings(apiKey, model);
+      return patchJcodeSettings(apiKey, model, syncOptions);
     default:
       return {
         toolId,

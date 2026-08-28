@@ -92,3 +92,24 @@ export async function resetStaliConfig(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Set or reset API base URL in ~/.stali/config.json
+ */
+export async function setStaliBaseUrl(baseUrl: string | null): Promise<StaliConfigFile> {
+  if (baseUrl === null || baseUrl.trim() === "") {
+    return saveStaliConfig({ baseUrl: STALI_OPENAI_BASE_URL });
+  }
+
+  const normalized = baseUrl.trim().replace(/\/+$/, "");
+  try {
+    const parsed = new URL(normalized);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error("Chỉ hỗ trợ http/https");
+    }
+  } catch {
+    throw new Error(`URL không hợp lệ: ${baseUrl}`);
+  }
+
+  return saveStaliConfig({ baseUrl: normalized });
+}

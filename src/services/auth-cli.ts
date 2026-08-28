@@ -21,13 +21,19 @@ export interface AuthStatusResult {
   baseUrl?: string;
 }
 
-export async function authLogin(apiKey: string): Promise<AuthLoginResult> {
+export async function authLogin(
+  apiKey: string,
+  options?: { baseUrl?: string }
+): Promise<AuthLoginResult> {
   const trimmed = apiKey.trim();
   if (!trimmed) {
     return { success: false, message: "API key trống" };
   }
 
-  const validation = await validateApiKeyAndFetchModels(trimmed);
+  const config = await loadStaliConfig();
+  const baseUrl = options?.baseUrl ?? config?.baseUrl;
+
+  const validation = await validateApiKeyAndFetchModels(trimmed, { baseUrl });
   if (!validation.valid) {
     return {
       success: false,
@@ -38,6 +44,7 @@ export async function authLogin(apiKey: string): Promise<AuthLoginResult> {
   await saveStaliConfig({
     apiKey: trimmed,
     currentModel: validation.defaultModel,
+    ...(baseUrl ? { baseUrl } : {}),
   });
 
   return {
@@ -57,7 +64,9 @@ export async function authStatus(): Promise<AuthStatusResult> {
   }
 
   const masked = maskToken(config.apiKey);
-  const validation = await validateApiKeyAndFetchModels(config.apiKey);
+  const validation = await validateApiKeyAndFetchModels(config.apiKey, {
+    baseUrl: config.baseUrl,
+  });
 
   return {
     hasKey: true,

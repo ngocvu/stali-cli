@@ -1,9 +1,11 @@
 import path from "path";
 import os from "os";
 import { SyncerResult } from "../../types";
-import { STALI_OPENAI_BASE_URL } from "../../constants/api";
 import { readTomlFile, writeTomlFile, readJsonFile, writeJsonFile, ensureParentDir } from "../../utils/file";
 import { createTimestampBackup } from "../../utils/backup";
+import type { SyncOptions } from "./sync-options";
+import { resolveSyncUrls } from "./sync-options";
+import { resolveStaliUrls as defaultStaliUrls } from "../../utils/stali-urls";
 
 export const CODEX_DIR = path.join(os.homedir(), ".codex");
 export const CODEX_CONFIG_PATH = path.join(CODEX_DIR, "config.toml");
@@ -30,7 +32,7 @@ export async function getCodexStatus(): Promise<CodexStatus> {
     configured,
     endpoint:
       parsed.model_providers?.stali?.base_url ||
-      (configured ? STALI_OPENAI_BASE_URL : undefined),
+      (configured ? defaultStaliUrls().openAiBaseUrl : undefined),
     model: parsed.model,
     subagentModel: parsed.agents?.subagent?.model,
     apiKey: authData?.OPENAI_API_KEY,
@@ -40,8 +42,10 @@ export async function getCodexStatus(): Promise<CodexStatus> {
 export async function patchCodexSettings(
   apiKey: string,
   model = "req/gpt-5.6-sol",
-  subagentModel?: string
+  subagentModel?: string,
+  syncOptions?: SyncOptions
 ): Promise<SyncerResult> {
+  const urls = resolveSyncUrls(syncOptions);
   try {
     // 1. Backup config.toml and auth.json
     const backupPath = await createTimestampBackup(CODEX_CONFIG_PATH);
@@ -57,7 +61,7 @@ export async function patchCodexSettings(
     if (!parsed.model_providers) parsed.model_providers = {};
     parsed.model_providers.stali = {
       name: "Stali API",
-      base_url: STALI_OPENAI_BASE_URL,
+      base_url: urls.openAiBaseUrl,
       wire_api: "responses",
     };
 

@@ -2,6 +2,8 @@ import path from "path";
 import os from "os";
 import { SyncerResult } from "../../types";
 import { patchVsCodeAgentJsonTool, restoreToolConfig } from "./common";
+import type { SyncOptions } from "./sync-options";
+import { resolveSyncUrls } from "./sync-options";
 
 export const CLINE_CONFIG_PATH = path.join(
   os.homedir(),
@@ -11,14 +13,17 @@ export const CLINE_CONFIG_PATH = path.join(
 
 export async function patchClineSettings(
   apiKey: string,
-  model = "claude-fable-5"
+  model = "claude-fable-5",
+  syncOptions?: SyncOptions
 ): Promise<SyncerResult> {
   return patchVsCodeAgentJsonTool(
     "cline",
     "Cline (VS Code)",
     CLINE_CONFIG_PATH,
     apiKey,
-    model
+    model,
+    undefined,
+    resolveSyncUrls(syncOptions)
   );
 }
 

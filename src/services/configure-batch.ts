@@ -8,6 +8,7 @@ import type { SyncerResult } from "../types";
 export interface ConfigureBatchOptions {
   apiKey: string;
   model?: string;
+  baseUrl?: string;
   toolInputs?: string[];
   dryRun?: boolean;
   continueOnError?: boolean;
@@ -64,7 +65,7 @@ export async function runConfigureBatch(
 
   const validation = opts.dryRun
     ? { valid: true, defaultModel: "claude-fable-5", models: [] as { id: string; supported_endpoint_types: string[] }[] }
-    : await validateApiKeyAndFetchModels(opts.apiKey);
+    : await validateApiKeyAndFetchModels(opts.apiKey, { baseUrl: opts.baseUrl });
 
   if (!validation.valid) {
     return {
@@ -99,14 +100,16 @@ export async function runConfigureBatch(
         toolName: tool.name,
         success: true,
         message: `Dry-run OK → ${tool.configFile}`,
-        preview: buildToolConfigPreview(toolId, opts.apiKey, resolvedModel),
+        preview: buildToolConfigPreview(toolId, opts.apiKey, resolvedModel, opts.baseUrl),
       });
       continue;
     }
 
     let result: SyncerResult;
     try {
-      result = await syncTool(toolId, opts.apiKey, resolvedModel);
+      result = await syncTool(toolId, opts.apiKey, resolvedModel, {
+        baseUrl: opts.baseUrl,
+      });
     } catch (e: unknown) {
       const err = e instanceof Error ? e.message : String(e);
       items.push({

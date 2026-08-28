@@ -1,10 +1,12 @@
 import { authLogin } from "./auth-cli";
 import { runConfigureBatch } from "./configure-batch";
 import { runHealthCheck } from "./health-check";
+import { loadStaliConfig } from "./config";
 
 export interface InitOptions {
   apiKey: string;
   skipConfigure?: boolean;
+  baseUrl?: string;
 }
 
 export interface InitResult {
@@ -12,10 +14,24 @@ export interface InitResult {
   steps: { name: string; ok: boolean; detail?: string }[];
 }
 
+/** Pure helper — dùng trong test và runInit */
+export function evaluateInitSuccess(
+  steps: InitResult["steps"],
+  opts: { skipConfigure?: boolean }
+): boolean {
+  const login = steps.find((s) => s.name === "auth login");
+  const configure = steps.find((s) => s.name === "configure-all");
+  const check = steps.find((s) => s.name === "check");
+  const configureOk = opts.skipConfigure ? true : (configure?.ok ?? false);
+  return Boolean(login?.ok && configureOk && check?.ok);
+}
+
 export async function runInit(opts: InitOptions): Promise<InitResult> {
   const steps: InitResult["steps"] = [];
+  const config = await loadStaliConfig();
+  const baseUrl = opts.baseUrl ?? config?.baseUrl;
 
-  const login = await authLogin(opts.apiKey);
+  const login = await authLogin(opts.apiKey, { baseUrl });
   steps.push({
     name: "auth login",
     ok: login.success,
@@ -28,6 +44,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   if (!opts.skipConfigure) {
     const batch = await runConfigureBatch({
       apiKey: opts.apiKey,
+      baseUrl,
       skipAdvanced: true,
       continueOnError: true,
     });
@@ -49,7 +66,7 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   });
 
   return {
-    success: login.success && health.authOk,
+    success: evaluateInitSuccess(steps, { skipConfigure: opts.skipConfigure }),
     steps,
   };
 }

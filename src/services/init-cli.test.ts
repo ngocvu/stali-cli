@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import os from "os";
 import path from "path";
-import { runInit } from "../services/init-cli";
+import { runInit, evaluateInitSuccess } from "../services/init-cli";
 
 describe("init-cli", () => {
   test("auth fail → dừng sớm, không chạy configure-all", async () => {
@@ -18,5 +18,23 @@ describe("init-cli", () => {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;
     }
+  });
+
+  test("evaluateInitSuccess — configure-all fail → false", () => {
+    const steps = [
+      { name: "auth login", ok: true },
+      { name: "configure-all", ok: false, detail: "8/11 tools" },
+      { name: "check", ok: true },
+    ];
+    expect(evaluateInitSuccess(steps, {})).toBe(false);
+  });
+
+  test("evaluateInitSuccess — skip configure vẫn OK khi auth+check OK", () => {
+    const steps = [
+      { name: "auth login", ok: true },
+      { name: "configure-all", ok: true, detail: "skipped" },
+      { name: "check", ok: true },
+    ];
+    expect(evaluateInitSuccess(steps, { skipConfigure: true })).toBe(true);
   });
 });

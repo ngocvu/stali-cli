@@ -32,9 +32,11 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - ⚙️ **Wizard configure-all**: batch 11/13 tool từ menu chính
 - 🟣 **13/13 menu riêng**: Qwen, Droid, Cowork — không còn generic fallback
 - 🚀 **Init**: `stali init` — onboarding một lệnh (auth + configure-all + check)
-- 🔌 **Plugins**: `stali plugins [--init]` — registry stub `~/.stali/plugins.json`
+- 🔌 **Plugins**: `stali plugins list|sync` — registry `~/.stali/plugins.json` + syncer tự động
+- 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
+- 📦 **v2.4**: `doctor --json` meta endpoints, commands/ modular, 88 tests
 
 ---
 
@@ -77,7 +79,9 @@ stali configure-all --tools openclaw,cline -k sk-stali-...
 stali export-env claude -k sk-stali-...           # export ANTHROPIC_* (shell)
 stali export-env codex -f json -k sk-stali-...
 stali doctor --fix -k sk-stali-...                # sửa tool chưa OK
-stali doctor --fix --dry-run -k sk-stali-...
+stali doctor --json                              # JSON + meta baseUrl/modelsEndpoint
+stali config set base-url https://staging/v1   # custom endpoint
+stali plugins sync -k sk-stali-...             # sync plugin tùy chỉnh
 stali uninstall                  # Gỡ wrapper (~/.stali/bin)
 stali auth login -k sk-stali-...     # Lưu API key
 stali auth status

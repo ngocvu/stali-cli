@@ -1,8 +1,5 @@
 import { SyncerResult } from "../../types";
-import {
-  STALI_ANTHROPIC_BASE_URL,
-  STALI_OPENAI_BASE_URL,
-} from "../../constants/api";
+import { resolveStaliUrls, type StaliResolvedUrls } from "../../utils/stali-urls";
 import {
   readJsonFile,
   writeJsonFile,
@@ -65,14 +62,15 @@ export async function patchAnthropicEnvJsonTool(
   configPath: string,
   apiKey: string,
   model?: string,
-  options?: PatchOptions
+  options?: PatchOptions,
+  urls: StaliResolvedUrls = resolveStaliUrls()
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
     const data = (await readJsonFile(configPath)) || {};
     const env = { ...(data.env || {}) };
 
-    env.ANTHROPIC_BASE_URL = STALI_ANTHROPIC_BASE_URL;
+    env.ANTHROPIC_BASE_URL = urls.anthropicBaseUrl;
     env.ANTHROPIC_AUTH_TOKEN = apiKey.trim();
     env.API_TIMEOUT_MS = "600000";
     delete env.ANTHROPIC_API_KEY;
@@ -115,7 +113,8 @@ export async function patchOpenAiProviderJsonTool(
   configPath: string,
   apiKey: string,
   model?: string,
-  options?: PatchOptions
+  options?: PatchOptions,
+  urls: StaliResolvedUrls = resolveStaliUrls()
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
@@ -128,7 +127,7 @@ export async function patchOpenAiProviderJsonTool(
         npm: "@ai-sdk/openai-compatible",
         name: "Stali API",
         options: {
-          baseURL: STALI_OPENAI_BASE_URL,
+          baseURL: urls.openAiBaseUrl,
           apiKey: apiKey.trim(),
         },
         models: {
@@ -165,7 +164,8 @@ export async function patchVsCodeAgentJsonTool(
   configPath: string,
   apiKey: string,
   model = "claude-fable-5",
-  options?: PatchOptions
+  options?: PatchOptions,
+  urls: StaliResolvedUrls = resolveStaliUrls()
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
@@ -173,7 +173,7 @@ export async function patchVsCodeAgentJsonTool(
 
     data.apiProvider = "anthropic";
     data.anthropicApiKey = apiKey.trim();
-    data.anthropicBaseUrl = STALI_ANTHROPIC_BASE_URL;
+    data.anthropicBaseUrl = urls.anthropicBaseUrl;
     data.anthropicModelId = model;
     data.openAiModelId = model;
 
@@ -203,14 +203,15 @@ export async function patchOpenAiTomlTool(
   configPath: string,
   apiKey: string,
   model?: string,
-  options?: PatchOptions
+  options?: PatchOptions,
+  urls: StaliResolvedUrls = resolveStaliUrls()
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
     const data = (await readTomlFile(configPath)) || {};
 
     data.provider = "openai";
-    data.base_url = STALI_OPENAI_BASE_URL;
+    data.base_url = urls.openAiBaseUrl;
     data.api_key = apiKey.trim();
     if (model) data.model = model;
 
@@ -240,7 +241,8 @@ export async function patchDroidJsonTool(
   configPath: string,
   apiKey: string,
   model = "claude-fable-5",
-  options?: PatchOptions
+  options?: PatchOptions,
+  urls: StaliResolvedUrls = resolveStaliUrls()
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
@@ -248,7 +250,7 @@ export async function patchDroidJsonTool(
 
     data.provider = {
       type: "openai",
-      baseUrl: STALI_OPENAI_BASE_URL,
+      baseUrl: urls.openAiBaseUrl,
       apiKey: apiKey.trim(),
     };
     data.model = model;
@@ -279,14 +281,15 @@ export async function patchCoworkJsonTool(
   configPath: string,
   apiKey: string,
   model = "gpt-5.6-sol",
-  options?: PatchOptions
+  options?: PatchOptions,
+  urls: StaliResolvedUrls = resolveStaliUrls()
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
     const data = (await readJsonFile(configPath)) || {};
 
     data.openai = {
-      baseUrl: STALI_OPENAI_BASE_URL,
+      baseUrl: urls.openAiBaseUrl,
       apiKey: apiKey.trim(),
       model,
     };

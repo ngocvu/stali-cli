@@ -1,12 +1,14 @@
-import { STALI_ANTHROPIC_BASE_URL, STALI_OPENAI_BASE_URL } from "../../constants/api";
+import { resolveStaliUrls } from "../../utils/stali-urls";
 import { getToolById } from "../../utils/tool-utils";
 import { maskToken } from "../../utils/token";
 
 export function buildToolConfigPreview(
   toolId: string,
   apiKey: string,
-  model: string
+  model: string,
+  baseUrl?: string
 ): Record<string, unknown> {
+  const urls = resolveStaliUrls(baseUrl);
   const masked = apiKey ? maskToken(apiKey) : "sk-stali-...";
   const tool = getToolById(toolId);
 
@@ -15,7 +17,7 @@ export function buildToolConfigPreview(
       return {
         hasCompletedOnboarding: true,
         env: {
-          ANTHROPIC_BASE_URL: STALI_ANTHROPIC_BASE_URL,
+          ANTHROPIC_BASE_URL: urls.anthropicBaseUrl,
           ANTHROPIC_AUTH_TOKEN: masked,
           API_TIMEOUT_MS: "600000",
           ANTHROPIC_MODEL: model,
@@ -28,20 +30,20 @@ export function buildToolConfigPreview(
         model_providers: {
           stali: {
             name: "Stali API",
-            base_url: STALI_OPENAI_BASE_URL,
+            base_url: urls.openAiBaseUrl,
             wire_api: "responses",
           },
         },
         auth: { OPENAI_API_KEY: masked },
       };
     case "openclaw":
-      return anthropicEnvPreview(masked, model);
+      return anthropicEnvPreview(masked, model, urls.anthropicBaseUrl);
     case "deepseek-tui":
     case "grok-build":
     case "jcode":
       return {
         provider: "openai",
-        base_url: STALI_OPENAI_BASE_URL,
+        base_url: urls.openAiBaseUrl,
         api_key: masked,
         model,
       };
@@ -51,7 +53,7 @@ export function buildToolConfigPreview(
           auth: {
             selectedType: "openai",
             apiKey: masked,
-            baseUrl: STALI_OPENAI_BASE_URL,
+            baseUrl: urls.openAiBaseUrl,
           },
         },
         model: { name: model },
@@ -64,7 +66,7 @@ export function buildToolConfigPreview(
           stali: {
             name: "Stali API",
             options: {
-              baseURL: STALI_OPENAI_BASE_URL,
+              baseURL: urls.openAiBaseUrl,
               apiKey: masked,
             },
           },
@@ -76,14 +78,14 @@ export function buildToolConfigPreview(
       return {
         apiProvider: "anthropic",
         anthropicApiKey: masked,
-        anthropicBaseUrl: STALI_ANTHROPIC_BASE_URL,
+        anthropicBaseUrl: urls.anthropicBaseUrl,
         anthropicModelId: model,
       };
     case "droid":
       return {
         provider: {
           type: "openai",
-          baseUrl: STALI_OPENAI_BASE_URL,
+          baseUrl: urls.openAiBaseUrl,
           apiKey: masked,
         },
         model,
@@ -91,7 +93,7 @@ export function buildToolConfigPreview(
     case "cowork":
       return {
         openai: {
-          baseUrl: STALI_OPENAI_BASE_URL,
+          baseUrl: urls.openAiBaseUrl,
           apiKey: masked,
           model,
         },
@@ -102,15 +104,16 @@ export function buildToolConfigPreview(
         tool: tool?.name || toolId,
         model,
         configFile: tool?.configFile,
+        baseUrl: urls.openAiBaseUrl,
       };
   }
 }
 
-function anthropicEnvPreview(masked: string, model: string) {
+function anthropicEnvPreview(masked: string, model: string, anthropicBaseUrl: string) {
   return {
     hasCompletedOnboarding: true,
     env: {
-      ANTHROPIC_BASE_URL: STALI_ANTHROPIC_BASE_URL,
+      ANTHROPIC_BASE_URL: anthropicBaseUrl,
       ANTHROPIC_AUTH_TOKEN: masked,
       ANTHROPIC_MODEL: model,
       API_TIMEOUT_MS: "600000",

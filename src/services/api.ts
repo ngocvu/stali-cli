@@ -1,6 +1,9 @@
 import { StaliModelsResponseSchema, StaliModel } from "../types";
-import { STALI_MODELS_ENDPOINT } from "../constants/api";
-import { validateTokenFormat } from "../utils/token";
+import { resolveStaliUrls } from "../utils/stali-urls";
+
+export interface ApiRequestOptions {
+  baseUrl?: string;
+}
 
 export interface ValidateResult {
   valid: boolean;
@@ -9,13 +12,29 @@ export interface ValidateResult {
   error?: string;
 }
 
+export interface FetchModelsResult {
+  models: StaliModel[];
+  error?: string;
+  endpoint?: string;
+}
+
+function authHeaders(apiKey: string): Record<string, string> {
+  const trimmed = apiKey.trim();
+  return {
+    Authorization: `Bearer ${trimmed}`,
+    "x-api-key": trimmed,
+  };
+}
+
 /**
  * Validate API key and fetch active models in real-time from Stali API
  */
 export async function validateApiKeyAndFetchModels(
-  apiKey: string
+  apiKey: string,
+  options?: ApiRequestOptions
 ): Promise<ValidateResult> {
   const trimmedKey = apiKey.trim();
+  const { validateTokenFormat } = await import("../utils/token");
   const formatError = validateTokenFormat(trimmedKey);
   if (formatError) {
     return {
@@ -26,13 +45,12 @@ export async function validateApiKeyAndFetchModels(
     };
   }
 
+  const urls = resolveStaliUrls(options?.baseUrl);
+
   try {
-    const res = await fetch(STALI_MODELS_ENDPOINT, {
+    const res = await fetch(urls.modelsEndpoint, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${trimmedKey}`,
-        "x-api-key": trimmedKey,
-      },
+      headers: authHeaders(trimmedKey),
       signal: AbortSignal.timeout(10000),
     });
 
@@ -43,8 +61,6 @@ export async function validateApiKeyAndFetchModels(
       // Non-JSON response
     }
 
-    // Check for explicit error response format:
-    // { "type": "error", "error": { "type": "authentication_error", "message": "API key không hợp lệ." } }
     if (json?.type === "error" || json?.error) {
       const errorMsg =
         json.error?.message ||
@@ -94,17 +110,20 @@ export async function validateApiKeyAndFetchModels(
       valid: false,
       models: [],
       defaultModel: "",
-      error: "Định dạng dữ liệu model từ Stali API không hợp lệ hoặc danh sách rỗng.",
+      error:
+        "Định dạng dữ liệu model từ Stali API không hợp lệ hoặc danh sách rỗng.",
     };
   } catch (error: any) {
-    const isTimeout = error?.name === "TimeoutError" || error?.name === "AbortError";
+    const isTimeout =
+      error?.name === "TimeoutError" || error?.name === "AbortError";
     return {
       valid: false,
       models: [],
       defaultModel: "",
       error: isTimeout
         ? "Quá thời gian kết nối đến Stali API (Timeout 10s)."
-        : (error?.message || "Không thể kết nối đến Stali API (https://api.stali.vn/v1/models)"),
+        : error?.message ||
+          `Không thể kết nối đến Stali API (${urls.modelsEndpoint})`,
     };
   }
 }
@@ -112,31 +131,70 @@ export async function validateApiKeyAndFetchModels(
 /**
  * Fetch real-time models list for CLI table commands
  */
-export async function fetchRealtimeModels(apiKey?: string): Promise<StaliModel[]> {
+export async function fetchRealtimeModels(
+  apiKey?: string,
+  options?: ApiRequestOptions
+): Promise<FetchModelsResult> {
+  const urls = resolveStaliUrls(options?.baseUrl);
+
   try {
     const headers: Record<string, string> = {};
     if (apiKey?.trim()) {
-      headers["Authorization"] = `Bearer ${apiKey.trim()}`;
-      headers["x-api-key"] = apiKey.trim();
+      Object.assign(headers, authHeaders(apiKey));
     }
 
-    const res = await fetch(STALI_MODELS_ENDPOINT, {
+    const res = await fetch(urls.modelsEndpoint, {
       method: "GET",
       headers,
       signal: AbortSignal.timeout(10000),
     });
 
     if (!res.ok) {
-      return [];
+      if (res.status === 401 || res.status === 403) {
+        return {
+          models: [],
+          error: "API key không hợp lệ.",
+          endpoint: urls.modelsEndpoint,
+        };
+      }
+      return {
+        models: [],
+        error: `Lỗi từ Stali API (HTTP ${res.status}: ${res.statusText})`,
+        endpoint: urls.modelsEndpoint,
+      };
     }
 
-    const json = await res.json();
+    let json: unknown;
+    try {
+      json = await res.json();
+    } catch {
+      return {
+        models: [],
+        error: "Phản hồi không phải JSON hợp lệ từ Stali API.",
+        endpoint: urls.modelsEndpoint,
+      };
+    }
+
     const parsed = StaliModelsResponseSchema.safeParse(json);
     if (parsed.success) {
-      return parsed.data.data;
+      return { models: parsed.data.data, endpoint: urls.modelsEndpoint };
     }
-    return [];
-  } catch {
-    return [];
+
+    return {
+      models: [],
+      error: "Định dạng danh sách model từ Stali API không hợp lệ.",
+      endpoint: urls.modelsEndpoint,
+    };
+  } catch (error: any) {
+    const isTimeout =
+      error?.name === "TimeoutError" || error?.name === "AbortError";
+    return {
+      models: [],
+      error: isTimeout
+        ? "Quá thời gian kết nối đến Stali API (Timeout 10s)."
+        : error?.message ||
+          `Không thể kết nối đến Stali API (${urls.modelsEndpoint})`,
+      endpoint: urls.modelsEndpoint,
+    };
   }
 }

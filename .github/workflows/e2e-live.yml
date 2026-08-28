@@ -1,0 +1,32 @@
+name: E2E Live
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
+
+jobs:
+  e2e-live:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.STALI_E2E_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build
+        run: bun run build
+
+      - name: Live API smoke
+        env:
+          STALI_E2E_KEY: ${{ secrets.STALI_E2E_KEY }}
+        run: |
+          bun dist/index.js auth login -k "$STALI_E2E_KEY"
+          bun dist/index.js ls -k "$STALI_E2E_KEY"
+          bun dist/index.js doctor --json | head -c 2000
+          bun dist/index.js check --json

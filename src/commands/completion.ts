@@ -15,6 +15,7 @@ const SUBCOMMANDS = [
   "tools",
   "init",
   "plugins",
+  "config",
   "check",
   "backups",
   "info",
@@ -47,6 +48,9 @@ const CONFIGURE_ALL_FLAGS = [
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
 const DOCTOR_FLAGS = ["--json", "--fix", "--dry-run", "--force", "--tools", "--watch", "--notify", "-i", "--interval"];
+const CONFIG_SET_FLAGS = ["base-url", "--reset"];
+const PLUGINS_SUB = ["list", "sync", "--init"];
+const PLUGINS_SYNC_FLAGS = ["-k", "--key", "-m", "--model", "--dry-run", "--ids"];
 
 function bashCompletion(): string {
   const tools = [...TOOL_IDS, ...TOOL_ALIASES].join(" ");
@@ -82,6 +86,24 @@ _stali_completion() {
       ;;
     doctor)
       COMPREPLY=( $(compgen -W "${DOCTOR_FLAGS.join(" ")}" -- "\${cur}") )
+      ;;
+    config)
+      if [[ "\${prev}" == "config" ]]; then
+        COMPREPLY=( $(compgen -W "show set" -- "\${cur}") )
+      elif [[ "\${COMP_WORDS[2]}" == "set" && "\${prev}" == "set" ]]; then
+        COMPREPLY=( $(compgen -W "base-url" -- "\${cur}") )
+      else
+        COMPREPLY=( $(compgen -W "--json --reset" -- "\${cur}") )
+      fi
+      ;;
+    plugins)
+      if [[ "\${prev}" == "plugins" ]]; then
+        COMPREPLY=( $(compgen -W "${PLUGINS_SUB.join(" ")}" -- "\${cur}") )
+      elif [[ "\${COMP_WORDS[2]}" == "sync" ]]; then
+        COMPREPLY=( $(compgen -W "${PLUGINS_SYNC_FLAGS.join(" ")}" -- "\${cur}") )
+      else
+        COMPREPLY=( $(compgen -W "--init" -- "\${cur}") )
+      fi
       ;;
     export-env)
       if [[ "\${prev}" == "export-env" ]]; then
