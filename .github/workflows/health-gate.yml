@@ -29,6 +29,12 @@ jobs:
           fi
           test -f dist/checksums.json
 
+      - name: Wizard-only partition exists
+        run: test -d dist/runtime/wizard-only
+
+      - name: Doctor watch CI smoke
+        run: bun dist/index.js doctor --tools-only --watch --max-cycles 2 -i 1 --json | rg -q doctor.snapshot
+
   live-gate:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'

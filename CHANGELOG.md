@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.9.0] — 2026-08-28
+
+### Added
+- **GitHub Release assets** — tag push upload `stali-cli-*.tgz`, `stali-standalone`, `checksums.json`
+- **`doctor --watch --max-cycles` / `--duration`** — chế độ CI (quét N lần hoặc tối đa N giây)
+- **`STALI_CLI_STANDALONE=1`** — `install.sh` tải binary từ GitHub Release (không cần Bun build)
+- **`fetchReleaseAssets()`** — resolve asset URL theo release tag
+
+### Fixed
+- **`stali completion install [shell]`** — `install`/`uninstall` positional hoạt động đúng (không cần `--install`)
+- **`install.sh`** — ưu tiên copy `bin/stali` wrapper thay vì chỉ `stali.js`
+
+### Changed
+- Health Gate + e2e: wizard-only dir, doctor watch smoke, `completion install --all`
+- `analyze-bundle` báo cáo thêm `wizard-only` partition
+
 ## [3.8.0] — 2026-08-28
 
 ### Added

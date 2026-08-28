@@ -7,7 +7,7 @@
 # Env:
 #   STALI_CLI_VERSION     — tag hoặc branch (mặc định: latest từ package.json repo)
 #   STALI_CLI_SHA256      — sha256 của GitHub zip (tùy chọn, verify sau curl)
-#   STALI_CLI_INSTALL_METHOD — git | npm | auto
+#   STALI_CLI_STANDALONE   — 1 = tải binary từ GitHub Release (cần STALI_CLI_VERSION)
 #   STALI_CLI_REPO, STALI_CLI_BRANCH, STALI_HOME, STALI_CLI_INSTALL_DIR
 
 set -euo pipefail
@@ -49,18 +49,42 @@ migrate_legacy() {
 
 register_global_stali() {
   local root="$1"
+  local shell_shim="$root/bin/stali"
   local stali_js="$root/bin/stali.js"
-  [[ -f "$stali_js" ]] || die "Thiếu $stali_js"
   mkdir -p "$STALI_BIN"
+  if [[ -f "$shell_shim" ]]; then
+    log "Cài wrapper: $STALI_BIN/stali (từ bin/stali)"
+    cp "$shell_shim" "$STALI_BIN/stali"
+    chmod +x "$STALI_BIN/stali"
+    return 0
+  fi
+  [[ -f "$stali_js" ]] || die "Thiếu bin/stali hoặc bin/stali.js"
   local bun_bin
   bun_bin="$(command -v bun)"
-  log "Cài wrapper: $STALI_BIN/stali"
+  log "Cài wrapper: $STALI_BIN/stali (bun + stali.js)"
   cat >"$STALI_BIN/stali" <<EOF
 #!/usr/bin/env bash
 exec "$bun_bin" "$stali_js" "\$@"
 EOF
   chmod +x "$STALI_BIN/stali"
+}
+
+install_standalone_binary() {
+  local version="${VERSION:-}"
+  [[ -n "$version" ]] || die "STALI_CLI_STANDALONE=1 cần STALI_CLI_VERSION=vX.Y.Z"
+  [[ "$version" =~ ^v ]] || version="v${version}"
+  local repo_slug="ngocvu/stali-cli"
+  if [[ "$REPO" =~ github\.com[:/]([^/]+)/([^/.]+) ]]; then
+    repo_slug="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+  fi
+  local url="https://github.com/${repo_slug}/releases/download/${version}/stali-standalone"
+  mkdir -p "$STALI_BIN"
+  log "Tải standalone binary: ${url}"
+  curl -fsSL "$url" -o "$STALI_BIN/stali"
+  chmod +x "$STALI_BIN/stali"
   export PATH="$STALI_BIN:$PATH"
+  command -v stali >/dev/null 2>&1 || die "Không cài được stali standalone"
+  log "Standalone OK: $(stali --version 2>/dev/null || true)"
 }
 
 verify_installed_version() {
@@ -170,6 +194,11 @@ install_from_git() {
 }
 
 main() {
+  if [[ "${STALI_CLI_STANDALONE:-0}" == "1" ]]; then
+    install_standalone_binary
+    log "Done (standalone). Chạy: stali"
+    exit 0
+  fi
   case "$METHOD" in
     npm) install_from_npm ;;
     git) install_from_git ;;

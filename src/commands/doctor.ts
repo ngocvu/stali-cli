@@ -362,14 +362,22 @@ export function configuredScore(
   );
 }
 
+export interface DoctorWatchLimits {
+  maxCycles?: number;
+  durationSec?: number;
+}
+
 export async function runDoctorWatch(
   intervalSec: number,
   jsonOut?: boolean,
   notify?: boolean,
-  view?: DoctorViewOptions
+  view?: DoctorViewOptions,
+  limits?: DoctorWatchLimits
 ) {
-  const sec = Math.max(3, intervalSec);
+  const sec = Math.max(1, intervalSec);
   let running = true;
+  let cycles = 0;
+  const startedAt = Date.now();
   let prevHash = "";
   let peakScore = 0;
   let degraded = false;
@@ -381,6 +389,12 @@ export async function runDoctorWatch(
 
   const finish = (code: number) => {
     process.exit(code);
+  };
+
+  const hitLimit = () => {
+    if (limits?.maxCycles && cycles >= limits.maxCycles) return true;
+    if (limits?.durationSec && Date.now() - startedAt >= limits.durationSec * 1000) return true;
+    return false;
   };
 
   while (running) {
@@ -452,6 +466,11 @@ export async function runDoctorWatch(
       }
     }
 
+    cycles++;
+    if (hitLimit()) {
+      running = false;
+      break;
+    }
     if (!running) break;
     await new Promise((r) => setTimeout(r, sec * 1000));
   }

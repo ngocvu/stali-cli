@@ -19,11 +19,12 @@ function assert(name: string, cond: boolean, detail?: string) {
   results.push({ name, ok: cond, detail });
 }
 
-function run(args: string[]) {
+function run(args: string[], env?: NodeJS.ProcessEnv) {
   return spawnSync(BUN, [CLI, ...args], {
     cwd: CLI_ROOT,
     encoding: "utf8",
     timeout: 15000,
+    env: env ? { ...process.env, ...env } : process.env,
   });
 }
 
@@ -89,8 +90,33 @@ async function main() {
   const compDoctor = run(["completion", "--doctor", "--json"]);
   assert("completion --doctor --json", compDoctor.status === 0 || compDoctor.status === 1);
 
-  const compUninstall = run(["completion", "fish", "--uninstall"]);
+  const compUninstall = run(["completion", "uninstall", "fish"]);
   assert("completion uninstall exit 0", compUninstall.status === 0);
+
+  const wizardOnlyDir = path.join(CLI_ROOT, "dist/runtime/wizard-only");
+  assert(
+    "wizard-only dir exists",
+    await fs.access(wizardOnlyDir).then(() => true).catch(() => false)
+  );
+
+  const watchSmoke = run(["doctor", "--tools-only", "--watch", "--max-cycles", "2", "-i", "1", "--json"]);
+  assert("doctor watch --max-cycles exit 0|1", watchSmoke.status === 0 || watchSmoke.status === 1);
+  assert(
+    "doctor watch emits snapshot",
+    (watchSmoke.stdout || "").includes("doctor.snapshot")
+  );
+
+  const tmpHomeAll = path.join(CLI_ROOT, ".e2e-home-all");
+  await fs.mkdir(tmpHomeAll, { recursive: true });
+  const installAll = run(["completion", "install", "--all"], { HOME: tmpHomeAll });
+  assert("completion install --all exit 0", installAll.status === 0);
+  await fs.rm(tmpHomeAll, { recursive: true, force: true }).catch(() => {});
+
+  const tmpHomeFish = path.join(CLI_ROOT, ".e2e-home-fish");
+  await fs.mkdir(tmpHomeFish, { recursive: true });
+  const installFish = run(["completion", "install", "fish"], { HOME: tmpHomeFish });
+  assert("completion install fish (implicit) exit 0", installFish.status === 0);
+  await fs.rm(tmpHomeFish, { recursive: true, force: true }).catch(() => {});
 
   const failed = results.filter((r) => !r.ok);
   for (const r of results) {

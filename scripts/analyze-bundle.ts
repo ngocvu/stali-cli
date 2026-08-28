@@ -43,8 +43,13 @@ const routerKb =
     ? fs.statSync(path.join(distDir, "index.js")).size
     : 0) / 1024;
 const runtimeKb = reportDir("dist/runtime (shared)", runtimeDir);
+const wizardOnlyDir = path.join(runtimeDir, "wizard-only");
+const wizardOnlyKb = fs.existsSync(wizardOnlyDir) ? reportDir("dist/runtime/wizard-only", wizardOnlyDir) : 0;
 console.log(`Router: ${routerKb.toFixed(1)} KB`);
 console.log(`Grand total: ${(routerKb + runtimeKb).toFixed(0)} KB`);
+if (wizardOnlyKb > 0) {
+  console.log(`Wizard-only partition: ${wizardOnlyKb.toFixed(0)} KB`);
+}
 
 const checksums = path.join(distDir, "checksums.json");
 if (fs.existsSync(checksums)) {

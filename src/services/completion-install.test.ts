@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import os from "os";
 import path from "path";
 import fs from "fs/promises";
-import { detectShellFromEnv, installCompletion, uninstallCompletion, diagnoseCompletion, normalizeCompletionShell } from "./completion-install";
+import { detectShellFromEnv, installAllCompletions, installCompletion, uninstallCompletion, diagnoseCompletion, normalizeCompletionShell } from "./completion-install";
 
 describe("completion-install", () => {
   test("normalizeCompletionShell", () => {
@@ -43,6 +43,18 @@ describe("completion-install", () => {
     const rows = await diagnoseCompletion("fish", tmp);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.status).toBe("absent");
+  });
+
+  test("installAllCompletions (isolated HOME)", async () => {
+    const tmp = path.join(os.tmpdir(), `stali-comp-all-${Date.now()}`);
+    await fs.mkdir(tmp, { recursive: true });
+    try {
+      const results = await installAllCompletions(tmp);
+      expect(results).toHaveLength(3);
+      expect(results.map((r) => r.shell).sort()).toEqual(["bash", "fish", "zsh"]);
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true }).catch(() => {});
+    }
   });
 
   test("detectShellFromEnv respects SHELL", () => {

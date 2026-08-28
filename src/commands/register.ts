@@ -504,6 +504,8 @@ export function registerCommands(program: Command): void {
     .option("--watch", "Theo dõi liên tục (Ctrl+C thoát)")
     .option("--notify", "Với --watch: chuông + desktop notify khi thay đổi")
     .option("-i, --interval <seconds>", "Với --watch: chu kỳ giây (mặc định 10)", "10")
+    .option("--max-cycles <n>", "Với --watch: số lần quét rồi thoát (CI)")
+    .option("--duration <seconds>", "Với --watch: chạy tối đa N giây rồi thoát (CI)")
     .action(async (opts: {
       json?: boolean;
       fix?: boolean;
@@ -515,6 +517,8 @@ export function registerCommands(program: Command): void {
       watch?: boolean;
       notify?: boolean;
       interval?: string;
+      maxCycles?: string;
+      duration?: string;
       pluginsOnly?: boolean;
       toolsOnly?: boolean;
     }) => {
@@ -531,7 +535,20 @@ export function registerCommands(program: Command): void {
       };
       if (opts.watch && !opts.fix) {
         const sec = parseInt(opts.interval || "10", 10) || 10;
-        await runDoctorWatch(sec, opts.json, opts.notify, view);
+        const maxCycles = opts.maxCycles ? parseInt(opts.maxCycles, 10) : undefined;
+        const durationSec = opts.duration ? parseInt(opts.duration, 10) : undefined;
+        if (maxCycles !== undefined && (!Number.isFinite(maxCycles) || maxCycles < 1)) {
+          console.error(chalk.red("❌ --max-cycles phải là số nguyên ≥ 1"));
+          process.exit(2);
+        }
+        if (durationSec !== undefined && (!Number.isFinite(durationSec) || durationSec < 1)) {
+          console.error(chalk.red("❌ --duration phải là số giây ≥ 1"));
+          process.exit(2);
+        }
+        await runDoctorWatch(sec, opts.json, opts.notify, view, {
+          maxCycles,
+          durationSec,
+        });
         return;
       }
       const code = await runDoctor(opts.json, {
@@ -676,14 +693,29 @@ export function registerCommands(program: Command): void {
   program
     .command("completion")
     .description("Shell completion: in script hoặc cài vào ~/.bashrc / fish / zsh")
-    .argument("[shell]", "bash | zsh | fish | auto (mặc định khi --install)")
+    .argument("[shellOrAction]", "bash | zsh | fish | install | uninstall | auto")
+    .argument("[shell]", "Shell khi dùng: stali completion install <shell>")
     .option("--install", "Ghi completion vào shell config (idempotent)")
     .option("--all", "Cài completion cho bash + fish + zsh (với --install)")
     .option("--uninstall", "Gỡ completion đã cài (idempotent)")
     .option("--doctor", "Kiểm tra completion đã cài (bash/fish/zsh)")
     .option("--json", "JSON output (với --doctor)")
-    .action(async (shell: string | undefined, cmdOpts: { install?: boolean; all?: boolean; uninstall?: boolean; doctor?: boolean; json?: boolean }) => {
-      if (cmdOpts.install && cmdOpts.uninstall) {
+    .action(async (
+      shellOrAction: string | undefined,
+      shellArg: string | undefined,
+      cmdOpts: { install?: boolean; all?: boolean; uninstall?: boolean; doctor?: boolean; json?: boolean }
+    ) => {
+      let shell = shellOrAction;
+      let installMode = !!cmdOpts.install;
+      let uninstallMode = !!cmdOpts.uninstall;
+      if (shellOrAction?.toLowerCase() === "install") {
+        installMode = true;
+        shell = shellArg;
+      } else if (shellOrAction?.toLowerCase() === "uninstall") {
+        uninstallMode = true;
+        shell = shellArg;
+      }
+      if (installMode && uninstallMode) {
         console.error(chalk.red("❌ --install và --uninstall không dùng cùng lúc"));
         process.exit(1);
       }
@@ -705,7 +737,7 @@ export function registerCommands(program: Command): void {
         const ok = rows.every((r) => r.status === "ok" || r.status === "absent");
         process.exit(ok ? 0 : 1);
       }
-      if (cmdOpts.uninstall) {
+      if (uninstallMode) {
         const { uninstallCompletion } = await import("../services/completion-install");
         try {
           const result = await uninstallCompletion(shell || "auto");
@@ -717,7 +749,7 @@ export function registerCommands(program: Command): void {
           process.exit(1);
         }
       }
-      if (cmdOpts.install) {
+      if (installMode) {
         const { installCompletion, installAllCompletions } = await import(
           "../services/completion-install"
         );
