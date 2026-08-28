@@ -11,6 +11,8 @@ export function formatSetupJson(result: InitResult): Record<string, unknown> {
     durationMs: result.durationMs,
     nextCommand: deriveSetupNextCommand(result),
     steps: result.steps,
+    pendingGatewayCount: result.gateway?.pendingGatewayCount ?? 0,
+    gateway: result.gateway,
   };
 }
 

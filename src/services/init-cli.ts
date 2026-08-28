@@ -3,6 +3,7 @@ import { runHealthCheck } from "./health-check";
 import { loadStaliConfig, saveStaliConfig } from "./config";
 import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
 import { discoverInstalledTools, type ToolDiscoveryEntry } from "./tool-discovery";
+import { summarizeGatewayPending } from "./gateway-summary";
 
 export interface InitOptions {
   apiKey: string;
@@ -23,6 +24,13 @@ export interface InitResult {
   success: boolean;
   steps: { name: string; ok: boolean; detail?: string }[];
   durationMs?: number;
+  gateway?: {
+    installed: number;
+    configured: number;
+    pending: number;
+    pendingGateway: string[];
+    pendingGatewayCount: number;
+  };
 }
 
 /** Pure helper — dùng trong test và runInit */
@@ -190,10 +198,14 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
     }
   }
 
+  const discovery = await discoverInstalledTools();
+  const gateway = summarizeGatewayPending(discovery);
+
   return {
     success: evaluateInitSuccess(steps, { skipConfigure: opts.skipConfigure }),
     steps,
     durationMs: Math.round(performance.now() - t0),
+    gateway,
   };
 }
 

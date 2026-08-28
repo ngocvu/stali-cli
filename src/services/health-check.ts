@@ -1,6 +1,8 @@
 import { authStatus } from "./auth-cli";
 import { runDoctorScan } from "./syncers";
 import { runPluginsDoctor } from "./plugin-doctor";
+import { discoverInstalledTools } from "./tool-discovery";
+import { summarizeGatewayPending } from "./gateway-summary";
 
 export type HealthCheckScope = "full" | "tools" | "plugins";
 
@@ -23,6 +25,10 @@ export interface HealthCheckResult {
   strict: boolean;
   scope: HealthCheckScope;
   messages: string[];
+  gatewayInstalled: number;
+  gatewayConfigured: number;
+  pendingGateway: string[];
+  pendingGatewayCount: number;
 }
 
 function resolveScope(opts: HealthCheckOptions): HealthCheckScope {
@@ -65,15 +71,29 @@ export async function runHealthCheck(
   let total = 0;
   let pluginsTotal = 0;
   let pluginsConfigured = 0;
+  let gatewaySummary = {
+    installed: 0,
+    configured: 0,
+    pending: 0,
+    pendingGateway: [] as string[],
+    pendingGatewayCount: 0,
+  };
+
+  let doctorScan: Awaited<ReturnType<typeof runDoctorScan>> | undefined;
 
   if (scope !== "plugins") {
-    const doctor = await runDoctorScan();
-    configured = doctor.filter((d) => d.configuredForStali).length;
-    total = doctor.length;
+    doctorScan = await runDoctorScan();
+    configured = doctorScan.filter((d) => d.configuredForStali).length;
+    total = doctorScan.length;
     messages.push(`Doctor: ${configured}/${total} tool trỏ Stali`);
     if (configured < total) {
-      const missing = doctor.filter((d) => !d.configuredForStali).map((d) => d.toolId);
+      const missing = doctorScan.filter((d) => !d.configuredForStali).map((d) => d.toolId);
       messages.push(`Chưa OK: ${missing.join(", ")}`);
+    }
+    const discovery = await discoverInstalledTools({ health: doctorScan });
+    gatewaySummary = summarizeGatewayPending(discovery);
+    if (gatewaySummary.pendingGatewayCount > 0) {
+      messages.push(`Gateway chờ: ${gatewaySummary.pendingGateway.join(", ")}`);
     }
   }
 
@@ -93,6 +113,8 @@ export async function runHealthCheck(
     }
   }
 
+  const gatewayStrictOk =
+    !strict || scope === "plugins" || gatewaySummary.pendingGatewayCount === 0;
   const toolsStrictOk =
     scope === "plugins" || !strict || configured === total;
   const pluginsStrictOk =
@@ -102,7 +124,8 @@ export async function runHealthCheck(
   const pluginsStrictFail =
     strict && scope === "plugins" && pluginsTotal === 0;
 
-  const ok = authOk && toolsStrictOk && pluginsStrictOk && !pluginsStrictFail;
+  const ok =
+    authOk && gatewayStrictOk && toolsStrictOk && pluginsStrictOk && !pluginsStrictFail;
 
   return {
     ok,
@@ -115,5 +138,9 @@ export async function runHealthCheck(
     strict,
     scope,
     messages,
+    gatewayInstalled: gatewaySummary.installed,
+    gatewayConfigured: gatewaySummary.configured,
+    pendingGateway: gatewaySummary.pendingGateway,
+    pendingGatewayCount: gatewaySummary.pendingGatewayCount,
   };
 }

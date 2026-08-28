@@ -35,6 +35,13 @@ jobs:
       - name: Doctor watch CI smoke
         run: bun dist/index.js doctor --tools-only --watch --max-cycles 2 -i 1 --json | rg -q doctor.snapshot
 
+      - name: Doctor strict + check pendingGateway JSON
+        run: |
+          bun dist/index.js doctor --strict --tools-only --json > /tmp/doctor-strict.json || true
+          test -s /tmp/doctor-strict.json
+          bun dist/index.js check --tools-only --json | rg -q '"pendingGateway"'
+          bun dist/index.js check --tools-only --json | rg -q '"pendingGatewayCount"'
+
   live-gate:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
@@ -58,4 +65,4 @@ jobs:
           fi
           bun dist/index.js auth login -k "$STALI_E2E_KEY"
           bun dist/index.js check --strict --tools-only --json
-          bun dist/index.js doctor --tools-only --json | head -c 8000
+          bun dist/index.js doctor --strict --tools-only --json | head -c 8000

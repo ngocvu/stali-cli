@@ -92,6 +92,11 @@ async function main() {
     try {
       const parsed = JSON.parse(checkTools.stdout || "{}");
       assert("check JSON has scope", parsed.scope === "tools");
+      assert("check JSON pendingGateway", Array.isArray(parsed.pendingGateway));
+      assert(
+        "check JSON pendingGatewayCount",
+        typeof parsed.pendingGatewayCount === "number"
+      );
     } catch {
       assert("check JSON parseable", false, "invalid JSON");
     }
@@ -345,6 +350,10 @@ async function main() {
       const parsed = JSON.parse(setupJson.stdout);
       assert("setup JSON has ok", typeof parsed.ok === "boolean");
       assert("setup JSON has steps", Array.isArray(parsed.steps));
+      assert(
+        "setup JSON pendingGatewayCount",
+        typeof parsed.pendingGatewayCount === "number"
+      );
     } catch {
       assert("setup JSON parseable", false);
     }

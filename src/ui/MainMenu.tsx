@@ -9,6 +9,8 @@ interface MainMenuProps {
   apiKey?: string;
   installMode?: string;
   gatewayPending?: number;
+  pendingGatewayCount?: number;
+  gatewayReady?: boolean;
   onSelect: (
     action:
       | "configure"
@@ -31,6 +33,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   apiKey,
   installMode,
   gatewayPending,
+  pendingGatewayCount,
+  gatewayReady,
   onSelect,
 }) => {
   const items = [
@@ -67,6 +71,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           stali-cli v{VERSION}
           {installMode ? ` · ${installMode}` : ""} · ~/.stali
         </Text>
+        {pendingGatewayCount !== undefined && pendingGatewayCount > 0 ? (
+          <Text color="yellow">
+            ⏳ {pendingGatewayCount} app gateway chờ — chọn Gateway hoặc: stali gw auto
+          </Text>
+        ) : gatewayReady ? (
+          <Text color="green">✅ Gateway OK — app đã cài đều trỏ Stali</Text>
+        ) : null}
         {gatewayPending && gatewayPending > 0 ? (
           <Text color="yellow">
             💡 {gatewayPending} app chưa gateway — chọn mục đầu hoặc: stali gw auto

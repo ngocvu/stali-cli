@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.40.0] — 2026-08-28
+
+### Added
+- **`check --json`** — `pendingGateway[]`, `pendingGatewayCount`, `gatewayInstalled` / `gatewayConfigured`; strict fail khi còn gateway chờ (đồng bộ `doctor --strict`)
+- **`setup --json`** — `pendingGatewayCount` + object `gateway` sau setup
+- **Wizard MainMenu** — badge `Gateway OK` / `N app gateway chờ` (discovery thực tế)
+- **Health Gate CI** — smoke `doctor --strict` + `check` JSON `pendingGateway`; live gate dùng `doctor --strict`
+
+### Changed
+- `runHealthCheck` dùng `discoverInstalledTools` + `summarizeGatewayPending` (shared helper)
+
 ## [3.39.0] — 2026-08-28
 
 ### Added

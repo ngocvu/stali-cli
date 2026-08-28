@@ -115,7 +115,22 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   }>();
   const [gatewayPlan, setGatewayPlan] = useState<GatewayPlan | null>(null);
   const [gatewayPending, setGatewayPending] = useState(0);
+  const [menuGatewayReady, setMenuGatewayReady] = useState(true);
+  const [menuPendingGatewayCount, setMenuPendingGatewayCount] = useState(0);
   const [gatewayFirstRun, setGatewayFirstRun] = useState(false);
+
+  const refreshMenuGatewayStatus = async () => {
+    try {
+      const { discoverInstalledTools } = await import("../services/tool-discovery");
+      const { summarizeGatewayPending } = await import("../services/gateway-summary");
+      const summary = summarizeGatewayPending(await discoverInstalledTools());
+      setMenuPendingGatewayCount(summary.pendingGatewayCount);
+      setMenuGatewayReady(summary.pendingGatewayCount === 0);
+    } catch {
+      setMenuPendingGatewayCount(0);
+      setMenuGatewayReady(true);
+    }
+  };
 
   const refreshGatewayPending = async () => {
     try {
@@ -172,7 +187,11 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           setModels(res.models);
           setApiDefaultModel(res.defaultModel);
           setStep("menu");
-          await Promise.all([refreshInstallMode(), refreshGatewayPending()]);
+          await Promise.all([
+            refreshInstallMode(),
+            refreshGatewayPending(),
+            refreshMenuGatewayStatus(),
+          ]);
         } else {
           setError(res.error || "Token đã lưu không hợp lệ. Vui lòng nhập lại.");
           setStep("token");
@@ -235,7 +254,11 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         setStep("menu");
       }
 
-      await Promise.all([refreshInstallMode(), refreshGatewayPending()]);
+      await Promise.all([
+        refreshInstallMode(),
+        refreshGatewayPending(),
+        refreshMenuGatewayStatus(),
+      ]);
     } else {
       setError(res.error || "Token không hợp lệ");
     }
@@ -587,6 +610,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       setStep("done");
       if (!allOk) setError("Một số app chưa cài gateway thành công");
       await refreshGatewayPending();
+      await refreshMenuGatewayStatus();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
       setStep("gateway-plan");
@@ -681,6 +705,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       setStep("done");
       if (!allOk) setError("Một số app chưa cài gateway thành công");
       await refreshGatewayPending();
+      await refreshMenuGatewayStatus();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
       setStep("doctor");
@@ -1075,6 +1100,8 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           apiKey={apiKey}
           installMode={installModeLabel}
           gatewayPending={gatewayPending}
+          pendingGatewayCount={menuPendingGatewayCount}
+          gatewayReady={menuGatewayReady}
           onSelect={handleMenuSelect}
         />
       )}
