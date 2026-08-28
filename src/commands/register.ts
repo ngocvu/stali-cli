@@ -48,10 +48,7 @@ async function runPluginsList(opts: { init?: boolean }) {
   process.exit(0);
 }
 
-export function registerCommands(
-  program: Command,
-  opts?: { attachWizardAction?: boolean; includeWizardSubcommand?: boolean }
-): void {
+export function registerCommands(program: Command): void {
   program
     .name("stali")
     .description(
@@ -69,39 +66,20 @@ export function registerCommands(
       if (lang) setLocale(resolveLocale(String(lang)));
     });
 
-  if (opts?.attachWizardAction !== false) {
-    program.action(async (options) => {
-      if (options.reset || options.logout) {
-        await resetStaliConfig();
-        console.log(chalk.green("✅ Đã xóa token đã lưu trong ~/.stali/config.json thành công."));
-        process.exit(0);
-      }
-
-      if (options.models) {
-        const { displayModelsTable } = await import("./models");
-        await displayModelsTable(options.key);
-        process.exit(0);
-      }
-
-      const { launchWizard } = await import("./wizard-launcher");
-      await launchWizard(options.key);
-    });
-  } else {
-    program.action(async (options) => {
-      if (options.reset || options.logout) {
-        await resetStaliConfig();
-        console.log(chalk.green("✅ Đã xóa token đã lưu trong ~/.stali/config.json thành công."));
-        process.exit(0);
-      }
-      if (options.models) {
-        const { displayModelsTable } = await import("./models");
-        await displayModelsTable(options.key);
-        process.exit(0);
-      }
-      program.outputHelp();
-      process.exit(1);
-    });
-  }
+  program.action(async (options: { reset?: boolean; logout?: boolean; models?: boolean; key?: string }) => {
+    if (options.reset || options.logout) {
+      await resetStaliConfig();
+      console.log(chalk.green("✅ Đã xóa token đã lưu trong ~/.stali/config.json thành công."));
+      process.exit(0);
+    }
+    if (options.models) {
+      const { displayModelsTable } = await import("./models");
+      await displayModelsTable(options.key);
+      process.exit(0);
+    }
+    program.outputHelp();
+    process.exit(1);
+  });
 
   program
     .command("ls")
@@ -147,18 +125,6 @@ export function registerCommands(
       console.log(result.ok ? chalk.green(`\n${t("check_ok")}\n`) : chalk.red(`\n${t("check_fail")}\n`));
       process.exit(result.ok ? 0 : 1);
     });
-
-  if (opts?.includeWizardSubcommand !== false) {
-    program
-      .command("wizard")
-      .description("Mở wizard tương tác Ink (tương đương chạy stali không tham số)")
-      .option("-k, --key <token>", "Stali API key khởi tạo wizard")
-      .action(async (wizOpts: { key?: string }) => {
-        const globals = program.opts<{ key?: string }>();
-        const { launchWizard } = await import("./wizard-launcher");
-        await launchWizard(wizOpts.key || globals.key);
-      });
-  }
 
   program
     .command("init")
@@ -530,6 +496,7 @@ export function registerCommands(
     .option("--dry-run", "Với --fix: chỉ liệt kê, không ghi file")
     .option("--force", "Với --fix: cấu hình lại cả tool đã OK")
     .option("--tools <list>", "Với --fix: chỉ các tool (cách nhau bởi dấu phẩy)")
+    .option("--ids <list>", "Với --plugins-only --fix: chỉ các plugin id (cách nhau bởi dấu phẩy)")
     .option("-m, --model <model>", "Với --fix: model áp dụng")
     .option("--plugins-only", "Chỉ kiểm tra plugin (~/.stali/plugins.json)")
     .option("--tools-only", "Chỉ kiểm tra 13 tool (bỏ qua plugin)")
@@ -542,6 +509,7 @@ export function registerCommands(
       dryRun?: boolean;
       force?: boolean;
       tools?: string;
+      ids?: string;
       model?: string;
       watch?: boolean;
       notify?: boolean;
@@ -571,6 +539,7 @@ export function registerCommands(
         dryRun: opts.dryRun,
         force: opts.force,
         tools: opts.tools,
+        ids: opts.ids,
         model: opts.model,
       }, view);
       process.exit(code);
@@ -704,7 +673,24 @@ export function registerCommands(
     .description("Shell completion: in script hoặc cài vào ~/.bashrc / fish / zsh")
     .argument("[shell]", "bash | zsh | fish | auto (mặc định khi --install)")
     .option("--install", "Ghi completion vào shell config (idempotent)")
-    .action(async (shell: string | undefined, cmdOpts: { install?: boolean }) => {
+    .option("--uninstall", "Gỡ completion đã cài (idempotent)")
+    .action(async (shell: string | undefined, cmdOpts: { install?: boolean; uninstall?: boolean }) => {
+      if (cmdOpts.install && cmdOpts.uninstall) {
+        console.error(chalk.red("❌ --install và --uninstall không dùng cùng lúc"));
+        process.exit(1);
+      }
+      if (cmdOpts.uninstall) {
+        const { uninstallCompletion } = await import("../services/completion-install");
+        try {
+          const result = await uninstallCompletion(shell || "auto");
+          console.log(`✅ ${result.message}`);
+          console.log(`   ${result.shell} → ${result.path} (${result.action})`);
+          process.exit(0);
+        } catch (err) {
+          console.error(chalk.red(`❌ ${err instanceof Error ? err.message : String(err)}`));
+          process.exit(1);
+        }
+      }
       if (cmdOpts.install) {
         const { installCompletion } = await import("../services/completion-install");
         try {

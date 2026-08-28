@@ -36,6 +36,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
+- 📦 **v3.6**: dual dist + checksums, completion uninstall, doctor --ids/--watch scoped
 - 📦 **v3.5**: `doctor --fix` scoped, `completion install`, wizard bundle tách subcommand
 - 📦 **v3.4**: zsh completion đầy đủ, CI docs, e2e check scope/conflict
 - 📦 **v3.3**: `check --tools-only/--plugins-only`, `stali wizard`, multi-entry build
@@ -53,6 +54,8 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 ```bash
 # Một lệnh (khuyến nghị trên api.stali.vn)
 curl -fsSL https://api.stali.vn/install/stali-cli.sh | bash
+# Pin version:
+STALI_CLI_VERSION=3.6.0 curl -fsSL https://api.stali.vn/install/stali-cli.sh | bash
 
 # Hoặc Bun/npm (cần build dist/)
 bun install -g stali-cli
@@ -110,8 +113,9 @@ stali check --plugins-only        # Chỉ plugin
 stali wizard                      # Wizard Ink (hoặc: stali)
 stali completion install          # Cài completion (auto từ $SHELL)
 stali completion install fish     # Cài fish completion
+stali completion --uninstall fish # Gỡ completion
 stali doctor --tools-only --fix   # Sửa chỉ 13 tool
-stali doctor --plugins-only --fix # Sửa chỉ plugin
+stali doctor --plugins-only --fix --ids my-agent  # Sửa plugin cụ thể
 stali doctor --watch --notify -i 10 # Theo dõi + cảnh báo desktop
 stali update --check              # Có bản mới?
 stali uninstall --purge-path    # Windows: gỡ khỏi User PATH

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import os from "os";
 import path from "path";
 import fs from "fs/promises";
-import { detectShellFromEnv, installCompletion, normalizeCompletionShell } from "./completion-install";
+import { detectShellFromEnv, installCompletion, uninstallCompletion, normalizeCompletionShell } from "./completion-install";
 
 describe("completion-install", () => {
   test("normalizeCompletionShell", () => {
@@ -29,5 +29,20 @@ describe("completion-install", () => {
     expect(detectShellFromEnv()).toBe("zsh");
     if (prev === undefined) delete process.env.SHELL;
     else process.env.SHELL = prev;
+  });
+
+  test("uninstall fish (isolated dir)", async () => {
+    const tmp = path.join(os.tmpdir(), `stali-comp-un-${Date.now()}`);
+    await installCompletion("fish", tmp);
+    const removed = await uninstallCompletion("fish", tmp);
+    expect(removed.action).toBe("removed");
+    const target = path.join(tmp, ".config", "fish", "completions", "stali.fish");
+    let stillExists = true;
+    try {
+      await fs.access(target);
+    } catch {
+      stillExists = false;
+    }
+    expect(stillExists).toBe(false);
   });
 });

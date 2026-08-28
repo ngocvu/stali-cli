@@ -174,6 +174,7 @@ export async function runDoctor(
     force?: boolean;
     tools?: string;
     model?: string;
+    ids?: string;
   },
   view?: DoctorViewOptions
 ): Promise<number> {
@@ -213,12 +214,16 @@ export async function runDoctor(
     };
 
     if (view?.pluginsOnly) {
+      const pluginIds = fixOpts.ids
+        ? fixOpts.ids.split(",").map((id) => id.trim()).filter(Boolean)
+        : undefined;
       const { items, allOk } = await runPluginsDoctorFix({
         apiKey,
         model: fixOpts.model,
         baseUrl: cfg?.baseUrl,
         dryRun: fixOpts.dryRun,
         force: fixOpts.force,
+        pluginIds,
       });
       printFixHeader("plugins");
       printItems(items);
@@ -245,12 +250,16 @@ export async function runDoctor(
 
     const pluginReport = await runPluginsDoctor();
     if (pluginReport.plugins.length > 0) {
+      const pluginIds = fixOpts.ids
+        ? fixOpts.ids.split(",").map((id) => id.trim()).filter(Boolean)
+        : undefined;
       const { items: pluginItems, allOk: pluginsOk } = await runPluginsDoctorFix({
         apiKey,
         model: fixOpts.model,
         baseUrl: cfg?.baseUrl,
         dryRun: fixOpts.dryRun,
         force: fixOpts.force,
+        pluginIds,
       });
       printFixHeader("plugins");
       printItems(pluginItems);
@@ -303,6 +312,39 @@ export function combinedDoctorHash(payload: DoctorJsonOutput): string {
   return `${toolHash}#${pluginHash}`;
 }
 
+/** Hash theo phạm vi watch (--tools-only / --plugins-only). */
+export function scopedDoctorHash(
+  payload: DoctorJsonOutput,
+  view?: DoctorViewOptions
+): string {
+  if (view?.pluginsOnly) {
+    return payload.plugins
+      .map(
+        (p) =>
+          `${p.pluginId}:${p.configuredForStali ? "1" : "0"}:${p.model || ""}:${p.endpoint || ""}`
+      )
+      .join("|");
+  }
+  if (view?.toolsOnly) {
+    return doctorSnapshotHash(payload.tools);
+  }
+  return combinedDoctorHash(payload);
+}
+
+function scopedNotifySummary(payload: DoctorJsonOutput, view?: DoctorViewOptions): string {
+  if (view?.pluginsOnly) {
+    const pOk = payload.plugins.filter((p) => p.configuredForStali).length;
+    return `${pOk}/${payload.plugins.length} plugins`;
+  }
+  if (view?.toolsOnly) {
+    const tOk = payload.tools.filter((s) => s.configuredForStali).length;
+    return `${tOk}/${payload.tools.length} tools`;
+  }
+  const configured = payload.tools.filter((s) => s.configuredForStali).length;
+  const pConfigured = payload.plugins.filter((p) => p.configuredForStali).length;
+  return `${configured}/${payload.tools.length} tools, ${pConfigured}/${payload.plugins.length} plugins`;
+}
+
 export async function runDoctorWatch(
   intervalSec: number,
   jsonOut?: boolean,
@@ -329,15 +371,10 @@ export async function runDoctorWatch(
     }
     const payload = await buildDoctorJsonOutput(view);
     const statuses = payload.tools;
-    const hash = combinedDoctorHash(payload);
+    const hash = scopedDoctorHash(payload, view);
     if (notify && prevHash && hash !== prevHash) {
-      const configured = statuses.filter((s) => s.configuredForStali).length;
-      const pConfigured = payload.plugins.filter((p) => p.configuredForStali).length;
       console.log(chalk.yellow(`\n${t("doctor_changed")}\n`));
-      notifyChange(
-        "stali-cli doctor",
-        `${configured}/${statuses.length} tools, ${pConfigured}/${payload.plugins.length} plugins`
-      );
+      notifyChange("stali-cli doctor", scopedNotifySummary(payload, view));
     }
     prevHash = hash;
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.6.0] — 2026-08-28
+
+### Added
+- **Dual dist** — `dist/subcommand/` + `dist/wizard/` + `dist/checksums.json` (SHA256 manifest)
+- **`stali completion --uninstall`** — gỡ completion bash/fish/zsh an toàn
+- **`doctor --plugins-only --fix --ids`** — filter plugin khi sửa
+- **`scripts/install.sh`** — pin `STALI_CLI_VERSION`, verify `STALI_CLI_SHA256` + checksums.json
+
+### Changed
+- **`doctor --watch` scoped** — hash/notify chỉ theo phạm vi tools/plugins
+- **Build** — router `index.js` tách; giới hạn size riêng subcommand vs wizard
+
 ## [3.5.0] — 2026-08-28
 
 ### Added

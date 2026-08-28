@@ -4,6 +4,7 @@ import path from "path";
 import {
   buildDoctorJsonOutput,
   combinedDoctorHash,
+  scopedDoctorHash,
   toLegacyPluginsDoctorJson,
 } from "../commands/doctor";
 
@@ -52,6 +53,23 @@ describe("doctor unified JSON", () => {
       expect(payload.plugins).toHaveLength(0);
       expect(payload.meta.pluginsTotal).toBe(0);
       expect(payload.tools.length).toBeGreaterThan(0);
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
+    }
+  });
+
+  test("scopedDoctorHash tools-only không phụ thuộc plugins", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-hash-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    try {
+      const full = await buildDoctorJsonOutput();
+      const toolsOnly = await buildDoctorJsonOutput({ toolsOnly: true });
+      const h1 = scopedDoctorHash(full, { toolsOnly: true });
+      const h2 = scopedDoctorHash(toolsOnly, { toolsOnly: true });
+      expect(h1).toBe(h2);
+      expect(scopedDoctorHash(full, { pluginsOnly: true })).not.toBe(h1);
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;

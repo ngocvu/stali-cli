@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
 import { registerCommands } from "./commands/register";
+import { attachWizardDefaultAction } from "./commands/wizard-register";
 
 /** `stali wizard` được router tới wizard-cli — bỏ token thừa trước khi parse. */
 function normalizeWizardArgv(argv: string[]): string[] {
@@ -13,5 +14,6 @@ function normalizeWizardArgv(argv: string[]): string[] {
 }
 
 const program = new Command();
-registerCommands(program, { attachWizardAction: true, includeWizardSubcommand: false });
+registerCommands(program);
+attachWizardDefaultAction(program);
 program.parse(normalizeWizardArgv(process.argv));

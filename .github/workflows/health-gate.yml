@@ -23,10 +23,11 @@ jobs:
 
       - name: Subcommand bundle must not reference wizard
         run: |
-          if rg -q 'Wizard-|wizard-launcher|/ui/Wizard' dist/subcommand-cli.js; then
+          if rg -q 'Wizard-|wizard-launcher|/ui/Wizard' dist/subcommand/subcommand-cli.js; then
             echo "::error::subcommand-cli still bundles wizard graph"
             exit 1
           fi
+          test -f dist/checksums.json
 
   live-gate:
     runs-on: ubuntu-latest

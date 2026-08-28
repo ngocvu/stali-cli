@@ -26,7 +26,7 @@ export function normalizeCompletionShell(input?: string): CompletionShell | null
 export interface CompletionInstallResult {
   shell: CompletionShell;
   path: string;
-  action: "created" | "updated" | "unchanged";
+  action: "created" | "updated" | "unchanged" | "removed" | "absent";
   message: string;
 }
 
@@ -177,5 +177,99 @@ export async function installCompletion(
       return installFish(script, home);
     case "zsh":
       return installZsh(script, home);
+  }
+}
+
+async function uninstallBash(home: string): Promise<CompletionInstallResult> {
+  const rcPath = path.join(home, ".bashrc");
+  let existing = "";
+  try {
+    existing = await fs.readFile(rcPath, "utf8");
+  } catch {
+    return {
+      shell: "bash",
+      path: rcPath,
+      action: "absent",
+      message: "Không có ~/.bashrc — không cần gỡ",
+    };
+  }
+  if (!existing.includes(MARKER_START)) {
+    return {
+      shell: "bash",
+      path: rcPath,
+      action: "absent",
+      message: "Không tìm thấy block stali-cli trong ~/.bashrc",
+    };
+  }
+  const updated = existing
+    .replace(new RegExp(`\\n?${MARKER_START}[\\s\\S]*?${MARKER_END}\\n?`), "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd();
+  const content = updated ? `${updated}\n` : "";
+  await fs.writeFile(rcPath, content, "utf8");
+  return {
+    shell: "bash",
+    path: rcPath,
+    action: "removed",
+    message: "Đã gỡ block completion khỏi ~/.bashrc",
+  };
+}
+
+async function uninstallFish(home: string): Promise<CompletionInstallResult> {
+  const target = path.join(home, ".config", "fish", "completions", "stali.fish");
+  try {
+    await fs.unlink(target);
+    return {
+      shell: "fish",
+      path: target,
+      action: "removed",
+      message: "Đã xóa ~/.config/fish/completions/stali.fish",
+    };
+  } catch {
+    return {
+      shell: "fish",
+      path: target,
+      action: "absent",
+      message: "Fish completion chưa được cài",
+    };
+  }
+}
+
+async function uninstallZsh(home: string): Promise<CompletionInstallResult> {
+  const target = path.join(home, ".config", "zsh", "completions", "_stali");
+  try {
+    await fs.unlink(target);
+    return {
+      shell: "zsh",
+      path: target,
+      action: "removed",
+      message: "Đã xóa ~/.config/zsh/completions/_stali (giữ nguyên ~/.zshrc)",
+    };
+  } catch {
+    return {
+      shell: "zsh",
+      path: target,
+      action: "absent",
+      message: "Zsh completion chưa được cài",
+    };
+  }
+}
+
+export async function uninstallCompletion(
+  shellInput?: string,
+  homeDir?: string
+): Promise<CompletionInstallResult> {
+  const home = homeDir || os.homedir();
+  const shell = normalizeCompletionShell(shellInput);
+  if (!shell) {
+    throw new Error("Shell không hỗ trợ — dùng: bash, zsh, fish hoặc auto");
+  }
+  switch (shell) {
+    case "bash":
+      return uninstallBash(home);
+    case "fish":
+      return uninstallFish(home);
+    case "zsh":
+      return uninstallZsh(home);
   }
 }

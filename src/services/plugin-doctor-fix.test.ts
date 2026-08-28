@@ -54,4 +54,34 @@ describe("runPluginsDoctorFix", () => {
       await fs.rm(home, { recursive: true, force: true }).catch(() => {});
     }
   });
+
+  test("--ids filter plugin", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-plug-ids-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    try {
+      await fs.mkdir(home, { recursive: true });
+      await fs.writeFile(
+        path.join(home, "plugins.json"),
+        JSON.stringify({
+          customTools: [
+            { id: "a", name: "A", protocol: "openai", configFile: ".a/c.json" },
+            { id: "b", name: "B", protocol: "openai", configFile: ".b/c.json" },
+          ],
+        }),
+        "utf8"
+      );
+      const r = await runPluginsDoctorFix({
+        apiKey: "sk-stali-abcdefghijklmnopqrstuvwxyz",
+        dryRun: true,
+        pluginIds: ["b"],
+      });
+      expect(r.items).toHaveLength(1);
+      expect(r.items[0]?.pluginId).toBe("b");
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
+      await fs.rm(home, { recursive: true, force: true }).catch(() => {});
+    }
+  });
 });

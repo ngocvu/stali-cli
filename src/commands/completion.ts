@@ -51,7 +51,7 @@ const CONFIGURE_ALL_FLAGS = [
   "--no-plugins",
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
-const DOCTOR_FLAGS = ["--json", "--plugins-only", "--tools-only", "--fix", "--dry-run", "--force", "--tools", "--watch", "--notify", "-i", "--interval"];
+const DOCTOR_FLAGS = ["--json", "--plugins-only", "--tools-only", "--fix", "--dry-run", "--force", "--tools", "--ids", "--watch", "--notify", "-i", "--interval"];
 const CONFIG_SET_FLAGS = ["base-url", "--reset"];
 const PLUGINS_SUB = ["list", "sync", "--init"];
 const PLUGINS_SYNC_FLAGS = ["-k", "--key", "-m", "--model", "--dry-run", "--ids"];
@@ -279,6 +279,7 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from plugins' -l init",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from completion' -l install -d 'Cài completion vào shell config'",
+    "complete -c stali -n '__fish_seen_subcommand_from completion' -l uninstall -d 'Gỡ completion đã cài'",
     "complete -c stali -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish auto'",
   ];
   return lines.join("\n") + "\n";
