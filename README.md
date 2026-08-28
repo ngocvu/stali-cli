@@ -36,6 +36,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
+- 📦 **v3.8**: wizard-only chunks, completion install --all, doctor watch exit code, GitHub Release tags
 - 📦 **v3.7**: shared runtime dedupe, completion doctor, update --channel, bin/stali wrapper
 - 📦 **v3.6**: dual dist + checksums, completion uninstall, doctor --ids/--watch scoped
 - 📦 **v3.5**: `doctor --fix` scoped, `completion install`, wizard bundle tách subcommand
@@ -113,6 +114,7 @@ stali check --tools-only --json   # Chỉ tools
 stali check --plugins-only        # Chỉ plugin
 stali wizard                      # Wizard Ink (hoặc: stali)
 stali completion install          # Cài completion (auto từ $SHELL)
+stali completion install --all    # Cài bash + fish + zsh
 stali completion install fish     # Cài fish completion
 stali completion --doctor --json  # Kiểm tra completion đã cài
 stali completion --uninstall fish # Gỡ completion
@@ -120,7 +122,7 @@ stali update --channel beta --check
 stali doctor --tools-only --watch --json  # NDJSON stream
 stali doctor --tools-only --fix   # Sửa chỉ 13 tool
 stali doctor --plugins-only --fix --ids my-agent  # Sửa plugin cụ thể
-stali doctor --watch --notify -i 10 # Theo dõi + cảnh báo desktop
+stali doctor --watch --notify -i 10 # Theo dõi + cảnh báo desktop (exit 1 nếu configured giảm)
 stali update --check              # Có bản mới?
 stali uninstall --purge-path    # Windows: gỡ khỏi User PATH
 stali restore -t claude  # Khôi phục backup gần nhất

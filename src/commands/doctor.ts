@@ -331,7 +331,7 @@ export function scopedDoctorHash(
   return combinedDoctorHash(payload);
 }
 
-function scopedNotifySummary(payload: DoctorJsonOutput, view?: DoctorViewOptions): string {
+export function scopedNotifySummary(payload: DoctorJsonOutput, view?: DoctorViewOptions): string {
   if (view?.pluginsOnly) {
     const pOk = payload.plugins.filter((p) => p.configuredForStali).length;
     return `${pOk}/${payload.plugins.length} plugins`;
@@ -345,6 +345,23 @@ function scopedNotifySummary(payload: DoctorJsonOutput, view?: DoctorViewOptions
   return `${configured}/${payload.tools.length} tools, ${pConfigured}/${payload.plugins.length} plugins`;
 }
 
+/** Số tool/plugin đã trỏ Stali (theo scope). */
+export function configuredScore(
+  payload: DoctorJsonOutput,
+  view?: DoctorViewOptions
+): number {
+  if (view?.pluginsOnly) {
+    return payload.plugins.filter((p) => p.configuredForStali).length;
+  }
+  if (view?.toolsOnly) {
+    return payload.tools.filter((s) => s.configuredForStali).length;
+  }
+  return (
+    payload.tools.filter((s) => s.configuredForStali).length +
+    payload.plugins.filter((p) => p.configuredForStali).length
+  );
+}
+
 export async function runDoctorWatch(
   intervalSec: number,
   jsonOut?: boolean,
@@ -354,11 +371,17 @@ export async function runDoctorWatch(
   const sec = Math.max(3, intervalSec);
   let running = true;
   let prevHash = "";
+  let peakScore = 0;
+  let degraded = false;
   const stop = () => {
     running = false;
   };
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
+
+  const finish = (code: number) => {
+    process.exit(code);
+  };
 
   while (running) {
     if (!jsonOut) {
@@ -372,6 +395,23 @@ export async function runDoctorWatch(
     const payload = await buildDoctorJsonOutput(view);
     const statuses = payload.tools;
     const hash = scopedDoctorHash(payload, view);
+    const score = configuredScore(payload, view);
+    if (score > peakScore) peakScore = score;
+    else if (score < peakScore) {
+      degraded = true;
+      if (jsonOut) {
+        console.log(
+          JSON.stringify({
+            ts: new Date().toISOString(),
+            event: "doctor.degraded",
+            hash,
+            scope: view?.pluginsOnly ? "plugins" : view?.toolsOnly ? "tools" : "full",
+            score,
+            peakScore,
+          })
+        );
+      }
+    }
     if (notify && prevHash && hash !== prevHash) {
       console.log(chalk.yellow(`\n${t("doctor_changed")}\n`));
       notifyChange("stali-cli doctor", scopedNotifySummary(payload, view));
@@ -415,5 +455,5 @@ export async function runDoctorWatch(
     if (!running) break;
     await new Promise((r) => setTimeout(r, sec * 1000));
   }
-  process.exit(0);
+  finish(degraded ? 1 : 0);
 }

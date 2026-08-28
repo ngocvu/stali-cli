@@ -4,6 +4,7 @@ import path from "path";
 import {
   buildDoctorJsonOutput,
   combinedDoctorHash,
+  configuredScore,
   scopedDoctorHash,
   toLegacyPluginsDoctorJson,
 } from "../commands/doctor";
@@ -70,6 +71,27 @@ describe("doctor unified JSON", () => {
       const h2 = scopedDoctorHash(toolsOnly, { toolsOnly: true });
       expect(h1).toBe(h2);
       expect(scopedDoctorHash(full, { pluginsOnly: true })).not.toBe(h1);
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
+    }
+  });
+
+  test("configuredScore theo scope tools/plugins/full", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-score-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    try {
+      const payload = await buildDoctorJsonOutput();
+      const full = configuredScore(payload);
+      const tools = configuredScore(payload, { toolsOnly: true });
+      const plugins = configuredScore(payload, { pluginsOnly: true });
+      expect(full).toBe(
+        payload.tools.filter((s) => s.configuredForStali).length +
+          payload.plugins.filter((p) => p.configuredForStali).length
+      );
+      expect(tools).toBe(payload.tools.filter((s) => s.configuredForStali).length);
+      expect(plugins).toBe(payload.plugins.filter((p) => p.configuredForStali).length);
     } finally {
       if (prev === undefined) delete process.env.STALI_HOME;
       else process.env.STALI_HOME = prev;

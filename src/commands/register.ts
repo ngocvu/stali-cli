@@ -17,7 +17,7 @@ import { renderAppGuide, listGuideIds } from "../constants/guides";
 import { STALI_DOCS_URL } from "../constants/api";
 import { runHealthCheck } from "../services/health-check";
 import { fetchLatestVersion } from "../services/version-check";
-import { resolveUpdateChannel } from "../services/update-channel";
+import { resolveUpdateChannelResolved } from "../services/update-channel";
 import { maskToken } from "../utils/token";
 import { getToolById, resolveToolId } from "../utils/tool-utils";
 import { VERSION } from "../version";
@@ -552,11 +552,12 @@ export function registerCommands(program: Command): void {
     .option("--check", "Chỉ kiểm tra phiên bản mới (không cập nhật)")
     .option("--channel <name>", "Kênh cập nhật: stable | beta", "stable")
     .action(async (opts: { check?: boolean; channel?: string }) => {
-      const channelCfg = resolveUpdateChannel(opts.channel);
+      const channelCfg = await resolveUpdateChannelResolved(opts.channel);
       if (opts.check) {
         const ver = await fetchLatestVersion(channelCfg.versionUrl);
         console.log(chalk.bold.cyan("\n⬆️  STALI CLI VERSION CHECK\n"));
-        console.log(`Kênh:      ${chalk.white(channelCfg.label)} (${channelCfg.branch})`);
+        const refLabel = channelCfg.releaseTag || channelCfg.branch;
+        console.log(`Kênh:      ${chalk.white(channelCfg.label)} (${refLabel})`);
         console.log(`Hiện tại: ${chalk.white(ver.current)}`);
         console.log(`Mới nhất:  ${chalk.white(ver.latest)}`);
         if (ver.updateAvailable) {
@@ -677,10 +678,11 @@ export function registerCommands(program: Command): void {
     .description("Shell completion: in script hoặc cài vào ~/.bashrc / fish / zsh")
     .argument("[shell]", "bash | zsh | fish | auto (mặc định khi --install)")
     .option("--install", "Ghi completion vào shell config (idempotent)")
+    .option("--all", "Cài completion cho bash + fish + zsh (với --install)")
     .option("--uninstall", "Gỡ completion đã cài (idempotent)")
     .option("--doctor", "Kiểm tra completion đã cài (bash/fish/zsh)")
     .option("--json", "JSON output (với --doctor)")
-    .action(async (shell: string | undefined, cmdOpts: { install?: boolean; uninstall?: boolean; doctor?: boolean; json?: boolean }) => {
+    .action(async (shell: string | undefined, cmdOpts: { install?: boolean; all?: boolean; uninstall?: boolean; doctor?: boolean; json?: boolean }) => {
       if (cmdOpts.install && cmdOpts.uninstall) {
         console.error(chalk.red("❌ --install và --uninstall không dùng cùng lúc"));
         process.exit(1);
@@ -716,8 +718,18 @@ export function registerCommands(program: Command): void {
         }
       }
       if (cmdOpts.install) {
-        const { installCompletion } = await import("../services/completion-install");
+        const { installCompletion, installAllCompletions } = await import(
+          "../services/completion-install"
+        );
         try {
+          if (cmdOpts.all || shell?.toLowerCase() === "all") {
+            const results = await installAllCompletions();
+            for (const result of results) {
+              console.log(`✅ ${result.shell}: ${result.message}`);
+              console.log(`   ${result.shell} → ${result.path} (${result.action})`);
+            }
+            process.exit(0);
+          }
           const result = await installCompletion(shell || "auto");
           console.log(`✅ ${result.message}`);
           console.log(`   ${result.shell} → ${result.path} (${result.action})`);

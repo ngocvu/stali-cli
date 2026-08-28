@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.8.0] — 2026-08-28
+
+### Added
+- **Wizard-only chunks** — `dist/runtime/wizard-only/` tách chunk chỉ wizard cần (subcommand footprint nhỏ hơn)
+- **`stali completion install --all`** — cài bash + fish + zsh một lệnh
+- **`doctor --watch` exit code** — exit `1` khi configured count giảm so với peak (CI monitoring)
+- **GitHub Release tag resolve** — `update --channel stable|beta` lấy tag từ Releases API
+- **Standalone binary** — `STALI_BUILD_STANDALONE=1 bun run build` → `dist/stali-standalone`
+
+### Changed
+- `self-update` checkout release tag khi channel resolve ra tag (`vX.Y.Z`)
+- `checksums.json` layout `runtime-shared+wizard-only`, manifest đệ quy `dist/runtime/**`
+
 ## [3.7.0] — 2026-08-28
 
 ### Added

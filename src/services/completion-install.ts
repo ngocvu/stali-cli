@@ -156,6 +156,17 @@ async function installZsh(script: string, home: string): Promise<CompletionInsta
   };
 }
 
+export async function installAllCompletions(
+  homeDir?: string
+): Promise<CompletionInstallResult[]> {
+  const shells: CompletionShell[] = ["bash", "fish", "zsh"];
+  const results: CompletionInstallResult[] = [];
+  for (const shell of shells) {
+    results.push(await installCompletion(shell, homeDir));
+  }
+  return results;
+}
+
 export async function installCompletion(
   shellInput?: string,
   homeDir?: string

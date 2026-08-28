@@ -7,7 +7,7 @@ import {
   getStaliCliInstallDir,
 } from "../constants/paths";
 import { verifyDistChecksums } from "./checksum-verify";
-import { resolveUpdateChannel, type UpdateChannel } from "./update-channel";
+import { resolveUpdateChannelResolved, type UpdateChannel } from "./update-channel";
 
 const DEFAULT_REPO = "https://github.com/ngocvu/stali-cli.git";
 const DEFAULT_BRANCH = "main";
@@ -86,6 +86,30 @@ async function pullGit(installRoot: string, branch: string) {
   }
 }
 
+/** Checkout release tag hoặc pull branch. */
+async function syncGitRef(installRoot: string, ref: string) {
+  const isTag = /^v?\d/.test(ref);
+  if (!isTag) {
+    await pullGit(installRoot, ref);
+    return;
+  }
+  const tag = ref.startsWith("v") ? ref : `v${ref}`;
+  const fetch = spawnSync("git", ["fetch", "origin", "tag", tag, "--force"], {
+    cwd: installRoot,
+    encoding: "utf8",
+  });
+  if (fetch.status !== 0) {
+    throw new Error(fetch.stderr || fetch.stdout || "git fetch tag failed");
+  }
+  const co = spawnSync("git", ["checkout", tag], {
+    cwd: installRoot,
+    encoding: "utf8",
+  });
+  if (co.status !== 0) {
+    throw new Error(co.stderr || co.stdout || "git checkout failed");
+  }
+}
+
 export async function registerStaliShim(installRoot: string): Promise<void> {
   const shellShim = path.join(installRoot, "bin", "stali");
   const staliJs = path.join(installRoot, "bin", "stali.js");
@@ -133,7 +157,7 @@ export async function selfUpdate(options?: {
   skipChecksum?: boolean;
 }): Promise<SelfUpdateResult> {
   const repo = options?.repo || process.env.STALI_CLI_REPO || DEFAULT_REPO;
-  const channelCfg = resolveUpdateChannel(options?.channel);
+  const channelCfg = await resolveUpdateChannelResolved(options?.channel);
   const branch = options?.branch || channelCfg.branch;
   const installRoot = getStaliCliInstallDir();
 
@@ -142,7 +166,7 @@ export async function selfUpdate(options?: {
     const isGitCheckout = hasGit && (await fs.access(path.join(installRoot, ".git")).then(() => true).catch(() => false));
 
     if (isGitCheckout) {
-      await pullGit(installRoot, branch);
+      await syncGitRef(installRoot, branch);
     } else {
       await fetchZipTo(installRoot, repo, branch);
     }
