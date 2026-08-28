@@ -35,6 +35,7 @@ try {
       "--target bun",
       "--splitting",
       "--minify",
+      `--define process.env.NODE_ENV='"production"'`,
       `--define __STALI_VERSION__='"${pkg.version}"'`,
     ].join(" "),
     { cwd: rootDir, stdio: "inherit" }

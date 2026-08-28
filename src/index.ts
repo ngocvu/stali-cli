@@ -1,6 +1,9 @@
-import { Command } from "commander";
-import { registerCommands } from "./commands/register";
+import { resolveCliMode } from "./cli-route";
 
-const program = new Command();
-registerCommands(program);
-program.parse(process.argv);
+const mode = resolveCliMode(process.argv);
+
+if (mode === "wizard") {
+  await import("./wizard-cli");
+} else {
+  await import("./subcommand-cli");
+}

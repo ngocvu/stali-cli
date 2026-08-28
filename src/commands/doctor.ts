@@ -25,6 +25,7 @@ export interface DoctorJsonOutput {
 
 export interface DoctorViewOptions {
   pluginsOnly?: boolean;
+  toolsOnly?: boolean;
 }
 
 export async function buildDoctorJsonOutput(
@@ -49,6 +50,25 @@ export async function buildDoctorJsonOutput(
       },
       tools: [],
       plugins: pluginReport.plugins,
+    };
+  }
+
+  if (opts?.toolsOnly) {
+    const tools = await runDoctorScan({ urls });
+    const toolsConfigured = tools.filter((s) => s.configuredForStali).length;
+    return {
+      meta: {
+        baseUrl: cfg?.baseUrl || urls.openAiBaseUrl,
+        openAiBaseUrl: urls.openAiBaseUrl,
+        anthropicBaseUrl: urls.anthropicBaseUrl,
+        modelsEndpoint: urls.modelsEndpoint,
+        toolsConfigured,
+        toolsTotal: tools.length,
+        pluginsConfigured: 0,
+        pluginsTotal: 0,
+      },
+      tools,
+      plugins: [],
     };
   }
 
@@ -191,9 +211,7 @@ export async function runDoctor(
   const payload = await buildDoctorJsonOutput(view);
 
   if (jsonOut) {
-    const out = view?.pluginsOnly
-      ? toLegacyPluginsDoctorJson(payload)
-      : payload;
+    const out = view?.pluginsOnly ? toLegacyPluginsDoctorJson(payload) : payload;
     console.log(JSON.stringify(out, null, 2));
     return computeDoctorExitCode(payload, view);
   }
@@ -208,6 +226,12 @@ export async function runDoctor(
     printPluginSection(payload.plugins);
     console.log(chalk.gray("\nXem đầy đủ: stali doctor\n"));
     return computeDoctorExitCode(payload, view);
+  }
+
+  if (view?.toolsOnly) {
+    printToolSection(payload.tools, payload.meta.modelsEndpoint);
+    console.log(chalk.gray("\nXem plugins: stali doctor --plugins-only\n"));
+    return 0;
   }
 
   printToolSection(payload.tools, payload.meta.modelsEndpoint);
@@ -272,6 +296,10 @@ export async function runDoctorWatch(
       const pOk = payload.plugins.filter((p) => p.configuredForStali).length;
       console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — PLUGINS\n"));
       console.log(chalk.magenta(`🔌 ${pOk}/${payload.plugins.length} plugins\n`));
+    } else if (view?.toolsOnly) {
+      const toolsOk = statuses.filter((s) => s.configuredForStali).length;
+      console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — TOOLS\n"));
+      console.log(chalk.green(`✅ ${toolsOk}/${statuses.length} tools\n`));
     } else {
       const configured = statuses.filter((s) => s.configuredForStali);
       console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR\n"));

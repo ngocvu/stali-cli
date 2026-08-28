@@ -48,7 +48,10 @@ async function runPluginsList(opts: { init?: boolean }) {
   process.exit(0);
 }
 
-export function registerCommands(program: Command): void {
+export function registerCommands(
+  program: Command,
+  opts?: { attachWizardAction?: boolean }
+): void {
   program
     .name("stali")
     .description(
@@ -64,8 +67,10 @@ export function registerCommands(program: Command): void {
       const globals = actionCommand.optsWithGlobals?.() ?? thisCommand.opts();
       const lang = globals.lang || process.env.STALI_LANG;
       if (lang) setLocale(resolveLocale(String(lang)));
-    })
-    .action(async (options) => {
+    });
+
+  if (opts?.attachWizardAction !== false) {
+    program.action(async (options) => {
       if (options.reset || options.logout) {
         await resetStaliConfig();
         console.log(chalk.green("✅ Đã xóa token đã lưu trong ~/.stali/config.json thành công."));
@@ -81,6 +86,22 @@ export function registerCommands(program: Command): void {
       const { launchWizard } = await import("./wizard-launcher");
       await launchWizard(options.key);
     });
+  } else {
+    program.action(async (options) => {
+      if (options.reset || options.logout) {
+        await resetStaliConfig();
+        console.log(chalk.green("✅ Đã xóa token đã lưu trong ~/.stali/config.json thành công."));
+        process.exit(0);
+      }
+      if (options.models) {
+        const { displayModelsTable } = await import("./models");
+        await displayModelsTable(options.key);
+        process.exit(0);
+      }
+      program.outputHelp();
+      process.exit(1);
+    });
+  }
 
   program
     .command("ls")
@@ -199,18 +220,13 @@ export function registerCommands(program: Command): void {
 
   pluginsCmd
     .command("doctor")
-    .description("(đã gỡ v3.1) dùng: stali doctor --plugins-only")
-    .option("--json", "Chuyển tiếp sang stali doctor --plugins-only --json")
-    .action(async (opts: { json?: boolean }) => {
+    .description("(đã gỡ v3.2) dùng: stali doctor --plugins-only")
+    .option("--json", "deprecated")
+    .action(async () => {
       console.error(
-        chalk.red("\n✖ plugins doctor đã gỡ trong v3.1\n") +
-          chalk.cyan("  → stali doctor --plugins-only" + (opts.json ? " --json" : "") + "\n")
+        chalk.red("\n✖ plugins doctor đã gỡ trong v3.2\n") +
+          chalk.cyan("  → stali doctor --plugins-only [--json]\n")
       );
-      if (opts.json) {
-        const { runDoctor } = await import("./doctor");
-        const code = await runDoctor(true, undefined, { pluginsOnly: true });
-        process.exit(code);
-      }
       process.exit(2);
     });
 
@@ -489,6 +505,7 @@ export function registerCommands(program: Command): void {
     .option("--tools <list>", "Với --fix: chỉ các tool (cách nhau bởi dấu phẩy)")
     .option("-m, --model <model>", "Với --fix: model áp dụng")
     .option("--plugins-only", "Chỉ kiểm tra plugin (~/.stali/plugins.json)")
+    .option("--tools-only", "Chỉ kiểm tra 13 tool (bỏ qua plugin)")
     .option("--watch", "Theo dõi liên tục (Ctrl+C thoát)")
     .option("--notify", "Với --watch: chuông + desktop notify khi thay đổi")
     .option("-i, --interval <seconds>", "Với --watch: chu kỳ giây (mặc định 10)", "10")
@@ -503,13 +520,21 @@ export function registerCommands(program: Command): void {
       notify?: boolean;
       interval?: string;
       pluginsOnly?: boolean;
+      toolsOnly?: boolean;
     }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = await resolveApiKey(globals.key);
       const { runDoctor, runDoctorWatch } = await import("./doctor");
-      const view = { pluginsOnly: opts.pluginsOnly };
-      if (opts.fix && opts.pluginsOnly) {
-        console.error(chalk.red("❌ --plugins-only không dùng cùng --fix"));
+      if (opts.pluginsOnly && opts.toolsOnly) {
+        console.error(chalk.red("❌ --plugins-only và --tools-only không dùng cùng lúc"));
+        process.exit(1);
+      }
+      const view = {
+        pluginsOnly: opts.pluginsOnly,
+        toolsOnly: opts.toolsOnly,
+      };
+      if (opts.fix && (opts.pluginsOnly || opts.toolsOnly)) {
+        console.error(chalk.red("❌ --plugins-only/--tools-only không dùng cùng --fix"));
         process.exit(1);
       }
       if (opts.watch && !opts.fix) {

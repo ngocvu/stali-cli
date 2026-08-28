@@ -49,7 +49,7 @@ const CONFIGURE_ALL_FLAGS = [
   "--no-plugins",
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
-const DOCTOR_FLAGS = ["--json", "--plugins-only", "--fix", "--dry-run", "--force", "--tools", "--watch", "--notify", "-i", "--interval"];
+const DOCTOR_FLAGS = ["--json", "--plugins-only", "--tools-only", "--fix", "--dry-run", "--force", "--tools", "--watch", "--notify", "-i", "--interval"];
 const CONFIG_SET_FLAGS = ["base-url", "--reset"];
 const PLUGINS_SUB = ["list", "sync", "--init"];
 const PLUGINS_SYNC_FLAGS = ["-k", "--key", "-m", "--model", "--dry-run", "--ids"];
@@ -237,6 +237,7 @@ function fishCompletion(): string {
     "",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l json",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l plugins-only",
+    "complete -c stali -n '__fish_seen_subcommand_from doctor' -l tools-only",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l watch",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l notify",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -s i -l interval",

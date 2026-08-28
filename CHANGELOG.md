@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.2.0] — 2026-08-28
+
+### Added
+- **`stali doctor --tools-only [--json]`** — chỉ scan 13 tool (bỏ plugin, nhanh hơn)
+- **Dual-entry router** — `index.ts` tách wizard vs subcommand → subcommand không kéo React/Ink vào graph khởi động
+- **`bun run analyze`** — báo cáo kích thước chunk dist
+
+### Breaking
+- **`plugins doctor --json`** — không còn chuyển tiếp; exit 2 (dùng `doctor --plugins-only --json`)
+
+### Changed
+- Build: `NODE_ENV=production` cho React prod bundle
+
 ## [3.1.0] — 2026-08-28
 
 ### Added

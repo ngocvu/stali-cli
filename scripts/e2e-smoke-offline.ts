@@ -49,6 +49,9 @@ async function main() {
   const docPlugins = run(["doctor", "--plugins-only", "--json"]);
   assert("doctor --plugins-only --json exit 0|1", docPlugins.status === 0 || docPlugins.status === 1);
 
+  const removed = run(["plugins", "doctor", "--json"]);
+  assert("plugins doctor removed exit 2", removed.status === 2);
+
   const failed = results.filter((r) => !r.ok);
   for (const r of results) {
     const icon = r.ok ? "✓" : "✗";

@@ -43,6 +43,21 @@ describe("doctor unified JSON", () => {
     }
   });
 
+  test("buildDoctorJsonOutput --tools-only bỏ qua plugins", async () => {
+    const prev = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-doc-tools-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    try {
+      const payload = await buildDoctorJsonOutput({ toolsOnly: true });
+      expect(payload.plugins).toHaveLength(0);
+      expect(payload.meta.pluginsTotal).toBe(0);
+      expect(payload.tools.length).toBeGreaterThan(0);
+    } finally {
+      if (prev === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prev;
+    }
+  });
+
   test("toLegacyPluginsDoctorJson giữ shape plugins doctor cũ", async () => {
     const prev = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-legacy-doc-${Date.now()}`);
