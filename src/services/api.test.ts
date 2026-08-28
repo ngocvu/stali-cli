@@ -41,7 +41,7 @@ describe("validateApiKeyAndFetchModels", () => {
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       requestedUrl = String(input);
       return new Response(JSON.stringify(SAMPLE_MODELS), { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     try {
       const result = await validateApiKeyAndFetchModels(VALID_KEY, {
@@ -66,7 +66,7 @@ describe("validateApiKeyAndFetchModels", () => {
         }),
         { status: 401 }
       );
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     try {
       const result = await validateApiKeyAndFetchModels(VALID_KEY);
@@ -83,7 +83,7 @@ describe("fetchRealtimeModels", () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mock(async () => {
       return new Response(JSON.stringify(SAMPLE_MODELS), { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     try {
       const result = await fetchRealtimeModels(VALID_KEY);
@@ -99,7 +99,7 @@ describe("fetchRealtimeModels", () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mock(async () => {
       return new Response("upstream down", { status: 502, statusText: "Bad Gateway" });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     try {
       const result = await fetchRealtimeModels(VALID_KEY);
@@ -116,7 +116,7 @@ describe("fetchRealtimeModels", () => {
       const err = new Error("The operation was aborted");
       err.name = "TimeoutError";
       throw err;
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     try {
       const result = await fetchRealtimeModels(VALID_KEY);

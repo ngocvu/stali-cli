@@ -2,12 +2,14 @@ import { authLogin } from "./auth-cli";
 import { runConfigureBatch } from "./configure-batch";
 import { runHealthCheck } from "./health-check";
 import { loadStaliConfig } from "./config";
+import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
 
 export interface InitOptions {
   apiKey: string;
   skipConfigure?: boolean;
   baseUrl?: string;
   includePlugins?: boolean;
+  noPlugins?: boolean;
 }
 
 export interface InitResult {
@@ -51,15 +53,19 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   }
 
   if (!opts.skipConfigure) {
+    const includePlugins = await resolveIncludePluginsFromHome({
+      includePlugins: opts.includePlugins,
+      noPlugins: opts.noPlugins,
+    });
     const batch = await runConfigureBatch({
       apiKey: opts.apiKey,
       baseUrl,
       skipAdvanced: true,
       continueOnError: true,
-      includePlugins: opts.includePlugins,
+      includePlugins,
     });
     const okCount = batch.items.filter((i) => i.success).length;
-    const label = opts.includePlugins ? "tools+plugins" : "tools";
+    const label = includePlugins ? "tools+plugins" : "tools";
     steps.push({
       name: "configure-all",
       ok: batch.allOk,

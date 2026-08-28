@@ -27,6 +27,9 @@ export interface PluginsDoctorOutput {
     anthropicBaseUrl: string;
     modelsEndpoint: string;
     pluginCount: number;
+    /** @deprecated Dùng `stali doctor --json` (payload thống nhất tools+plugins) */
+    deprecated?: string;
+    preferCommand?: string;
   };
   plugins: PluginHealthStatus[];
 }
@@ -135,6 +138,8 @@ export async function runPluginsDoctor(): Promise<PluginsDoctorOutput> {
       anthropicBaseUrl: urls.anthropicBaseUrl,
       modelsEndpoint: urls.modelsEndpoint,
       pluginCount: plugins.length,
+      deprecated: "plugins doctor sẽ gỡ trong v3 — dùng `stali doctor --json`",
+      preferCommand: "stali doctor",
     },
     plugins: statuses,
   };

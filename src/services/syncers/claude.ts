@@ -4,6 +4,7 @@ import { SyncerResult } from "../../types";
 import { resolveStaliUrls } from "../../utils/stali-urls";
 import { readJsonFile, writeJsonFile, ensureParentDir } from "../../utils/file";
 import { createTimestampBackup } from "../../utils/backup";
+import { loadStaliConfig } from "../config";
 import type { SyncOptions } from "./sync-options";
 import { resolveSyncUrls } from "./sync-options";
 
@@ -143,8 +144,10 @@ export async function saveClaudeFullSettings(
     const backupPath = await createTimestampBackup(settingsPath);
     const existing = (await readJsonFile(settingsPath)) || {};
 
+    const cfg = await loadStaliConfig();
+    const urls = resolveStaliUrls(cfg?.baseUrl);
     const env = { ...(existing.env || {}) };
-    env.ANTHROPIC_BASE_URL = STALI_ANTHROPIC_BASE_URL;
+    env.ANTHROPIC_BASE_URL = urls.anthropicBaseUrl;
     env.ANTHROPIC_AUTH_TOKEN = apiKey.trim();
     env.API_TIMEOUT_MS = "600000";
 

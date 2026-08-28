@@ -46,6 +46,7 @@ const CONFIGURE_ALL_FLAGS = [
   "--continue-on-error",
   "--skip-advanced",
   "--include-plugins",
+  "--no-plugins",
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
 const DOCTOR_FLAGS = ["--json", "--fix", "--dry-run", "--force", "--tools", "--watch", "--notify", "-i", "--interval"];
@@ -241,6 +242,8 @@ function fishCompletion(): string {
     "",
     "complete -c stali -n '__fish_seen_subcommand_from init' -s k -l key",
     "complete -c stali -n '__fish_seen_subcommand_from init' -l skip-configure",
+    "complete -c stali -n '__fish_seen_subcommand_from init' -l include-plugins",
+    "complete -c stali -n '__fish_seen_subcommand_from init' -l no-plugins",
     "",
     "complete -c stali -n '__fish_seen_subcommand_from plugins' -l init",
     "",

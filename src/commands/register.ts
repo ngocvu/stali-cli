@@ -38,6 +38,7 @@ import { runDoctor, runDoctorWatch } from "./doctor";
 import { runConfigure, runRestore } from "./configure-cmd";
 import { runBackupsList } from "./backups";
 import { runPaths, runToolsList } from "./paths-cmd";
+import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
 
 async function runPluginsList(opts: { init?: boolean }) {
   if (opts.init) {
@@ -126,8 +127,9 @@ export function registerCommands(program: Command): void {
     .description("Khởi tạo nhanh: auth login + configure-all (11 tool) + check")
     .option("-k, --key <token>", "Stali API key")
     .option("--skip-configure", "Chỉ lưu API key, không configure-all")
-    .option("--include-plugins", "Đồng bộ thêm plugin từ ~/.stali/plugins.json")
-    .action(async (opts: { key?: string; skipConfigure?: boolean; includePlugins?: boolean }) => {
+    .option("--include-plugins", "Đồng bộ plugin (mặc định: bật nếu plugins.json có entry)")
+    .option("--no-plugins", "Bỏ qua plugin khi configure-all")
+    .action(async (opts: { key?: string; skipConfigure?: boolean; includePlugins?: boolean; noPlugins?: boolean }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = opts.key || globals.key;
       if (!apiKey?.trim()) {
@@ -140,6 +142,7 @@ export function registerCommands(program: Command): void {
         apiKey: apiKey.trim(),
         skipConfigure: opts.skipConfigure,
         includePlugins: opts.includePlugins,
+        noPlugins: opts.noPlugins,
       });
       for (const step of result.steps) {
         const icon = step.ok ? chalk.green("✓") : chalk.red("✗");
@@ -204,9 +207,14 @@ export function registerCommands(program: Command): void {
 
   pluginsCmd
     .command("doctor")
-    .description("Kiểm tra plugin đã trỏ Stali API chưa")
+    .description("Kiểm tra plugin đã trỏ Stali API chưa (deprecated — dùng stali doctor)")
     .option("--json", "Xuất JSON (meta + plugins)")
     .action(async (opts: { json?: boolean }) => {
+      console.error(
+        chalk.yellow(
+          "\n⚠  plugins doctor đã gộp vào stali doctor — dùng: stali doctor [--json]\n"
+        )
+      );
       const report = await runPluginsDoctor();
       if (opts.json) {
         console.log(JSON.stringify(report, null, 2));
@@ -596,7 +604,8 @@ export function registerCommands(program: Command): void {
     .option("--dry-run", "Xem preview, không ghi file")
     .option("--continue-on-error", "Tiếp tục khi một tool lỗi")
     .option("--skip-advanced", "Bỏ qua claude/codex (mặc định bật khi không chỉ định --tools)")
-    .option("--include-plugins", "Đồng bộ thêm plugin từ ~/.stali/plugins.json")
+    .option("--include-plugins", "Đồng bộ plugin (mặc định: bật nếu plugins.json có entry)")
+    .option("--no-plugins", "Bỏ qua plugin")
     .action(
       async (opts: {
         model?: string;
@@ -605,6 +614,7 @@ export function registerCommands(program: Command): void {
         continueOnError?: boolean;
         skipAdvanced?: boolean;
         includePlugins?: boolean;
+        noPlugins?: boolean;
       }) => {
         const globals = program.opts<{ key?: string }>();
         const apiKey = await resolveApiKey(globals.key);
@@ -618,6 +628,10 @@ export function registerCommands(program: Command): void {
           : undefined;
         const skipAdvanced = toolInputs ? false : opts.skipAdvanced !== false;
         const cfg = await loadStaliConfig();
+        const includePlugins = await resolveIncludePluginsFromHome({
+          includePlugins: opts.includePlugins,
+          noPlugins: opts.noPlugins,
+        });
 
         const { items, allOk } = await runConfigureBatch({
           apiKey,
@@ -627,7 +641,7 @@ export function registerCommands(program: Command): void {
           dryRun: opts.dryRun,
           continueOnError: opts.continueOnError,
           skipAdvanced,
-          includePlugins: opts.includePlugins,
+          includePlugins,
         });
 
         if (opts.dryRun) {

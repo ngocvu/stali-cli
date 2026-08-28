@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.7.0] — 2026-08-28
+
+### Added
+- **Auto-include plugins** — `stali init` và `stali configure-all` tự bật sync plugin khi `plugins.json` có entry
+- **`--no-plugins`** — tắt sync plugin trên `init` / `configure-all`
+- **CI publish** — tag `v*` tự `npm publish` khi có `NPM_TOKEN`
+- **E2E live** — skip an toàn khi chưa có `STALI_E2E_KEY`
+
+### Changed
+- **`plugins doctor`** — deprecated; gợi ý `stali doctor [--json]` (JSON giữ tương thích + `meta.deprecated`)
+- **Wizard Plugins menu** — nhãn trỏ `stali doctor`
+
+### Fixed
+- **Typecheck** — mock `fetch` trong tests; `saveClaudeFullSettings` dùng `resolveStaliUrls` (custom baseUrl)
+
 ## [2.6.0] — 2026-08-28
 
 ### Added

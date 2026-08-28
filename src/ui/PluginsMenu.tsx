@@ -18,7 +18,7 @@ export const PluginsMenu: React.FC<PluginsMenuProps> = ({ pluginCount, onSelect 
       disabled: pluginCount === 0,
     },
     {
-      label: "🩺 Kiểm tra plugin (plugins doctor)",
+      label: "🩺 Kiểm tra plugin (stali doctor)",
       value: "doctor" as const,
       disabled: pluginCount === 0,
     },

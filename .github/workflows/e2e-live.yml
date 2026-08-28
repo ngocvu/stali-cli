@@ -8,7 +8,6 @@ on:
 jobs:
   e2e-live:
     runs-on: ubuntu-latest
-    if: ${{ secrets.STALI_E2E_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +25,12 @@ jobs:
         env:
           STALI_E2E_KEY: ${{ secrets.STALI_E2E_KEY }}
         run: |
+          if [ -z "$STALI_E2E_KEY" ]; then
+            echo "::notice::STALI_E2E_KEY chưa cấu hình — bỏ qua live E2E (thêm secret trong repo Settings)"
+            exit 0
+          fi
           bun dist/index.js auth login -k "$STALI_E2E_KEY"
           bun dist/index.js ls -k "$STALI_E2E_KEY"
-          bun dist/index.js doctor --json | head -c 2000
+          bun dist/index.js doctor --json | head -c 4000
           bun dist/index.js check --json
+          bun dist/index.js plugins doctor --json 2>/dev/null | head -c 500
