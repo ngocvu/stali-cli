@@ -57,6 +57,8 @@ export interface CliInfoSnapshot {
   };
   npm?: VersionCheckResult;
   gateway: CliGatewaySummary;
+  /** true khi không validate auth / npm (stali info --json mặc định) */
+  offline?: boolean;
 }
 
 export interface GatherCliInfoOptions {
@@ -165,5 +167,6 @@ export async function gatherCliInfo(options?: GatherCliInfoOptions): Promise<Cli
     },
     npm: npm ?? undefined,
     gateway: summarizeGateway(gatewayEntries),
+    offline: offline || (!validateAuth && !checkNpm),
   };
 }

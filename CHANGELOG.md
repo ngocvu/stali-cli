@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.20.0] — 2026-08-28
+
+### Added
+- **Wizard gateway submenu** — plan preview trước khi install (`GatewayMenu`)
+- **`stali info --json`** — field `offline: true` khi chạy chế độ nhanh
+- Benchmark case `gateway plan --json`
+
+### Changed
+- Postinstall hints: `stali gw plan` / `gw scan` / `gw install`
+- README cập nhật v3.18–3.20
+
 ## [3.19.0] — 2026-08-28
 
 ### Added

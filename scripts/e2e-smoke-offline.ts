@@ -132,6 +132,9 @@ async function main() {
     try {
       const parsed = JSON.parse(infoJson.stdout || "{}");
       assert("info JSON has installMode", typeof parsed.installMode === "string");
+      if (typeof parsed.offline === "boolean") {
+        assert("info JSON offline flag", parsed.offline === true);
+      }
     } catch {
       assert("info JSON parseable", false);
     }

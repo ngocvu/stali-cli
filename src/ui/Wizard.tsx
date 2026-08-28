@@ -33,6 +33,7 @@ import { runDoctorFix } from "../services/doctor-fix";
 import { runConfigureBatch } from "../services/configure-batch";
 import { ConfigureAllMenu, ConfigureAllAction } from "./ConfigureAllMenu";
 import { InstallMenu, InstallMenuAction } from "./InstallMenu";
+import { GatewayMenu, GatewayMenuAction } from "./GatewayMenu";
 import { PluginsMenu, PluginsMenuAction } from "./PluginsMenu";
 import { runPluginsDoctor, type PluginHealthStatus } from "../services/plugin-doctor";
 import { runPluginsSync } from "../services/plugin-sync";
@@ -51,6 +52,7 @@ type WizardStep =
   | "doctor"
   | "configure-all"
   | "install"
+  | "gateway"
   | "plugins"
   | "app"
   | "tool-detail"
@@ -92,6 +94,12 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   const [error, setError] = useState<string | undefined>();
   const [results, setResults] = useState<SyncerResult[]>([]);
   const [installModeLabel, setInstallModeLabel] = useState<string>("");
+  const [gatewaySummary, setGatewaySummary] = useState<{
+    installed: number;
+    configured: number;
+    pending: number;
+    targets: number;
+  }>();
 
   const refreshInstallMode = async () => {
     const { detectInstallMode } = await import("../services/install-mode");
@@ -219,41 +227,15 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         setLoading(true);
         setError(undefined);
         try {
-          const { discoverInstalledTools } = await import("../services/tool-discovery");
-          const { runGatewayInstall } = await import("../services/gateway-install");
-          const entries = await discoverInstalledTools();
-          const needs = entries.filter((e) => e.installed && !e.configuredForStali);
-          if (needs.length === 0) {
-            setResults([
-              {
-                toolId: "gateway",
-                toolName: "Stali gateway",
-                success: true,
-                message: "Mọi app đang dùng đã trỏ Stali gateway",
-                configPath: "stali gateway scan",
-              },
-            ]);
-            setSelectedModel("Gateway");
-            setStep("done");
-            break;
-          }
-          const { items, allOk } = await runGatewayInstall({
-            apiKey,
-            continueOnError: true,
+          const { planGatewayInstall } = await import("../services/gateway-install");
+          const plan = await planGatewayInstall();
+          setGatewaySummary({
+            installed: plan.summary.installed,
+            configured: plan.summary.configured,
+            pending: plan.summary.pending,
+            targets: plan.targets.length,
           });
-          setResults(
-            items.map((item) => ({
-              toolId: item.toolId || "gateway",
-              toolName: item.toolName || "gateway",
-              success: item.success,
-              message: item.message,
-              configPath: item.configPath,
-              error: item.error,
-            }))
-          );
-          setSelectedModel("Gateway install");
-          setStep("done");
-          if (!allOk) setError("Một số app chưa cài gateway thành công");
+          setStep("gateway");
         } catch (e: unknown) {
           setError(e instanceof Error ? e.message : String(e));
           setStep("menu");
@@ -481,6 +463,71 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
       setStep("install");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGatewayMenuSelect = async (action: GatewayMenuAction) => {
+    if (action === "back") {
+      setStep("menu");
+      return;
+    }
+    setLoading(true);
+    setError(undefined);
+    try {
+      if (action === "plan") {
+        const { planGatewayInstall } = await import("../services/gateway-install");
+        const plan = await planGatewayInstall();
+        setResults(
+          plan.targets.length > 0
+            ? plan.targets.map((id) => {
+                const t = plan.tools.find((e) => e.toolId === id);
+                return {
+                  toolId: id,
+                  toolName: t?.toolName || id,
+                  success: true,
+                  message: "Sẽ cài gateway",
+                  configPath: t?.configPath,
+                };
+              })
+            : [
+                {
+                  toolId: "gateway",
+                  toolName: "Stali gateway",
+                  success: true,
+                  message: "Không có app cần cài gateway",
+                  configPath: "stali gw scan",
+                },
+              ]
+        );
+        setSelectedModel("Gateway plan");
+        setStep("done");
+        return;
+      }
+      if (action === "install") {
+        const { runGatewayInstall } = await import("../services/gateway-install");
+        const { items, allOk } = await runGatewayInstall({
+          apiKey,
+          continueOnError: true,
+        });
+        setResults(
+          items.map((item) => ({
+            toolId: item.toolId || "gateway",
+            toolName: item.toolName || "gateway",
+            success: item.success,
+            message: item.message,
+            configPath: item.configPath,
+            error: item.error,
+          }))
+        );
+        setSelectedModel("Gateway install");
+        setStep("done");
+        if (!allOk) setError("Một số app chưa cài gateway thành công");
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+      setStep("gateway");
     } finally {
       setLoading(false);
     }
@@ -930,6 +977,10 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
       {step === "install" && (
         <InstallMenu installMode={installModeLabel} onSelect={handleInstallMenuSelect} />
+      )}
+
+      {step === "gateway" && (
+        <GatewayMenu summary={gatewaySummary} onSelect={handleGatewayMenuSelect} />
       )}
 
       {step === "plugins" && (

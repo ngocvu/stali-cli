@@ -15,7 +15,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
   - Grok Build, Cowork, jcode
 - 🛡️ **Backup timestamp**: `<file>.YYYYMMDD_HHmmss.bak` + `stali restore`
 - 🩺 **Doctor**: `stali doctor` — quét 13 tool với parser schema (không chỉ heuristic)
-- 🌐 **Gateway**: `stali gateway scan|install` — tự quét app đang dùng và cài Stali API gateway
+- 🌐 **Gateway**: `stali gateway scan|plan|install` — tự quét app đang dùng và cài Stali API gateway
 - 📋 **Tools**: `stali tools` — liệt kê 13 công cụ + đường dẫn config
 - ⚙️ **Batch**: `stali configure-all` — cấu hình hàng loạt (dry-run, filter tool)
 - 🐾 **OpenClaw menu**: wizard riêng với status live
@@ -37,7 +37,9 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
-- 📦 **v3.15**: macOS launchd auto-update, init --upgrade-cli, npm dist-tag beta
+- 📦 **v3.20**: wizard gateway menu + plan, info offline flag, bench gateway plan
+- 📦 **v3.19**: `gateway plan`, shell completion bench/telemetry, plugin scan parallel
+- 📦 **v3.18**: info offline fast (~136ms), gateway install JSON, telemetry opt-in
 - 📦 **v3.14**: Windows Task Scheduler auto-update, wizard install menu, npm registry publish
 - 📦 **v3.13**: `stali install`, `update --json`, npm pack verify, install auto default
 - 📦 **v3.12**: npm fast install (Node), install.ps1, update dry-run, metrics-bind, systemd timer

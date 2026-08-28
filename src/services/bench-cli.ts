@@ -48,6 +48,7 @@ function benchCase(
   const limits: Record<string, number> = {
     "--version": Number(process.env.STALI_BENCH_MAX_VERSION_MS || 120),
     "--help": Number(process.env.STALI_BENCH_MAX_HELP_MS || 150),
+    "gateway plan --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_PLAN_MS || 180),
     "gateway scan --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_MS || 250),
     "info --json": Number(process.env.STALI_BENCH_MAX_INFO_MS || 180),
   };
@@ -67,6 +68,7 @@ export function runColdStartBench(options?: {
     { name: "--version", args: ["--version"] },
     { name: "--help", args: ["--help"] },
     { name: "info --json", args: ["info", "--json"] },
+    { name: "gateway plan --json", args: ["gateway", "plan", "--json"] },
     { name: "gateway scan --json", args: ["gateway", "scan", "--json"] },
     { name: "doctor --json", args: ["doctor", "--json"] },
     { name: "doctor --tools-only --json", args: ["doctor", "--tools-only", "--json"] },
