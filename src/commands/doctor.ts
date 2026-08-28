@@ -113,6 +113,29 @@ function withInstalledMeta(
 export interface DoctorViewOptions {
   pluginsOnly?: boolean;
   toolsOnly?: boolean;
+  strict?: boolean;
+}
+
+/** `--strict`: fail khi còn app/plugin chưa trỏ Stali (hoặc pending gateway). */
+export function isDoctorStrictOk(
+  payload: DoctorJsonOutput,
+  view?: DoctorViewOptions
+): boolean {
+  if (view?.pluginsOnly) {
+    if (payload.plugins.length === 0) return false;
+    return payload.plugins.every((p) => p.configuredForStali);
+  }
+  if (view?.toolsOnly) {
+    if (payload.pendingGateway.length > 0) return false;
+    const existing = payload.tools.filter((t) => t.exists);
+    return existing.every((t) => t.configuredForStali);
+  }
+  if (payload.pendingGateway.length > 0) return false;
+  if (payload.plugins.length > 0 && !payload.plugins.every((p) => p.configuredForStali)) {
+    return false;
+  }
+  const existing = payload.tools.filter((t) => t.exists);
+  return existing.every((t) => t.configuredForStali);
 }
 
 export async function buildDoctorJsonOutput(
@@ -250,6 +273,9 @@ export function computeDoctorExitCode(
   payload: DoctorJsonOutput,
   view?: DoctorViewOptions
 ): number {
+  if (view?.strict) {
+    return isDoctorStrictOk(payload, view) ? 0 : 1;
+  }
   if (view?.pluginsOnly) {
     if (payload.plugins.length === 0) return 1;
     return payload.plugins.every((p) => p.configuredForStali) ? 0 : 1;
@@ -401,21 +427,33 @@ export async function runDoctor(
     console.log(chalk.gray(`API: ${payload.meta.modelsEndpoint}`));
     printPluginSection(payload.plugins);
     console.log(chalk.gray("\nXem đầy đủ: stali doctor\n"));
-    return computeDoctorExitCode(payload, view);
+    const code = computeDoctorExitCode(payload, view);
+    if (view?.strict && code !== 0) {
+      console.log(chalk.red("❌ doctor --strict: còn plugin chưa trỏ Stali\n"));
+    }
+    return code;
   }
 
   if (view?.toolsOnly) {
     printToolSection(payload.tools, payload.meta.modelsEndpoint);
     printPendingGatewaySection(payload.installedTools, payload.pendingGateway);
     console.log(chalk.gray("\nXem plugins: stali doctor --plugins-only\n"));
-    return 0;
+    const code = computeDoctorExitCode(payload, view);
+    if (view?.strict && code !== 0) {
+      console.log(chalk.red("❌ doctor --strict: còn app chưa trỏ Stali\n"));
+    }
+    return code;
   }
 
   printToolSection(payload.tools, payload.meta.modelsEndpoint);
   printPendingGatewaySection(payload.installedTools, payload.pendingGateway);
   printPluginSection(payload.plugins);
   console.log("");
-  return 0;
+  const code = computeDoctorExitCode(payload, view);
+  if (view?.strict && code !== 0) {
+    console.log(chalk.red("❌ doctor --strict: còn app/plugin chưa trỏ Stali\n"));
+  }
+  return code;
 }
 
 export function combinedDoctorHash(payload: DoctorJsonOutput): string {
@@ -648,5 +686,10 @@ export async function runDoctorWatch(
     if (!running) break;
     await new Promise((r) => setTimeout(r, sec * 1000));
   }
-  await finish(degraded ? 1 : 0);
+  let exitCode = degraded ? 1 : 0;
+  if (view?.strict) {
+    const finalPayload = await buildDoctorJsonOutput(view);
+    if (!isDoctorStrictOk(finalPayload, view)) exitCode = 1;
+  }
+  await finish(exitCode);
 }

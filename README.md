@@ -124,7 +124,13 @@ stali paths   # In đường dẫn trên máy bạn
 stali                    # Wizard tương tác
 stali --models           # Bảng giá model
 stali ls -k sk-stali-... # Bảng giá với token
-stali doctor             # Kiểm tra cấu hình (13 tool, schema-aware)
+stali status --json     # gateway.pendingGateway + pendingGatewayCount
+stali doctor            # human: Gateway chờ (app đã cài)
+stali doctor --json     # pendingGateway[], meta.schemaVersion: 2
+stali doctor --strict   # CI gate: exit 1 nếu còn app/plugin chưa OK
+stali plugins suggest   # gợi ý patchStyle từ file config
+stali plugins sync --preview --json
+stali gw auto
 stali scan                # Quét app AI đang dùng (nhanh, user-first)
 stali gateway scan        # Tương đương scan
 stali gateway auto -k sk-stali-...       # Quét + cài gateway một lệnh
@@ -142,10 +148,13 @@ stali doctor --fix -k sk-stali-...                # sửa tool chưa OK
 stali doctor --fix --installed-only -k sk-stali-...  # chỉ app đang dùng
 stali configure-all --installed-only -k sk-stali-...   # batch theo quét
 stali init -k sk-stali-...                         # mặc định chỉ configure app phát hiện
-stali doctor --json                              # JSON thống nhất: meta + tools + plugins
+stali doctor --json                              # JSON: meta + tools + plugins + pendingGateway
+stali doctor --strict [--tools-only]             # CI: exit 1 nếu còn gateway/plugin chưa OK
 stali doctor --plugins-only [--json]             # Chỉ plugin (~/.stali/plugins.json)
 stali doctor --tools-only [--json]               # Chỉ 13 tool (bỏ plugin)
 stali config set base-url https://staging/v1   # custom endpoint
+stali plugins suggest [--json]                   # Gợi ý patchStyle
+stali plugins sync --preview [--json]            # Preview trước khi ghi
 stali plugins sync -k sk-stali-...             # sync plugin tùy chỉnh
 stali uninstall                  # Gỡ wrapper (~/.stali/bin)
 stali auth login -k sk-stali-...     # Lưu API key

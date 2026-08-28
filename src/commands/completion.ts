@@ -73,6 +73,7 @@ const DOCTOR_FLAGS = [
   "--force",
   "--all-apps",
   "--installed-only",
+  "--strict",
   "--tools",
   "--ids",
   "-m",
@@ -258,6 +259,7 @@ ${tools.map((t) => `    '${t}'`).join("\n")}
             '--plugins-only[Chỉ plugin]' \\
             '--tools-only[Chỉ tool]' \\
             '--fix[Tự sửa cấu hình]' \\
+            '--strict[Exit 1 nếu chưa OK (CI)]' \\
             '--all-apps[Với --fix: cả 13 tool]' \\
             '--installed-only[Với --fix: chỉ app phát hiện]' \\
             '--watch[Theo dõi liên tục]' \\
@@ -391,6 +393,7 @@ function fishCompletion(): string {
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l plugins-only",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l tools-only",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l fix",
+    "complete -c stali -n '__fish_seen_subcommand_from doctor' -l strict -d 'Exit 1 nếu chưa OK (CI)'",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l all-apps -d 'Với --fix: cả 13 tool'",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l installed-only",
     "complete -c stali -n '__fish_seen_subcommand_from doctor' -l watch",

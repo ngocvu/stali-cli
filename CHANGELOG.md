@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.39.0] — 2026-08-28
+
+### Added
+- **`status --json`** — `gateway.pendingGateway[]`, `pendingGatewayCount`; human hiện tên app gateway chờ
+- **`doctor --strict`** — exit 1 khi còn app/plugin chưa trỏ Stali hoặc `pendingGateway` (CI gate; `--watch` tôn trọng strict khi kết thúc)
+- **Wizard gateway plan** — preview inline (`GatewayPlanView`) trước khi cài, không nhảy thẳng sang màn done
+
+### Changed
+- Shell completion: `doctor --strict` (bash/zsh/fish)
+- README: luồng plugin suggest/preview, doctor strict, status pendingGateway
+
 ## [3.38.0] — 2026-08-28
 
 ### Added

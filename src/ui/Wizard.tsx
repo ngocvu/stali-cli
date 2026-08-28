@@ -36,11 +36,13 @@ import { runConfigureBatch } from "../services/configure-batch";
 import { ConfigureAllMenu, ConfigureAllAction } from "./ConfigureAllMenu";
 import { InstallMenu, InstallMenuAction } from "./InstallMenu";
 import { GatewayMenu, GatewayMenuAction } from "./GatewayMenu";
+import { GatewayPlanView } from "./GatewayPlanView";
 import { PluginsMenu, PluginsMenuAction } from "./PluginsMenu";
 import { type PluginHealthStatus } from "../services/plugin-doctor";
 import { runPluginsSync, type PluginSyncItem } from "../services/plugin-sync";
 import { suggestPluginPatchStyles, type PluginPatchSuggestion } from "../services/plugin-suggest";
 import { buildDoctorJsonOutput, type DoctorInstalledToolSummary } from "../commands/doctor";
+import type { GatewayPlan } from "../services/gateway-install";
 import { loadPlugins } from "../services/plugins";
 import { getToolById } from "../utils/tool-utils";
 import { resolveToolDefaultModel } from "../utils/tool-utils";
@@ -57,6 +59,7 @@ type WizardStep =
   | "configure-all"
   | "install"
   | "gateway"
+  | "gateway-plan"
   | "plugins"
   | "plugin-preview"
   | "plugin-suggest"
@@ -110,6 +113,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     pending: number;
     targets: number;
   }>();
+  const [gatewayPlan, setGatewayPlan] = useState<GatewayPlan | null>(null);
   const [gatewayPending, setGatewayPending] = useState(0);
   const [gatewayFirstRun, setGatewayFirstRun] = useState(false);
 
@@ -541,30 +545,9 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       if (action === "plan") {
         const { planGatewayInstall } = await import("../services/gateway-install");
         const plan = await planGatewayInstall();
-        setResults(
-          plan.targets.length > 0
-            ? plan.targets.map((id) => {
-                const t = plan.tools.find((e) => e.toolId === id);
-                return {
-                  toolId: id,
-                  toolName: t?.toolName || id,
-                  success: true,
-                  message: "Sẽ cài gateway",
-                  configPath: t?.configPath,
-                };
-              })
-            : [
-                {
-                  toolId: "gateway",
-                  toolName: "Stali gateway",
-                  success: true,
-                  message: "Không có app cần cài gateway",
-                  configPath: "stali gw scan",
-                },
-              ]
-        );
-        setSelectedModel("Gateway plan");
-        setStep("done");
+        setGatewayPlan(plan);
+        setLoading(false);
+        setStep("gateway-plan");
         return;
       }
       if (action === "install" || action === "auto") {
@@ -587,6 +570,26 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
       setStep("gateway");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGatewayPlanInstall = async () => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const gw = await import("../services/gateway-install");
+      const { mapGatewayItemsToSyncerResults } = await import("../services/wizard-gateway");
+      const { items, allOk } = await gw.runGatewayInstall({ apiKey, continueOnError: true });
+      setResults(mapGatewayItemsToSyncerResults(items));
+      setSelectedModel("Gateway install");
+      setStep("done");
+      if (!allOk) setError("Một số app chưa cài gateway thành công");
+      await refreshGatewayPending();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+      setStep("gateway-plan");
     } finally {
       setLoading(false);
     }
@@ -1128,6 +1131,14 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           onSelect={handleGatewayMenuSelect}
         />
       )}
+
+      {step === "gateway-plan" && gatewayPlan ? (
+        <GatewayPlanView
+          plan={gatewayPlan}
+          onInstall={handleGatewayPlanInstall}
+          onBack={() => setStep("gateway")}
+        />
+      ) : null}
 
       {step === "plugins" && (
         <PluginsMenu pluginCount={pluginCount} onSelect={handlePluginsMenuSelect} />

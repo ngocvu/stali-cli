@@ -5,8 +5,10 @@ import {
   buildDoctorJsonOutput,
   combinedDoctorHash,
   configuredScore,
+  computeDoctorExitCode,
   formatDoctorPrometheus,
   formatPendingGatewayLines,
+  isDoctorStrictOk,
   printPendingGatewaySection,
   scopedDoctorHash,
   toLegacyPluginsDoctorJson,
@@ -55,6 +57,31 @@ describe("doctor unified JSON", () => {
     } finally {
       console.log = prev;
     }
+  });
+
+  test("isDoctorStrictOk — pending gateway fails full scope", () => {
+    const payload = {
+      meta: {} as never,
+      installedTools: [],
+      pendingGateway: ["claude"],
+      tools: [{ toolId: "claude", configuredForStali: false, exists: true } as never],
+      plugins: [],
+    };
+    expect(isDoctorStrictOk(payload as never, {})).toBe(false);
+    expect(isDoctorStrictOk(payload as never, { strict: true })).toBe(false);
+    expect(isDoctorStrictOk({ ...payload, pendingGateway: [], tools: [{ toolId: "claude", configuredForStali: true, exists: true } as never], plugins: [] } as never, { strict: true })).toBe(true);
+  });
+
+  test("computeDoctorExitCode strict tools-only", () => {
+    const payload = {
+      meta: {} as never,
+      installedTools: [],
+      pendingGateway: ["opencode"],
+      tools: [],
+      plugins: [],
+    };
+    expect(computeDoctorExitCode(payload as never, { toolsOnly: true, strict: true })).toBe(1);
+    expect(computeDoctorExitCode(payload as never, { toolsOnly: true })).toBe(0);
   });
 
   test(

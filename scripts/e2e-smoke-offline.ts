@@ -322,6 +322,21 @@ async function main() {
   assert("help advanced shows bench", /bench/.test(helpAdv.stdout || ""));
   assert("help advanced shows init", /^\s+init\s/m.test(helpAdv.stdout || ""));
   assert("status --json exit 0|1", [0, 1].includes(run(["status", "--json"]).status));
+  const statusJson = run(["status", "--json"]);
+  if (statusJson.stdout) {
+    try {
+      const parsed = JSON.parse(statusJson.stdout);
+      assert("status JSON gateway.pendingGateway", Array.isArray(parsed.gateway?.pendingGateway));
+      assert(
+        "status JSON gateway.pendingGatewayCount",
+        typeof parsed.gateway?.pendingGatewayCount === "number"
+      );
+    } catch {
+      assert("status JSON parseable", false);
+    }
+  }
+  const doctorStrict = run(["doctor", "--strict", "--tools-only", "--json"]);
+  assert("doctor --strict --tools-only --json exit 0|1", [0, 1].includes(doctorStrict.status));
   assert("ready --json exit 0|1", [0, 1].includes(run(["ready", "--json"]).status));
   const setupJson = run(["setup", "--json", "-k", "sk-stali-" + "x".repeat(40), "--skip-configure"]);
   assert("setup --json exit 0|1", setupJson.status === 0 || setupJson.status === 1);

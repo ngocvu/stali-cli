@@ -27,6 +27,8 @@ export async function runUserStatus(opts?: StatusDisplayOptions): Promise<number
             installed: info.gateway.installed,
             configured: info.gateway.configured,
             pending: info.gateway.pending,
+            pendingGateway: info.gateway.pendingGateway,
+            pendingGatewayCount: info.gateway.pendingGatewayCount,
           },
           version: info.version,
         },
@@ -52,6 +54,13 @@ export async function runUserStatus(opts?: StatusDisplayOptions): Promise<number
     `Gateway: ${chalk.white(String(info.gateway.configured))}/${info.gateway.installed} app đã cấu hình` +
       (info.gateway.pending > 0 ? chalk.yellow(` · ${info.gateway.pending} cần cài`) : chalk.green(" · đủ"))
   );
+  if (info.gateway.pendingGatewayCount > 0) {
+    const names = info.gateway.tools
+      .filter((t) => !t.configured)
+      .map((t) => t.name)
+      .join(", ");
+    console.log(chalk.yellow(`  Gateway chờ: ${names || info.gateway.pendingGateway.join(", ")}`));
+  }
 
   if (info.setup?.ready) {
     console.log(chalk.green("\n✅ Sẵn sàng — mở app AI và dùng ngay.\n"));

@@ -801,6 +801,7 @@ export function registerCommands(program: Command): void {
     .option("-m, --model <model>", "Với --fix: model áp dụng")
     .option("--plugins-only", "Chỉ kiểm tra plugin (~/.stali/plugins.json)")
     .option("--tools-only", "Chỉ kiểm tra 13 tool (bỏ qua plugin)")
+    .option("--strict", "Exit 1 nếu còn app/plugin chưa trỏ Stali (CI gate)")
     .option("--watch", "Theo dõi liên tục (Ctrl+C thoát)")
     .option("--notify", "Với --watch: chuông + desktop notify khi thay đổi")
     .option("--prometheus", "Xuất metrics Prometheus text (one-shot hoặc --watch)")
@@ -829,6 +830,7 @@ export function registerCommands(program: Command): void {
       duration?: string;
       pluginsOnly?: boolean;
       toolsOnly?: boolean;
+      strict?: boolean;
     }) => {
       const globals = program.opts<{ key?: string }>();
       const apiKey = await resolveApiKey(globals.key);
@@ -840,6 +842,7 @@ export function registerCommands(program: Command): void {
       const view = {
         pluginsOnly: opts.pluginsOnly,
         toolsOnly: opts.toolsOnly,
+        strict: opts.strict,
       };
       if (opts.watch && !opts.fix) {
         const sec = parseInt(opts.interval || "10", 10) || 10;

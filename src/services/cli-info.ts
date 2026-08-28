@@ -21,6 +21,8 @@ export interface CliGatewaySummary {
   installed: number;
   configured: number;
   pending: number;
+  pendingGateway: string[];
+  pendingGatewayCount: number;
   tools: Array<{
     id: string;
     name: string;
@@ -94,10 +96,15 @@ async function summarizePluginsFast(): Promise<{ configured: number; total: numb
 function summarizeGateway(entries: ToolDiscoveryEntry[]): CliGatewaySummary {
   const installedEntries = entries.filter((e) => e.installed);
   const configured = installedEntries.filter((e) => e.configuredForStali).length;
+  const pendingGateway = installedEntries
+    .filter((e) => !e.configuredForStali)
+    .map((e) => e.toolId);
   return {
     installed: installedEntries.length,
     configured,
     pending: installedEntries.length - configured,
+    pendingGateway,
+    pendingGatewayCount: pendingGateway.length,
     tools: installedEntries.map((e) => ({
       id: e.toolId,
       name: e.toolName,
