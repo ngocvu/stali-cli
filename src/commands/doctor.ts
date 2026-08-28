@@ -145,6 +145,44 @@ export async function runDoctor(jsonOut?: boolean, fixOpts?: {
   console.log("");
 }
 
+/** JSON tương thích ngược cho alias `plugins doctor` (v3). */
+export function toLegacyPluginsDoctorJson(payload: DoctorJsonOutput) {
+  return {
+    meta: {
+      baseUrl: payload.meta.baseUrl,
+      openAiBaseUrl: payload.meta.openAiBaseUrl,
+      anthropicBaseUrl: payload.meta.anthropicBaseUrl,
+      modelsEndpoint: payload.meta.modelsEndpoint,
+      pluginCount: payload.meta.pluginsTotal,
+      deprecated: "plugins doctor là alias v3 — dùng `stali doctor --json`",
+      preferCommand: "stali doctor",
+    },
+    plugins: payload.plugins,
+  };
+}
+
+/** Alias v3 — thay `plugins doctor` subcommand đầy đủ. */
+export async function runPluginsDoctorAlias(jsonOut?: boolean): Promise<number> {
+  console.error(
+    chalk.yellow("\n⚠  plugins doctor là alias → stali doctor (v3.0)\n")
+  );
+  const payload = await buildDoctorJsonOutput();
+  if (jsonOut) {
+    console.log(JSON.stringify(toLegacyPluginsDoctorJson(payload), null, 2));
+    if (payload.plugins.length === 0) return 1;
+    return payload.plugins.every((p) => p.configuredForStali) ? 0 : 1;
+  }
+  if (payload.plugins.length === 0) {
+    console.log(chalk.yellow("\nKhông có plugin — stali plugins list --init\n"));
+    return 1;
+  }
+  console.log(chalk.bold.cyan("\n🩺 STALI DOCTOR — PLUGINS\n"));
+  console.log(chalk.gray(`API: ${payload.meta.modelsEndpoint}`));
+  printPluginSection(payload.plugins);
+  console.log(chalk.gray("Xem tools + plugins: stali doctor\n"));
+  return payload.plugins.every((p) => p.configuredForStali) ? 0 : 1;
+}
+
 export function combinedDoctorHash(payload: DoctorJsonOutput): string {
   const toolHash = doctorSnapshotHash(payload.tools);
   const pluginHash = payload.plugins

@@ -30,11 +30,10 @@ import { setLocale, resolveLocale, t } from "../i18n";
 import { runInit } from "../services/init-cli";
 import { loadPlugins, writePluginsExample, getPluginsPath } from "../services/plugins";
 import { runPluginsSync } from "../services/plugin-sync";
-import { runPluginsDoctor } from "../services/plugin-doctor";
 import { selfUpdate } from "../services/self-update";
 import { resolveApiKey } from "./context";
 import { displayModelsTable } from "./models";
-import { runDoctor, runDoctorWatch } from "./doctor";
+import { runDoctor, runDoctorWatch, runPluginsDoctorAlias } from "./doctor";
 import { runConfigure, runRestore } from "./configure-cmd";
 import { runBackupsList } from "./backups";
 import { runPaths, runToolsList } from "./paths-cmd";
@@ -207,45 +206,11 @@ export function registerCommands(program: Command): void {
 
   pluginsCmd
     .command("doctor")
-    .description("Kiểm tra plugin đã trỏ Stali API chưa (deprecated — dùng stali doctor)")
-    .option("--json", "Xuất JSON (meta + plugins)")
+    .description("Alias → stali doctor (plugins); dùng stali doctor cho đầy đủ")
+    .option("--json", "Xuất JSON plugins (legacy shape)")
     .action(async (opts: { json?: boolean }) => {
-      console.error(
-        chalk.yellow(
-          "\n⚠  plugins doctor đã gộp vào stali doctor — dùng: stali doctor [--json]\n"
-        )
-      );
-      const report = await runPluginsDoctor();
-      if (opts.json) {
-        console.log(JSON.stringify(report, null, 2));
-        const ok = report.plugins.every((p) => p.configuredForStali);
-        process.exit(ok ? 0 : 1);
-      }
-      const configured = report.plugins.filter((p) => p.configuredForStali);
-      console.log(chalk.bold.cyan("\n🔌 PLUGINS DOCTOR\n"));
-      console.log(chalk.gray(`API: ${report.meta.modelsEndpoint}\n`));
-      if (report.plugins.length === 0) {
-        console.log(chalk.yellow("Không có plugin — stali plugins list --init\n"));
-        process.exit(1);
-      }
-      console.log(
-        chalk.green(`✅ Đã trỏ Stali: ${configured.length}/${report.plugins.length}\n`)
-      );
-      for (const p of report.plugins) {
-        const icon = p.configuredForStali ? chalk.green("✓") : chalk.yellow("○");
-        const state = p.configuredForStali
-          ? chalk.green("Stali OK")
-          : p.exists
-          ? chalk.yellow("chưa trỏ Stali")
-          : chalk.gray("chưa có file");
-        console.log(
-          `${icon} ${chalk.white(p.pluginName)} (${p.patchStyle}) — ${state}${p.model ? chalk.gray(` (${p.model})`) : ""}`
-        );
-        if (p.endpoint) console.log(chalk.gray(`   ${p.endpoint}`));
-        console.log(chalk.gray(`   ${p.configPath}`));
-      }
-      console.log(chalk.gray("\nSync: stali plugins sync -k sk-stali-...\n"));
-      process.exit(configured.length === report.plugins.length ? 0 : 1);
+      const code = await runPluginsDoctorAlias(opts.json);
+      process.exit(code);
     });
 
   const configCmd = program

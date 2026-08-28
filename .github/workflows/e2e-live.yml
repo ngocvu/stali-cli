@@ -33,4 +33,3 @@ jobs:
           bun dist/index.js ls -k "$STALI_E2E_KEY"
           bun dist/index.js doctor --json | head -c 4000
           bun dist/index.js check --json
-          bun dist/index.js plugins doctor --json 2>/dev/null | head -c 500

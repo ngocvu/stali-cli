@@ -138,7 +138,7 @@ export async function runPluginsDoctor(): Promise<PluginsDoctorOutput> {
       anthropicBaseUrl: urls.anthropicBaseUrl,
       modelsEndpoint: urls.modelsEndpoint,
       pluginCount: plugins.length,
-      deprecated: "plugins doctor sẽ gỡ trong v3 — dùng `stali doctor --json`",
+      deprecated: "dùng `stali doctor --json` (plugins doctor là alias v3)",
       preferCommand: "stali doctor",
     },
     plugins: statuses,

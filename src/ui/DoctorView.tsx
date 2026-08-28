@@ -2,64 +2,113 @@ import React from "react";
 import { Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
-import { ToolHealthStatus } from "../services/syncers";
+import type { ToolHealthStatus } from "../services/syncers";
+import type { PluginHealthStatus } from "../services/plugin-doctor";
 
-interface DoctorViewProps {
-  statuses: ToolHealthStatus[];
+export interface DoctorViewProps {
+  toolStatuses: ToolHealthStatus[];
+  pluginStatuses?: PluginHealthStatus[];
   onBack: () => void;
-  onFixAll?: () => void;
+  onFixAllTools?: () => void;
+  onSyncAllPlugins?: () => void;
+  backLabel?: string;
 }
 
 export const DoctorView: React.FC<DoctorViewProps> = ({
-  statuses,
+  toolStatuses,
+  pluginStatuses = [],
   onBack,
-  onFixAll,
+  onFixAllTools,
+  onSyncAllPlugins,
+  backLabel = "⬅️  Quay lại Menu chính",
 }) => {
-  const configured = statuses.filter((s) => s.configuredForStali);
-  const missing = statuses.filter((s) => !s.configuredForStali);
+  const toolsConfigured = toolStatuses.filter((s) => s.configuredForStali);
+  const toolsMissing = toolStatuses.filter((s) => !s.configuredForStali);
+  const pluginsConfigured = pluginStatuses.filter((s) => s.configuredForStali);
+  const pluginsMissing = pluginStatuses.filter((s) => !s.configuredForStali);
 
   const items: { label: string; value: string }[] = [];
-  if (missing.length > 0 && onFixAll) {
+  if (toolsMissing.length > 0 && onFixAllTools) {
     items.push({
-      label: `🔧 Sửa ${missing.length} tool chưa trỏ Stali (doctor fix)`,
-      value: "fix-all",
+      label: `🔧 Sửa ${toolsMissing.length} tool chưa trỏ Stali (doctor fix)`,
+      value: "fix-tools",
     });
   }
-  items.push({ label: "⬅️  Quay lại Menu chính", value: "back" });
+  if (pluginsMissing.length > 0 && onSyncAllPlugins) {
+    items.push({
+      label: `🔌 Sync ${pluginsMissing.length} plugin chưa trỏ Stali`,
+      value: "sync-plugins",
+    });
+  }
+  items.push({ label: backLabel, value: "back" });
 
   return (
-    <Card title="🩺 STALI DOCTOR — KIỂM TRA CẤU HÌNH" borderColor="yellow">
+    <Card title="🩺 STALI DOCTOR — TOOLS & PLUGINS" borderColor="yellow">
       <Box flexDirection="column" gap={1}>
         <Text bold color="green">
-          ✅ Đã trỏ Stali API ({configured.length}/{statuses.length})
+          ✅ Tools trỏ Stali ({toolsConfigured.length}/{toolStatuses.length})
         </Text>
-        {configured.map((s) => (
+        {toolsConfigured.map((s) => (
           <Box key={s.toolId} flexDirection="column" marginBottom={0}>
             <Text color="green">
               • {s.toolName}
               {s.model ? ` — ${s.model}` : ""}
             </Text>
-            {s.endpoint ? (
-              <Text color="gray">  ↳ {s.endpoint}</Text>
-            ) : null}
+            {s.endpoint ? <Text color="gray">  ↳ {s.endpoint}</Text> : null}
             <Text color="gray">  ↳ {s.configPath}</Text>
           </Box>
         ))}
 
-        <Text bold color="yellow">
-          ⚠️ Chưa cấu hình ({missing.length})
-        </Text>
-        {missing.map((s) => (
-          <Text key={s.toolId} color="gray">
-            • {s.toolName} —{" "}
-            {s.exists ? "file có, chưa trỏ Stali" : "chưa có file"} — {s.configPath}
-          </Text>
-        ))}
+        {toolsMissing.length > 0 ? (
+          <>
+            <Text bold color="yellow">
+              ⚠️ Tool chưa OK ({toolsMissing.length})
+            </Text>
+            {toolsMissing.map((s) => (
+              <Text key={s.toolId} color="gray">
+                • {s.toolName} —{" "}
+                {s.exists ? "file có, chưa trỏ Stali" : "chưa có file"} — {s.configPath}
+              </Text>
+            ))}
+          </>
+        ) : null}
+
+        {pluginStatuses.length > 0 ? (
+          <>
+            <Text bold color="magenta">
+              🔌 Plugins trỏ Stali ({pluginsConfigured.length}/{pluginStatuses.length})
+            </Text>
+            {pluginsConfigured.map((s) => (
+              <Box key={s.pluginId} flexDirection="column" marginBottom={0}>
+                <Text color="magenta">
+                  • {s.pluginName} ({s.patchStyle})
+                  {s.model ? ` — ${s.model}` : ""}
+                </Text>
+                {s.endpoint ? <Text color="gray">  ↳ {s.endpoint}</Text> : null}
+                <Text color="gray">  ↳ {s.configPath}</Text>
+              </Box>
+            ))}
+            {pluginsMissing.length > 0 ? (
+              <>
+                <Text bold color="yellow">
+                  ⚠️ Plugin chưa OK ({pluginsMissing.length})
+                </Text>
+                {pluginsMissing.map((s) => (
+                  <Text key={s.pluginId} color="gray">
+                    • {s.pluginName} —{" "}
+                    {s.exists ? "file có, chưa trỏ Stali" : "chưa có file"} — {s.configPath}
+                  </Text>
+                ))}
+              </>
+            ) : null}
+          </>
+        ) : null}
 
         <SelectInput
           items={items}
           onSelect={(item) => {
-            if (item.value === "fix-all" && onFixAll) onFixAll();
+            if (item.value === "fix-tools" && onFixAllTools) onFixAllTools();
+            else if (item.value === "sync-plugins" && onSyncAllPlugins) onSyncAllPlugins();
             else onBack();
           }}
         />

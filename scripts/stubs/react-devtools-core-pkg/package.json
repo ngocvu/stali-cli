@@ -1,0 +1,7 @@
+{
+  "name": "react-devtools-core",
+  "version": "0.0.0-stali-stub",
+  "description": "No-op stub for stali-cli production bundle",
+  "type": "module",
+  "main": "index.js"
+}

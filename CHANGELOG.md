@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.0.0] — 2026-08-28
+
+### Breaking / Changed
+- **`plugins doctor`** — chỉ còn alias mỏng → `stali doctor` (JSON legacy shape qua `toLegacyPluginsDoctorJson`)
+- **Wizard Doctor** — một màn hình thống nhất tools + plugins; gỡ `PluginsDoctorView`
+- **Configure-all wizard** — tự sync plugin khi `plugins.json` có entry (gỡ menu riêng 11+plugins)
+
+### Added
+- **`runPluginsDoctorAlias()`** — logic alias tập trung trong `commands/doctor.ts`
+- **Build guard** — `--external react-devtools-core`, `--minify`, fail nếu còn devtools chunk; giới hạn tổng dist
+
+### Removed
+- **`react-devtools-core`** devDependency (~0.75 MB chunk không còn bundle)
+- **`PluginsDoctorView.tsx`**
+
 ## [2.7.0] — 2026-08-28
 
 ### Added

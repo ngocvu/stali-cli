@@ -1,6 +1,6 @@
 {
   "name": "stali-cli",
-  "version": "2.7.0",
+  "version": "3.0.0",
   "description": "Interactive CLI tool and configuration manager for Stali API (https://api.stali.vn)",
   "type": "module",
   "main": "dist/index.js",
@@ -58,13 +58,13 @@
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
     "react": "^19.2.8",
+    "react-devtools-core": "file:./scripts/stubs/react-devtools-core-pkg",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bun": "^1.4.0",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
-    "react-devtools-core": "^7.0.1",
     "typescript": "^7.0.2"
   },
   "engines": {

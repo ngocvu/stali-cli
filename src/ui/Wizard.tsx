@@ -33,7 +33,6 @@ import { runDoctorFix } from "../services/doctor-fix";
 import { runConfigureBatch } from "../services/configure-batch";
 import { ConfigureAllMenu, ConfigureAllAction } from "./ConfigureAllMenu";
 import { PluginsMenu, PluginsMenuAction } from "./PluginsMenu";
-import { PluginsDoctorView } from "./PluginsDoctorView";
 import { runPluginsDoctor, type PluginHealthStatus } from "../services/plugin-doctor";
 import { runPluginsSync } from "../services/plugin-sync";
 import { loadPlugins } from "../services/plugins";
@@ -51,7 +50,6 @@ type WizardStep =
   | "doctor"
   | "configure-all"
   | "plugins"
-  | "plugins-doctor"
   | "app"
   | "tool-detail"
   | "model"
@@ -87,6 +85,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   const [doctorStatuses, setDoctorStatuses] = useState<Awaited<ReturnType<typeof runDoctorScan>>>([]);
   const [pluginStatuses, setPluginStatuses] = useState<PluginHealthStatus[]>([]);
   const [pluginCount, setPluginCount] = useState(0);
+  const [doctorReturnStep, setDoctorReturnStep] = useState<"menu" | "plugins">("menu");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | undefined>();
   const [results, setResults] = useState<SyncerResult[]>([]);
@@ -96,6 +95,15 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
   const isGenericFlowTool = (toolId: string) =>
     !isAdvancedTool(toolId);
+
+  const loadUnifiedDoctor = async () => {
+    const [tools, pluginReport] = await Promise.all([
+      runDoctorScan(),
+      runPluginsDoctor(),
+    ]);
+    setDoctorStatuses(tools);
+    setPluginStatuses(pluginReport.plugins);
+  };
 
   useEffect(() => {
     async function init() {
@@ -167,6 +175,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         setStep("app");
         break;
       case "configure-all":
+        setPluginCount((await loadPlugins()).length);
         setStep("configure-all");
         break;
       case "models":
@@ -174,7 +183,8 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         break;
       case "doctor":
         setLoading(true);
-        setDoctorStatuses(await runDoctorScan());
+        setDoctorReturnStep("menu");
+        await loadUnifiedDoctor();
         setLoading(false);
         setStep("doctor");
         break;
@@ -265,7 +275,8 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     setError(undefined);
     const skipAdvanced = action !== "batch-13";
     const dryRun = action === "dry-run-11";
-    const includePlugins = action === "batch-11-plugins";
+    const plugins = await loadPlugins();
+    const includePlugins = plugins.length > 0;
     const batch = await runConfigureBatch({
       apiKey,
       skipAdvanced,
@@ -302,10 +313,10 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     }
     if (action === "doctor") {
       setLoading(true);
-      const report = await runPluginsDoctor();
-      setPluginStatuses(report.plugins);
+      setDoctorReturnStep("plugins");
+      await loadUnifiedDoctor();
       setLoading(false);
-      setStep("plugins-doctor");
+      setStep("doctor");
       return;
     }
     if (action === "sync") {
@@ -720,26 +731,25 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
       {step === "doctor" && (
         <DoctorView
-          statuses={doctorStatuses}
-          onBack={() => setStep("menu")}
-          onFixAll={handleDoctorFix}
+          toolStatuses={doctorStatuses}
+          pluginStatuses={pluginStatuses}
+          onBack={() => setStep(doctorReturnStep)}
+          onFixAllTools={handleDoctorFix}
+          onSyncAllPlugins={handlePluginsSyncAll}
+          backLabel={
+            doctorReturnStep === "plugins"
+              ? "⬅️  Quay lại Menu Plugin"
+              : "⬅️  Quay lại Menu chính"
+          }
         />
       )}
 
       {step === "configure-all" && (
-        <ConfigureAllMenu onSelect={handleConfigureAllSelect} />
+        <ConfigureAllMenu pluginCount={pluginCount} onSelect={handleConfigureAllSelect} />
       )}
 
       {step === "plugins" && (
         <PluginsMenu pluginCount={pluginCount} onSelect={handlePluginsMenuSelect} />
-      )}
-
-      {step === "plugins-doctor" && (
-        <PluginsDoctorView
-          statuses={pluginStatuses}
-          onBack={() => setStep("plugins")}
-          onSyncAll={handlePluginsSyncAll}
-        />
       )}
 
       {step === "app" && <AppSelect onSelect={handleAppSelect} />}

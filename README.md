@@ -36,6 +36,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
+- 📦 **v3.0**: wizard doctor thống nhất, plugins doctor alias, gỡ devtools bundle (~-750KB)
 - 📦 **v2.7**: auto-include plugins, `--no-plugins`, plugins doctor deprecated, CI npm publish
 - 📦 **v2.6**: lazy-load wizard, `init --include-plugins`, doctor JSON thống nhất (tools+plugins), cold-start ~80ms
 - 📦 **v2.4**: `doctor --json` meta endpoints, commands/ modular, 91 tests
