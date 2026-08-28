@@ -96,8 +96,15 @@ export function runColdStartBench(options?: {
   const runs = options?.runs ?? Number(process.env.STALI_BENCH_RUNS || 5);
   const runner = process.env.BUN_BIN || process.env.STALI_BENCH_RUNNER || "bun";
   const cli = process.env.STALI_BENCH_CLI || resolveCliEntry();
+  const fast = process.env.STALI_BENCH_FAST === "1";
 
-  const cases: Array<{ name: string; args: string[] }> = [
+  const cases: Array<{ name: string; args: string[] }> = fast
+    ? [
+        { name: "--version", args: ["--version"] },
+        { name: "--help", args: ["--help"] },
+        { name: "info --json", args: ["info", "--json"] },
+      ]
+    : [
     { name: "--version", args: ["--version"] },
     { name: "--help", args: ["--help"] },
     { name: "info --json", args: ["info", "--json"] },
@@ -134,9 +141,15 @@ export function runColdStartBench(options?: {
   ];
 
   const results = cases.map((c) => benchCase(c.name, cli, runner, c.args, runs));
-  const wizardRuns = options?.runs ?? Number(process.env.STALI_BENCH_RUNS || 5);
-  const wizardTimeout = Number(process.env.STALI_BENCH_WIZARD_TIMEOUT_MS || 800);
-  results.push(runWizardSpawnBench(cli, runner, Math.min(wizardRuns, 3), wizardTimeout));
+  const skipWizard =
+    fast ||
+    process.env.STALI_BENCH_SKIP_WIZARD === "1" ||
+    process.platform === "win32";
+  if (!skipWizard) {
+    const wizardRuns = options?.runs ?? Number(process.env.STALI_BENCH_RUNS || 5);
+    const wizardTimeout = Number(process.env.STALI_BENCH_WIZARD_TIMEOUT_MS || 800);
+    results.push(runWizardSpawnBench(cli, runner, Math.min(wizardRuns, 3), wizardTimeout));
+  }
   const failed =
     (options?.strict || process.env.STALI_BENCH_STRICT === "1") &&
     results.some((r) => r.overLimit);

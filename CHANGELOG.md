@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.37.2] — 2026-08-28
+
+### Fixed
+- **Bench trên Windows** — bỏ `wizard spawn` mặc định trên `win32`; `STALI_BENCH_FAST=1` cho CI; e2e bench timeout 60s
+
 ## [3.37.1] — 2026-08-28
 
 ### Fixed

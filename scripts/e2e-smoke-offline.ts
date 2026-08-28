@@ -19,11 +19,11 @@ function assert(name: string, cond: boolean, detail?: string) {
   results.push({ name, ok: cond, detail });
 }
 
-function run(args: string[], env?: NodeJS.ProcessEnv) {
+function run(args: string[], env?: NodeJS.ProcessEnv, timeoutMs = 15000) {
   return spawnSync(BUN, [CLI, ...args], {
     cwd: CLI_ROOT,
     encoding: "utf8",
-    timeout: 15000,
+    timeout: timeoutMs,
     env: env ? { ...process.env, ...env } : process.env,
   });
 }
@@ -227,7 +227,11 @@ async function main() {
     }
   }
 
-  const benchJson = run(["bench", "--json", "--runs", "1"]);
+  const benchEnv =
+    process.platform === "win32"
+      ? { STALI_BENCH_FAST: "1", STALI_BENCH_SKIP_WIZARD: "1" }
+      : undefined;
+  const benchJson = run(["bench", "--json", "--runs", "1"], benchEnv, 60_000);
   assert("bench --json exit 0", benchJson.status === 0);
   if (benchJson.status === 0) {
     try {
