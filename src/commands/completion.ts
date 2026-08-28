@@ -20,6 +20,7 @@ const SUBCOMMANDS = [
   "user",
   "status",
   "ready",
+  "scan",
   "plugins",
   "config",
   "check",
@@ -132,8 +133,10 @@ _stali_completion() {
       ;;
     config)
       if [[ "\${prev}" == "config" ]]; then
-        COMPREPLY=( $(compgen -W "show set" -- "\${cur}") )
+        COMPREPLY=( $(compgen -W "show set get" -- "\${cur}") )
       elif [[ "\${COMP_WORDS[2]}" == "set" && "\${prev}" == "set" ]]; then
+        COMPREPLY=( $(compgen -W "base-url" -- "\${cur}") )
+      elif [[ "\${COMP_WORDS[2]}" == "get" && "\${prev}" == "get" ]]; then
         COMPREPLY=( $(compgen -W "base-url" -- "\${cur}") )
       else
         COMPREPLY=( $(compgen -W "--json --reset" -- "\${cur}") )

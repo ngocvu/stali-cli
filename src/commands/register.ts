@@ -268,6 +268,16 @@ export function registerCommands(program: Command): void {
     });
 
   program
+    .command("scan")
+    .description("Quét app AI đang dùng trên máy (binary, config, VS Code, process)")
+    .option("--json", "JSON output")
+    .action(async (opts: { json?: boolean }) => {
+      const { runGatewayScan } = await import("../services/gateway-install");
+      await runGatewayScan({ json: opts.json });
+      process.exit(0);
+    });
+
+  program
     .command("init")
     .description("Khởi tạo đầy đủ (completion, kiểm tra phiên bản). Nhanh hơn: stali setup")
     .option("-k, --key <token>", "Stali API key")
@@ -437,6 +447,39 @@ export function registerCommands(program: Command): void {
         console.error(chalk.red(`\n❌ ${message}\n`));
         process.exit(1);
       }
+    });
+
+  configCmd
+    .command("get")
+    .argument("<key>", "base-url")
+    .description("Lấy giá trị config (hiện hỗ trợ: base-url)")
+    .option("--json", "JSON với openAiBaseUrl, anthropicBaseUrl, modelsEndpoint")
+    .action(async (key: string, opts: { json?: boolean }) => {
+      if (key !== "base-url") {
+        console.error(chalk.red("❌ Chỉ hỗ trợ: stali config get base-url"));
+        process.exit(1);
+      }
+      const { resolveStaliUrls } = await import("../utils/stali-urls");
+      const cfg = await loadStaliConfig();
+      const urls = resolveStaliUrls(cfg?.baseUrl);
+      const baseUrl = cfg?.baseUrl ?? urls.openAiBaseUrl;
+      if (opts.json) {
+        console.log(
+          JSON.stringify(
+            {
+              baseUrl,
+              openAiBaseUrl: urls.openAiBaseUrl,
+              anthropicBaseUrl: urls.anthropicBaseUrl,
+              modelsEndpoint: urls.modelsEndpoint,
+            },
+            null,
+            2
+          )
+        );
+      } else {
+        console.log(baseUrl);
+      }
+      process.exit(0);
     });
 
   program
@@ -684,7 +727,8 @@ export function registerCommands(program: Command): void {
     .option("--fix", "Tự cấu hình lại tool chưa trỏ Stali")
     .option("--dry-run", "Với --fix: chỉ liệt kê, không ghi file")
     .option("--force", "Với --fix: cấu hình lại cả tool đã OK")
-    .option("--installed-only", "Với --fix: chỉ app đã phát hiện trên máy (binary/config/VS Code)")
+    .option("--all-apps", "Với --fix: cả 13 tool (mặc định chỉ app đã phát hiện)")
+    .option("--installed-only", "Với --fix: chỉ app đã phát hiện (mặc định khi --fix)")
     .option("--tools <list>", "Với --fix: chỉ các tool (cách nhau bởi dấu phẩy)")
     .option("--ids <list>", "Với --plugins-only --fix: chỉ các plugin id (cách nhau bởi dấu phẩy)")
     .option("-m, --model <model>", "Với --fix: model áp dụng")
@@ -703,6 +747,7 @@ export function registerCommands(program: Command): void {
       fix?: boolean;
       dryRun?: boolean;
       force?: boolean;
+      allApps?: boolean;
       installedOnly?: boolean;
       tools?: string;
       ids?: string;
@@ -763,7 +808,7 @@ export function registerCommands(program: Command): void {
         dryRun: opts.dryRun,
         force: opts.force,
         tools: opts.tools,
-        installedOnly: opts.installedOnly,
+        installedOnly: opts.fix && !opts.tools ? !opts.allApps : Boolean(opts.installedOnly),
         ids: opts.ids,
         model: opts.model,
       }, view, opts.prometheus);
@@ -1126,7 +1171,8 @@ export function registerCommands(program: Command): void {
     .option("--dry-run", "Xem preview, không ghi file")
     .option("--continue-on-error", "Tiếp tục khi một tool lỗi")
     .option("--skip-advanced", "Bỏ qua claude/codex (mặc định bật khi không chỉ định --tools)")
-    .option("--installed-only", "Chỉ app đã phát hiện trên máy (binary/config/VS Code)")
+    .option("--all-apps", "Cả 13 tool (mặc định chỉ app đã phát hiện)")
+    .option("--installed-only", "Chỉ app đã phát hiện (mặc định khi không có --tools)")
     .option("--include-plugins", "Đồng bộ plugin (mặc định: bật nếu plugins.json có entry)")
     .option("--no-plugins", "Bỏ qua plugin")
     .action(
@@ -1136,6 +1182,7 @@ export function registerCommands(program: Command): void {
         dryRun?: boolean;
         continueOnError?: boolean;
         skipAdvanced?: boolean;
+        allApps?: boolean;
         installedOnly?: boolean;
         includePlugins?: boolean;
         noPlugins?: boolean;
@@ -1167,7 +1214,7 @@ export function registerCommands(program: Command): void {
           continueOnError: opts.continueOnError,
           skipAdvanced,
           includePlugins,
-          installedOnly: opts.installedOnly,
+          installedOnly: toolInputs ? false : !opts.allApps,
         });
 
         if (opts.dryRun) {

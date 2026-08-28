@@ -169,6 +169,20 @@ async function main() {
   const cronStatus = run(["update", "--cron-status"]);
   assert("update --cron-status exit 0", cronStatus.status === 0);
 
+  const scanTop = run(["scan", "--json"]);
+  assert("scan --json exit 0", scanTop.status === 0);
+  if (scanTop.status === 0) {
+    try {
+      const parsed = JSON.parse(scanTop.stdout || "{}");
+      assert("scan JSON has tools", Array.isArray(parsed.tools));
+    } catch {
+      assert("scan JSON parseable", false);
+    }
+  }
+
+  const configGet = run(["config", "get", "base-url"]);
+  assert("config get base-url exit 0|1", configGet.status === 0 || configGet.status === 1);
+
   const gatewayScan = run(["gateway", "scan", "--json"]);
   assert("gateway scan --json exit 0", gatewayScan.status === 0);
   if (gatewayScan.status === 0) {
@@ -265,6 +279,7 @@ async function main() {
   assert("--help exit 0", helpOut.status === 0);
   assert("--help user-first hides bench", !/^\s+bench\s/m.test(helpOut.stdout || ""));
   assert("--help shows setup", /setup/.test(helpOut.stdout || ""));
+  assert("--help shows scan", /^\s+scan\s/m.test(helpOut.stdout || ""));
   const helpAdv = run(["help", "advanced"]);
   assert("help advanced exit 0", helpAdv.status === 0);
   assert("help advanced shows bench", /bench/.test(helpAdv.stdout || ""));

@@ -24,6 +24,10 @@ describe("resolveCliMode", () => {
     expect(resolveCliMode(["bun", "stali", "doctor", "--json"])).toBe("subcommand");
   });
 
+  test("scan → subcommand", () => {
+    expect(resolveCliMode(["bun", "stali", "scan", "--json"])).toBe("subcommand");
+  });
+
   test("gw → subcommand", () => {
     expect(resolveCliMode(["bun", "stali", "gw", "scan"])).toBe("subcommand");
   });

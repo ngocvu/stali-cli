@@ -14,8 +14,8 @@ export function printUserQuickReference(): void {
   console.log(chalk.cyan("  stali check                    # mặc định nhanh (--full = đầy đủ)"));
   console.log(chalk.cyan("  stali doctor                   # chi tiết 13 tool\n"));
   console.log(chalk.white("Gateway"));
-  console.log(chalk.cyan("  stali gw                       # auto cài app đang dùng"));
-  console.log(chalk.cyan("  stali gateway scan             # xem app phát hiện\n"));
+  console.log(chalk.cyan("  stali scan                    # quét app AI đang dùng"));
+  console.log(chalk.cyan("  stali gw                      # auto cài gateway app đã quét\n"));
   console.log(chalk.gray(`API key: ${STALI_DASHBOARD_KEYS_URL}\n`));
 }
 

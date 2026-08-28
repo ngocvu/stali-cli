@@ -34,7 +34,7 @@ Lấy API key: [api.stali.vn/dashboard/keys](https://api.stali.vn/dashboard/keys
   - Grok Build, Cowork, jcode
 - 🛡️ **Backup timestamp**: `<file>.YYYYMMDD_HHmmss.bak` + `stali restore`
 - 🩺 **Doctor**: `stali doctor` — quét 13 tool với parser schema (không chỉ heuristic)
-- 🌐 **Gateway**: `stali gateway scan|plan|install` — tự quét app đang dùng và cài Stali API gateway
+- 🌐 **Gateway**: `stali scan` / `stali gw` — quét app đang dùng và cài Stali API gateway
 - 📋 **Tools**: `stali tools` — liệt kê 13 công cụ + đường dẫn config
 - ⚙️ **Batch**: `stali configure-all` — cấu hình hàng loạt (dry-run, filter tool)
 - 🐾 **OpenClaw menu**: wizard riêng với status live
@@ -125,7 +125,8 @@ stali                    # Wizard tương tác
 stali --models           # Bảng giá model
 stali ls -k sk-stali-... # Bảng giá với token
 stali doctor             # Kiểm tra cấu hình (13 tool, schema-aware)
-stali gateway scan       # Quét app AI đang dùng (binary, config, VS Code)
+stali scan                # Quét app AI đang dùng (nhanh, user-first)
+stali gateway scan        # Tương đương scan
 stali gateway auto -k sk-stali-...       # Quét + cài gateway một lệnh
 stali gateway install -k sk-stali-...  # Cài gateway chỉ app đã phát hiện
 stali gateway install --all -k sk-stali-...  # Cài gateway cả 13 tool

@@ -169,8 +169,8 @@ export async function runGatewayScan(opts?: GatewayScanOptions): Promise<ToolDis
   if (needsGateway.length > 0) {
     console.log(
       chalk.cyan(
-        `\n💡 Cài gateway: stali gateway auto -k sk-stali-...\n` +
-          `   Hoặc: stali gateway install / stali doctor --fix --installed-only\n`
+        `\n💡 Cài gateway: stali -k sk-stali-...  hoặc  stali gw\n` +
+          `   Quét lại: stali scan\n`
       )
     );
   } else if (installed.length > 0) {

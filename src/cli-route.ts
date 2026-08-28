@@ -9,6 +9,7 @@ export const STALI_SUBCOMMANDS = new Set([
   "help",
   "status",
   "ready",
+  "scan",
   "plugins",
   "config",
   "check",

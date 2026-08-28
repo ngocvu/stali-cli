@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.35.0] — 2026-08-28
+
+### Added
+- **`stali scan`** — quét app AI đang dùng (alias user-first của `gateway scan`)
+- **`stali config get base-url`** — xem base URL (+ `--json` với endpoints đầy đủ)
+- **`scripts/e2e-live.ts`** — E2E live với `STALI_E2E_KEY` (CI optional job)
+
+### Changed
+- **`doctor --fix`** — mặc định chỉ sửa app đã phát hiện; `--all-apps` cho cả 13 tool
+- **`configure-all`** — mặc định `installed-only` khi không có `--tools`; `--all-apps` bỏ qua quét
+- Help user-first thêm `scan`; `stali user` gợi ý `scan` + `gw`
+
 ## [3.34.1] — 2026-08-28
 
 ### Fixed

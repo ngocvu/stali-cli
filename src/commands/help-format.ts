@@ -9,6 +9,7 @@ export const USER_VISIBLE_COMMANDS = new Set([
   "user",
   "status",
   "ready",
+  "scan",
   "check",
   "doctor",
   "gateway",
@@ -74,7 +75,7 @@ export function printAdvancedHelpHint(): void {
 
 export function formatCompactHelpFooter(): string {
   return chalk.cyan(
-    `\nUser: stali -k sk-stali-...  ·  stali onboard  ·  stali status  ·  stali user\n` +
+    `\nUser: stali -k sk-stali-...  ·  stali scan  ·  stali status  ·  stali user\n` +
       chalk.gray(`v${VERSION}  ·  stali help advanced = toàn bộ lệnh\n`)
   );
 }
