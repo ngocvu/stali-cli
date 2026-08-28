@@ -419,7 +419,8 @@ export async function runDoctorWatch(
   view?: DoctorViewOptions,
   limits?: DoctorWatchLimits,
   prometheusOut?: boolean,
-  metricsPort?: number
+  metricsPort?: number,
+  metricsBindHost = "127.0.0.1"
 ) {
   const sec = Math.max(1, intervalSec);
   let running = true;
@@ -444,9 +445,9 @@ export async function runDoctorWatch(
   };
 
   if (metricsPort && metricsPort > 0) {
-    metricsServer = startDoctorMetricsServer(() => latestPrometheus, metricsPort);
+    metricsServer = startDoctorMetricsServer(() => latestPrometheus, metricsPort, metricsBindHost);
     if (!jsonOut && !prometheusOut) {
-      console.log(chalk.gray(`Metrics: http://127.0.0.1:${metricsPort}/metrics`));
+      console.log(chalk.gray(`Metrics: http://${metricsBindHost}:${metricsPort}/metrics`));
     }
   }
 

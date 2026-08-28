@@ -203,12 +203,63 @@ async function updateStandaloneInstall(
   };
 }
 
+export interface SelfUpdatePlan {
+  mode: string;
+  action: string;
+  ref: string;
+  channel: string;
+  assetName?: string;
+  downloadUrl?: string;
+  installDir?: string;
+}
+
+export async function planSelfUpdate(options?: {
+  repo?: string;
+  branch?: string;
+  channel?: UpdateChannel | string;
+}): Promise<SelfUpdatePlan> {
+  const channelCfg = await resolveUpdateChannelResolved(options?.channel);
+  const branch = options?.branch || channelCfg.branch;
+  const installRoot = getStaliCliInstallDir();
+  const installInfo = await detectInstallMode();
+  const tag = channelCfg.releaseTag || branch;
+  const releaseTag = /^v?\d/.test(tag) ? (tag.startsWith("v") ? tag : `v${tag}`) : tag;
+
+  if (installInfo.mode === "standalone") {
+    const resolved = /^v?\d/.test(releaseTag)
+      ? await resolveStandaloneDownloadUrl(releaseTag)
+      : null;
+    return {
+      mode: "standalone",
+      action: "download-release-binary",
+      ref: releaseTag,
+      channel: channelCfg.label,
+      assetName: resolved?.assetName,
+      downloadUrl: resolved?.url,
+      installDir: getStaliBinDir(),
+    };
+  }
+
+  const hasGit =
+    spawnSync("git", ["--version"], { encoding: "utf8" }).status === 0 &&
+    (await fs.access(path.join(installRoot, ".git")).then(() => true).catch(() => false));
+
+  return {
+    mode: installInfo.mode,
+    action: hasGit ? "git-sync-ref" : "zip-fetch-build",
+    ref: branch,
+    channel: channelCfg.label,
+    installDir: installRoot,
+  };
+}
+
 export async function selfUpdate(options?: {
   repo?: string;
   branch?: string;
   channel?: UpdateChannel | string;
   skipChecksum?: boolean;
   forceStandalone?: boolean;
+  dryRun?: boolean;
 }): Promise<SelfUpdateResult> {
   const repo = options?.repo || process.env.STALI_CLI_REPO || DEFAULT_REPO;
   const channelCfg = await resolveUpdateChannelResolved(options?.channel);
@@ -218,6 +269,16 @@ export async function selfUpdate(options?: {
   const tag = channelCfg.releaseTag || branch;
 
   try {
+    if (options?.dryRun) {
+      const plan = await planSelfUpdate(options);
+      return {
+        success: true,
+        message: `Dry-run: ${plan.action} → ${plan.ref} (${plan.channel})`,
+        installDir: plan.installDir,
+        error: plan.assetName ? `asset=${plan.assetName}` : undefined,
+      };
+    }
+
     if (installInfo.mode === "standalone" || options?.forceStandalone) {
       if (!/^v?\d/.test(tag)) {
         return {

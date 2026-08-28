@@ -89,6 +89,13 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | undefined>();
   const [results, setResults] = useState<SyncerResult[]>([]);
+  const [installModeLabel, setInstallModeLabel] = useState<string>("");
+
+  const refreshInstallMode = async () => {
+    const { detectInstallMode } = await import("../services/install-mode");
+    const info = await detectInstallMode();
+    setInstallModeLabel(info.mode);
+  };
 
   const isAdvancedTool = (toolId: string) =>
     toolId === "claude" || toolId === "codex";
@@ -130,6 +137,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           setModels(res.models);
           setApiDefaultModel(res.defaultModel);
           setStep("menu");
+          await refreshInstallMode();
         } else {
           setError(res.error || "Token đã lưu không hợp lệ. Vui lòng nhập lại.");
           setStep("token");
@@ -152,6 +160,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       setApiDefaultModel(res.defaultModel);
       await saveStaliConfig({ apiKey: token });
       setStep("menu");
+      await refreshInstallMode();
     } else {
       setError(res.error || "Token không hợp lệ");
     }
@@ -748,7 +757,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       )}
 
       {step === "menu" && (
-        <MainMenu apiKey={apiKey} onSelect={handleMenuSelect} />
+        <MainMenu apiKey={apiKey} installMode={installModeLabel} onSelect={handleMenuSelect} />
       )}
 
       {step === "pricing" && (

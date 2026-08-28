@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.12.0] — 2026-08-28
+
+### Added
+- **npm cài nhanh** — `bin/stali.js` chạy Node >=18 (không cần Bun); `npm install -g stali-cli` prebuilt dist
+- **`scripts/npm-install-global.sh`** — một lệnh cài global (`--no-fund --no-audit`)
+- **`scripts/install.ps1`** — Windows standalone + PATH
+- **`stali update --dry-run`** — xem kế hoạch update theo install mode
+- **`doctor --metrics-bind`** — bind `0.0.0.0` cho `--metrics-port` (opt-in)
+- **`update --install-systemd`** — systemd user timer 04:00 (Linux)
+- **Wizard menu** — hiển thị install mode (`standalone` / `git` / …)
+
+### Changed
+- `package.json` engines → Node >=18; postinstall ghi `npm-global` marker
+- `install.sh` npm path dùng `npm install -g` (không Bun)
+- `bin/stali` ưu tiên Node trước Bun
+
 ## [3.11.0] — 2026-08-28
 
 ### Added

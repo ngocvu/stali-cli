@@ -7,6 +7,7 @@ import { VERSION } from "../version";
 
 interface MainMenuProps {
   apiKey?: string;
+  installMode?: string;
   onSelect: (
     action:
       | "configure"
@@ -23,7 +24,7 @@ interface MainMenuProps {
   ) => void;
 }
 
-export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, onSelect }) => {
+export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, installMode, onSelect }) => {
   const items = [
     { label: "⚡ Cấu hình ứng dụng AI", value: "configure" as const },
     { label: "⚙️  Cấu hình hàng loạt (configure-all)", value: "configure-all" as const },
@@ -46,7 +47,10 @@ export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, onSelect }) => {
             Token hiện tại: <Text color="yellow">{maskToken(apiKey)}</Text>
           </Text>
         )}
-        <Text color="gray">stali-cli v{VERSION} · ~/.stali</Text>
+        <Text color="gray">
+          stali-cli v{VERSION}
+          {installMode ? ` · ${installMode}` : ""} · ~/.stali
+        </Text>
         <SelectInput items={items} onSelect={(item) => onSelect(item.value)} />
 
         <Box justifyContent="center" marginTop={1}>

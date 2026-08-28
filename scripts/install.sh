@@ -152,15 +152,12 @@ NODE
 }
 
 install_from_npm() {
-  need_bun
+  command -v npm >/dev/null 2>&1 || die "Cần npm (Node.js >= 18). Cài: https://nodejs.org"
   local spec="$NPM_PKG"
   [[ -n "$VERSION" ]] && spec="${NPM_PKG}@${VERSION}"
-  log "Cài ${spec} từ npm…"
-  bun install -g "$spec"
-  local npm_root="$HOME/.bun/install/global/node_modules/stali-cli"
-  if [[ -d "$npm_root" ]]; then
-    register_global_stali "$npm_root"
-  fi
+  log "Cài ${spec} từ npm (prebuilt dist, không build)…"
+  npm install -g "$spec" --no-fund --no-audit --loglevel="${NPM_CONFIG_LOGLEVEL:-error}"
+  export PATH="$(npm bin -g 2>/dev/null || true):$STALI_BIN:$PATH"
 }
 
 fetch_source() {
@@ -231,8 +228,12 @@ main() {
     npm) install_from_npm ;;
     git) install_from_git ;;
     auto)
-      if install_from_npm; then :; else
-        log "npm failed — thử GitHub…"
+      if command -v npm >/dev/null 2>&1; then
+        install_from_npm || {
+          log "npm failed — thử GitHub source…"
+          install_from_git
+        }
+      else
         install_from_git
       fi
       ;;

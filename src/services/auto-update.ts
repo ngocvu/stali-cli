@@ -1,9 +1,12 @@
 import fs from "fs/promises";
+import { existsSync } from "fs";
+import os from "os";
 import path from "path";
 import { spawnSync } from "child_process";
 import { getStaliBinDir, getStaliHome } from "../constants/paths";
 
 const CRON_MARKER = "stali-cli auto-update";
+const SYSTEMD_MARKER = "stali-cli";
 const LOG_FILE = "auto-update.log";
 
 export interface AutoUpdateCronStatus {
@@ -124,4 +127,81 @@ export async function readAutoUpdateConfig(): Promise<AutoUpdateConfig | null> {
   } catch {
     return null;
   }
+}
+
+export interface SystemdTimerStatus {
+  installed: boolean;
+  unitDir: string;
+}
+
+export function getSystemdTimerStatus(): SystemdTimerStatus {
+  const unitDir = path.join(os.homedir(), ".config", "systemd", "user");
+  const servicePath = path.join(unitDir, "stali-update.service");
+  return { installed: existsSync(servicePath), unitDir };
+}
+
+/** systemd user timer 04:00 — thay cron trên Linux có systemd. */
+export async function installAutoUpdateSystemd(channel = "stable"): Promise<{
+  ok: boolean;
+  message: string;
+  error?: string;
+}> {
+  if (process.platform !== "linux") {
+    return { ok: false, message: "systemd timer chỉ hỗ trợ Linux" };
+  }
+  const unitDir = path.join(os.homedir(), ".config", "systemd", "user");
+  const stali = path.join(getStaliBinDir(), "stali");
+  const logPath = path.join(getStaliHome(), LOG_FILE);
+  await fs.mkdir(unitDir, { recursive: true });
+  await fs.mkdir(getStaliHome(), { recursive: true });
+
+  const service = `[Unit]
+Description=${SYSTEMD_MARKER} auto-update
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=${stali} update --channel ${channel}
+StandardOutput=append:${logPath}
+StandardError=append:${logPath}
+`;
+  const timer = `[Unit]
+Description=${SYSTEMD_MARKER} daily update timer
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+`;
+  await fs.writeFile(path.join(unitDir, "stali-update.service"), service, "utf8");
+  await fs.writeFile(path.join(unitDir, "stali-update.timer"), timer, "utf8");
+
+  const reload = spawnSync("systemctl", ["--user", "daemon-reload"], { encoding: "utf8" });
+  if (reload.status !== 0) {
+    return { ok: false, message: "systemctl daemon-reload failed", error: reload.stderr };
+  }
+  const enable = spawnSync("systemctl", ["--user", "enable", "--now", "stali-update.timer"], {
+    encoding: "utf8",
+  });
+  if (enable.status !== 0) {
+    return { ok: false, message: "systemctl enable timer failed", error: enable.stderr };
+  }
+  await writeAutoUpdateConfig({ channel, enabled: true });
+  return { ok: true, message: `Đã bật systemd user timer 04:00 (${unitDir})` };
+}
+
+export async function uninstallAutoUpdateSystemd(): Promise<{ ok: boolean; message: string }> {
+  if (process.platform !== "linux") {
+    return { ok: true, message: "Không có systemd timer" };
+  }
+  spawnSync("systemctl", ["--user", "disable", "--now", "stali-update.timer"], { encoding: "utf8" });
+  const unitDir = path.join(os.homedir(), ".config", "systemd", "user");
+  for (const f of ["stali-update.service", "stali-update.timer"]) {
+    await fs.rm(path.join(unitDir, f), { force: true }).catch(() => {});
+  }
+  spawnSync("systemctl", ["--user", "daemon-reload"], { encoding: "utf8" });
+  await writeAutoUpdateConfig({ enabled: false });
+  return { ok: true, message: "Đã gỡ systemd user timer" };
 }

@@ -1,24 +1,25 @@
 {
   "name": "stali-cli",
-  "version": "3.11.0",
+  "version": "3.12.0",
   "description": "Interactive CLI tool and configuration manager for Stali API (https://api.stali.vn)",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "stali": "./bin/stali"
+    "stali": "./bin/stali.js"
   },
   "files": [
     "bin",
     "dist",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "scripts/npm-postinstall.cjs"
   ],
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun run --watch src/index.ts",
     "build": "bun scripts/build.ts",
-    "postinstall": "node -e \"try{require('fs').accessSync('dist/index.js');}catch{console.log('[stali-cli] Chạy npm run build hoặc cài qua curl install script.');}\"",
+    "postinstall": "node scripts/npm-postinstall.cjs",
     "pack:cli": "bun run build && npm pack",
     "publish:cli": "bun run build && npm publish",
     "prepublishOnly": "bun run build",
@@ -69,6 +70,6 @@
     "typescript": "^7.0.2"
   },
   "engines": {
-    "bun": ">=1.0.0"
+    "node": ">=18.0.0"
   }
 }

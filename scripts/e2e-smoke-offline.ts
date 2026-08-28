@@ -137,6 +137,10 @@ async function main() {
     }
   }
 
+  const dryRun = run(["update", "--dry-run", "--channel", "stable"]);
+  assert("update --dry-run exit 0", dryRun.status === 0);
+  assert("update dry-run mentions Dry-run", (dryRun.stdout || "").includes("Dry-run"));
+
   const cronStatus = run(["update", "--cron-status"]);
   assert("update --cron-status exit 0", cronStatus.status === 0);
 

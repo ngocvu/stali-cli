@@ -36,6 +36,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
+- 📦 **v3.12**: npm fast install (Node), install.ps1, update dry-run, metrics-bind, systemd timer
 - 📦 **v3.11**: wizard completion, info installMode, metrics HTTP, auto-update cron, win standalone
 - 📦 **v3.10**: install mode detect, standalone update, multi-platform binary, doctor --prometheus
 - 📦 **v3.9**: GitHub Release assets, doctor watch CI, standalone install, completion install fix
@@ -57,13 +58,20 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 ## 🚀 Cài đặt
 
 ```bash
-# Một lệnh (khuyến nghị trên api.stali.vn)
-curl -fsSL https://api.stali.vn/install/stali-cli.sh | bash
-# Pin version:
-STALI_CLI_VERSION=3.6.0 curl -fsSL https://api.stali.vn/install/stali-cli.sh | bash
+# Nhanh nhất — npm global (prebuilt dist, chỉ cần Node >= 18)
+npm install -g stali-cli --no-fund --no-audit
+# hoặc:
+bash scripts/npm-install-global.sh
 
-# Hoặc Bun/npm (cần build dist/)
-bun install -g stali-cli
+# curl installer (git source / standalone / npm auto)
+curl -fsSL https://api.stali.vn/install/stali-cli.sh | bash
+STALI_CLI_INSTALL_METHOD=npm bash scripts/install.sh   # npm only
+
+# Windows standalone (PowerShell)
+$env:STALI_CLI_VERSION = "v3.12.0"; irm .../scripts/install.ps1 | iex
+
+# Dev từ source (cần Bun để build)
+git clone https://github.com/ngocvu/stali-cli.git && cd stali-cli && bun install && bun run build
 ```
 
 ## 📁 Cấu trúc thư mục (~/.stali)

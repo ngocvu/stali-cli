@@ -515,7 +515,8 @@ export function registerCommands(program: Command): void {
     .option("--watch", "Theo dõi liên tục (Ctrl+C thoát)")
     .option("--notify", "Với --watch: chuông + desktop notify khi thay đổi")
     .option("--prometheus", "Xuất metrics Prometheus text (one-shot hoặc --watch)")
-    .option("--metrics-port <port>", "Với --watch: HTTP /metrics trên 127.0.0.1:PORT")
+    .option("--metrics-port <port>", "Với --watch: HTTP /metrics (mặc định bind 127.0.0.1)")
+    .option("--metrics-bind <host>", "Bind address cho --metrics-port", "127.0.0.1")
     .option("-i, --interval <seconds>", "Với --watch: chu kỳ giây (mặc định 10)", "10")
     .option("--max-cycles <n>", "Với --watch: số lần quét rồi thoát (CI)")
     .option("--duration <seconds>", "Với --watch: chạy tối đa N giây rồi thoát (CI)")
@@ -531,6 +532,7 @@ export function registerCommands(program: Command): void {
       notify?: boolean;
       prometheus?: boolean;
       metricsPort?: string;
+      metricsBind?: string;
       interval?: string;
       maxCycles?: string;
       duration?: string;
@@ -569,10 +571,11 @@ export function registerCommands(program: Command): void {
           console.error(chalk.red("❌ --metrics-port chỉ dùng với --watch"));
           process.exit(2);
         }
+        const metricsBind = opts.metricsBind || "127.0.0.1";
         await runDoctorWatch(sec, opts.json, opts.notify, view, {
           maxCycles,
           durationSec,
-        }, opts.prometheus, metricsPort);
+        }, opts.prometheus, metricsPort, metricsBind);
         return;
       }
       const code = await runDoctor(opts.json, {
@@ -595,23 +598,48 @@ export function registerCommands(program: Command): void {
     .option("--install-cron", "Cài cron 04:00 tự update (Linux/macOS)")
     .option("--uninstall-cron", "Gỡ cron auto-update")
     .option("--cron-status", "Trạng thái cron auto-update")
+    .option("--install-systemd", "Cài systemd user timer 04:00 (Linux)")
+    .option("--uninstall-systemd", "Gỡ systemd user timer")
+    .option("--dry-run", "Chỉ xem kế hoạch update (không thực hiện)")
     .action(async (opts: {
       check?: boolean;
       channel?: string;
       installCron?: boolean;
       uninstallCron?: boolean;
       cronStatus?: boolean;
+      installSystemd?: boolean;
+      uninstallSystemd?: boolean;
+      dryRun?: boolean;
     }) => {
       if (opts.cronStatus) {
-        const { getAutoUpdateCronStatus, readAutoUpdateConfig } = await import("../services/auto-update");
+        const { getAutoUpdateCronStatus, readAutoUpdateConfig, getSystemdTimerStatus } = await import(
+          "../services/auto-update"
+        );
         const status = getAutoUpdateCronStatus();
+        const systemd = getSystemdTimerStatus();
         const cfg = await readAutoUpdateConfig();
         console.log(chalk.bold.cyan("\n⏰ STALI AUTO-UPDATE\n"));
         console.log(`Cron:      ${status.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")}`);
         if (status.line) console.log(chalk.gray(`  ${status.line}`));
+        console.log(
+          `Systemd:   ${systemd.installed ? chalk.green("đã cài") : chalk.gray("chưa cài")} (${systemd.unitDir})`
+        );
         console.log(`Log:       ${status.logPath}`);
         if (cfg) console.log(`Config:    channel=${cfg.channel || "stable"} enabled=${cfg.enabled}`);
         console.log("");
+        process.exit(0);
+      }
+      if (opts.installSystemd) {
+        const { installAutoUpdateSystemd } = await import("../services/auto-update");
+        const r = await installAutoUpdateSystemd(opts.channel);
+        console.log(r.ok ? chalk.green(`✅ ${r.message}`) : chalk.red(`❌ ${r.message}`));
+        if (r.error) console.error(chalk.red(r.error));
+        process.exit(r.ok ? 0 : 1);
+      }
+      if (opts.uninstallSystemd) {
+        const { uninstallAutoUpdateSystemd } = await import("../services/auto-update");
+        const r = await uninstallAutoUpdateSystemd();
+        console.log(chalk.green(`✅ ${r.message}`));
         process.exit(0);
       }
       if (opts.installCron) {
@@ -645,9 +673,13 @@ export function registerCommands(program: Command): void {
         console.log(chalk.green(`\n${t("update_latest")}\n`));
         process.exit(0);
       }
-      console.log(chalk.cyan(`\n⬇️  Đang cập nhật stali-cli (${channelCfg.label})…\n`));
+      console.log(
+        opts.dryRun
+          ? chalk.cyan(`\n🔍 Kế hoạch cập nhật stali-cli (${channelCfg.label})…\n`)
+          : chalk.cyan(`\n⬇️  Đang cập nhật stali-cli (${channelCfg.label})…\n`)
+      );
       const { selfUpdate } = await import("../services/self-update");
-      const result = await selfUpdate({ channel: opts.channel });
+      const result = await selfUpdate({ channel: opts.channel, dryRun: opts.dryRun });
       if (result.success) {
         console.log(chalk.green(`✅ ${result.message}`));
         console.log(chalk.gray(`   Chạy lại: stali --version\n`));
