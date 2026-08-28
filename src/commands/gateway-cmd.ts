@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { runGatewayInstall, runGatewayPlan, runGatewayScan } from "../services/gateway-install";
+import { runGatewayAuto, runGatewayInstall, runGatewayPlan, runGatewayScan } from "../services/gateway-install";
 
 export async function runGatewayCommand(
   sub: string | undefined,
@@ -29,6 +29,30 @@ export async function runGatewayCommand(
       force: opts.force,
     });
     process.exit(0);
+  }
+
+  if (action === "auto") {
+    try {
+      const { resolveIncludePluginsFromHome } = await import("../utils/include-plugins");
+      const includePlugins = await resolveIncludePluginsFromHome({
+        includePlugins: opts.includePlugins,
+        noPlugins: opts.noPlugins,
+      });
+      const result = await runGatewayAuto({
+        apiKey: apiKey?.trim() || "",
+        model: opts.model,
+        dryRun: opts.dryRun,
+        all: opts.all,
+        force: opts.force,
+        continueOnError: opts.continueOnError,
+        includePlugins,
+        json: opts.json,
+      });
+      const ok = result.install ? result.install.allOk : true;
+      process.exit(ok ? 0 : 1);
+    } catch {
+      process.exit(1);
+    }
   }
 
   if (action === "install") {
@@ -99,6 +123,7 @@ export async function runGatewayCommand(
   console.error(chalk.red(`❌ Lệnh gateway không hợp lệ: ${action}`));
   console.log(chalk.cyan("  stali gateway scan [--json]"));
   console.log(chalk.cyan("  stali gateway plan [--json] [--all] [--force]"));
+  console.log(chalk.cyan("  stali gateway auto [-k] [--dry-run] [--json] [--all] [--force]"));
   console.log(chalk.cyan("  stali gateway install [-k] [--dry-run] [--json] [--all] [--force]\n"));
   process.exit(1);
 }

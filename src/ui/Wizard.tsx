@@ -505,12 +505,17 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         setStep("done");
         return;
       }
-      if (action === "install") {
-        const { runGatewayInstall } = await import("../services/gateway-install");
-        const { items, allOk } = await runGatewayInstall({
-          apiKey,
-          continueOnError: true,
-        });
+      if (action === "install" || action === "auto") {
+        const gw = await import("../services/gateway-install");
+        const batch =
+          action === "auto"
+            ? await gw.runGatewayAuto({ apiKey, continueOnError: true })
+            : { install: await gw.runGatewayInstall({ apiKey, continueOnError: true }) };
+        const { items, allOk } = batch.install ?? {
+          items: [],
+          allOk: true,
+          targets: [] as string[],
+        };
         setResults(
           items.map((item) => ({
             toolId: item.toolId || "gateway",
@@ -521,7 +526,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
             error: item.error,
           }))
         );
-        setSelectedModel("Gateway install");
+        setSelectedModel(action === "auto" ? "Gateway auto" : "Gateway install");
         setStep("done");
         if (!allOk) setError("Một số app chưa cài gateway thành công");
       }

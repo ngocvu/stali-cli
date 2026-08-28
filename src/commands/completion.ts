@@ -57,7 +57,7 @@ const CONFIGURE_ALL_FLAGS = [
 ];
 const RESTORE_FLAGS = ["-t", "--tool", "-b", "--backup"];
 const DOCTOR_FLAGS = ["--json", "--plugins-only", "--tools-only", "--fix", "--dry-run", "--force", "--tools", "--ids", "--watch", "--notify", "-i", "--interval"];
-const GATEWAY_ACTIONS = ["scan", "install", "plan"];
+const GATEWAY_ACTIONS = ["scan", "plan", "auto", "install"];
 const GATEWAY_FLAGS = ["--json", "--dry-run", "--all", "--force", "-m", "--model", "--continue-on-error", "--include-plugins", "--no-plugins"];
 const INFO_FLAGS = ["--json", "--offline", "--online"];
 const BENCH_FLAGS = ["--json", "--strict", "--runs"];
@@ -336,7 +336,7 @@ function fishCompletion(): string {
     "",
     "complete -c stali -n '__fish_seen_subcommand_from plugins' -l init",
     "",
-    "complete -c stali -n '__fish_seen_subcommand_from gateway' -a 'scan plan install'",
+    "complete -c stali -n '__fish_seen_subcommand_from gateway' -a 'scan plan auto install'",
     "complete -c stali -n '__fish_seen_subcommand_from gw' -a 'scan plan install'",
     "complete -c stali -n '__fish_seen_subcommand_from gateway' -l json",
     "complete -c stali -n '__fish_seen_subcommand_from gateway' -l dry-run",

@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.21.0] — 2026-08-28
+
+### Added
+- **`stali gateway auto`** — quét app đang dùng và cài gateway một lệnh (`stali gw auto`)
+- Discovery **process markers** (full `ps args`) + **macOS .app** (`Claude.app`, …)
+- Wizard gateway: mục **Quét & cài tự động**
+- Benchmark + e2e cho `gateway auto --dry-run --json`
+
+### Changed
+- `stali info` — plugin scan nhanh (đếm registry); dùng `doctor --plugins-only` cho chi tiết
+- `info --online` — validate auth song song, bỏ spawn bun khi offline
+- SetupDone gợi ý `stali telemetry on` (opt-in)
+- Shell completion: `gateway auto`
+
 ## [3.20.0] — 2026-08-28
 
 ### Added

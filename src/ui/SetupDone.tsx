@@ -119,6 +119,9 @@ export const SetupDone: React.FC<SetupDoneProps> = ({
 
         <Box flexDirection="column" marginTop={1} gap={1}>
           <Text color="gray">
+            Telemetry ẩn danh (opt-in): <Text color="cyan">stali telemetry on</Text>
+          </Text>
+          <Text color="gray">
             Dùng phím mũi tên [ ↑ ] [ ↓ ] và nhấn [ Enter ] để chọn hoặc nhấn [ Q ] / [ Esc ] để Thoát:
           </Text>
           <SelectInput items={actionItems} onSelect={handleActionSelect} />

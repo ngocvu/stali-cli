@@ -152,8 +152,8 @@ export async function runGatewayScan(opts?: GatewayScanOptions): Promise<ToolDis
   if (needsGateway.length > 0) {
     console.log(
       chalk.cyan(
-        `\n💡 Cài gateway: stali gateway install -k sk-stali-...\n` +
-          `   Hoặc: stali doctor --fix --installed-only\n`
+        `\n💡 Cài gateway: stali gateway auto -k sk-stali-...\n` +
+          `   Hoặc: stali gateway install / stali doctor --fix --installed-only\n`
       )
     );
   } else if (installed.length > 0) {
@@ -195,12 +195,118 @@ export async function runGatewayPlan(opts?: {
       const sig = e ? formatDiscoverySignal(e.signals) : "";
       console.log(`  • ${e?.toolName || id} ${chalk.gray(`(${sig})`)}`);
     }
-    console.log(chalk.cyan(`\nChạy: stali gateway install -k sk-stali-...\n`));
+    console.log(chalk.cyan(`\nChạy: stali gateway auto -k sk-stali-...\n`));
   } else {
     console.log(chalk.green("✅ Không có app cần cài gateway.\n"));
   }
 
   return plan;
+}
+
+export interface GatewayAutoOptions extends GatewayInstallOptions {
+  json?: boolean;
+}
+
+export interface GatewayAutoResult {
+  plan: GatewayPlan;
+  install?: { items: ConfigureBatchItem[]; allOk: boolean; targets: string[] };
+}
+
+/** Quét app đang dùng → cài gateway cho mọi target (một lệnh). */
+export async function runGatewayAuto(opts: GatewayAutoOptions): Promise<GatewayAutoResult> {
+  const plan = await planGatewayInstall({ all: opts.all, force: opts.force });
+
+  if (plan.targets.length === 0) {
+    if (opts.json) {
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            dryRun: Boolean(opts.dryRun),
+            plan,
+            install: null,
+            reason: "no_targets",
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.log(chalk.bold.cyan("\n⚡ STALI GATEWAY AUTO\n"));
+      console.log(chalk.green("✅ Không có app cần cài gateway (đã OK hoặc chưa phát hiện).\n"));
+      console.log(chalk.gray(`   Phát hiện ${plan.summary.installed}/${plan.summary.totalTools} app · ${plan.summary.configured} đã gateway\n`));
+    }
+    return { plan };
+  }
+
+  if (!opts.apiKey?.trim()) {
+    if (opts.json) {
+      console.log(
+        JSON.stringify(
+          {
+            ok: false,
+            error: "missing_api_key",
+            dryRun: Boolean(opts.dryRun),
+            plan,
+            targets: plan.targets,
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.error(chalk.red("❌ Thiếu API key. Chạy: stali auth login -k sk-stali-..."));
+    }
+    throw new Error("missing_api_key");
+  }
+
+  if (!opts.json) {
+    console.log(chalk.bold.cyan("\n⚡ STALI GATEWAY AUTO\n"));
+    console.log(
+      `Phát hiện ${chalk.white(String(plan.summary.installed))} app · ` +
+        `${chalk.yellow(String(plan.targets.length))} sẽ cài gateway\n`
+    );
+    for (const id of plan.targets) {
+      const e = plan.tools.find((t) => t.toolId === id);
+      const sig = e ? formatDiscoverySignal(e.signals) : "";
+      console.log(`  • ${e?.toolName || id} ${chalk.gray(`(${sig})`)}`);
+    }
+    console.log("");
+  }
+
+  const install = await runGatewayInstall(opts);
+
+  if (opts.json) {
+    console.log(
+      JSON.stringify(
+        {
+          ok: install.allOk,
+          dryRun: Boolean(opts.dryRun),
+          plan,
+          install: {
+            targets: install.targets,
+            items: install.items,
+          },
+        },
+        null,
+        2
+      )
+    );
+  } else if (!opts.dryRun) {
+    for (const item of install.items) {
+      const icon = item.success ? chalk.green("✓") : chalk.red("✗");
+      console.log(`${icon} ${chalk.white(item.toolName || item.toolId)} — ${item.message}`);
+    }
+    console.log(
+      install.allOk
+        ? chalk.green("\n✅ Gateway auto hoàn tất.\n")
+        : chalk.yellow("\n⚠️  Một số app chưa cài xong — chạy lại hoặc stali doctor --fix\n")
+    );
+  } else {
+    console.log(chalk.cyan(`\n🔍 Dry-run: sẽ cài ${install.targets.join(", ")}\n`));
+  }
+
+  return { plan, install };
 }
 
 export async function runGatewayInstall(

@@ -37,6 +37,7 @@ Công cụ dòng lệnh (CLI) tương tác và trình quản lý cấu hình cho
 - 🌐 **Custom API**: `stali config set base-url <url>` — staging/self-hosted
 - 🌐 **i18n**: `--lang vi|en` hoặc `STALI_LANG`
 - 🔔 **Doctor notify**: `stali doctor --watch --notify` — cảnh báo khi cấu hình đổi
+- 📦 **v3.21**: `gateway auto`, discovery process/app markers, info online nhanh hơn
 - 📦 **v3.20**: wizard gateway menu + plan, info offline flag, bench gateway plan
 - 📦 **v3.19**: `gateway plan`, shell completion bench/telemetry, plugin scan parallel
 - 📦 **v3.18**: info offline fast (~136ms), gateway install JSON, telemetry opt-in
@@ -102,6 +103,7 @@ stali --models           # Bảng giá model
 stali ls -k sk-stali-... # Bảng giá với token
 stali doctor             # Kiểm tra cấu hình (13 tool, schema-aware)
 stali gateway scan       # Quét app AI đang dùng (binary, config, VS Code)
+stali gateway auto -k sk-stali-...       # Quét + cài gateway một lệnh
 stali gateway install -k sk-stali-...  # Cài gateway chỉ app đã phát hiện
 stali gateway install --all -k sk-stali-...  # Cài gateway cả 13 tool
 stali paths              # ~/.stali/cli, bin, config

@@ -8,13 +8,22 @@ import {
   TOOL_BINARY_NAMES,
   TOOL_HOME_MARKERS,
   TOOL_JETBRAINS_MARKERS,
+  TOOL_MACOS_APPS,
+  TOOL_PROCESS_MARKERS,
   TOOL_VSCODE_EXTENSIONS,
 } from "../constants/tool-binaries";
 import { resolveHomePath } from "../utils/file";
 import { getToolById } from "../utils/tool-utils";
 import { runDoctorScan, type ToolHealthStatus } from "./syncers";
 
-export type DiscoverySignal = "binary" | "config" | "vscode" | "home" | "process" | "jetbrains";
+export type DiscoverySignal =
+  | "binary"
+  | "config"
+  | "vscode"
+  | "home"
+  | "process"
+  | "jetbrains"
+  | "application";
 
 export interface ToolDiscoveryEntry {
   toolId: string;
@@ -77,8 +86,15 @@ function loadProcessLines(): string[] {
     });
     return (r.stdout || "").toLowerCase().split(/\r?\n/);
   }
-  const r = spawnSync("ps", ["-A", "-o", "comm="], { encoding: "utf8", timeout: 5000 });
-  if (r.status !== 0) return [];
+  const r = spawnSync("ps", ["-ax", "-o", "args="], { encoding: "utf8", timeout: 8000 });
+  if (r.status !== 0) {
+    const fallback = spawnSync("ps", ["-A", "-o", "comm="], { encoding: "utf8", timeout: 5000 });
+    if (fallback.status !== 0) return [];
+    return (fallback.stdout || "")
+      .split(/\r?\n/)
+      .map((l) => l.trim().toLowerCase())
+      .filter(Boolean);
+  }
   return (r.stdout || "")
     .split(/\r?\n/)
     .map((l) => l.trim().toLowerCase())
@@ -118,16 +134,37 @@ function probeRunningProcessFromList(lines: string[], toolId: string): boolean {
   const candidates = [
     ...new Set([...(names || []), tool?.command].filter(Boolean) as string[]),
   ].map((n) => n.toLowerCase());
+  const markers = (TOOL_PROCESS_MARKERS[toolId] || []).map((m) => m.toLowerCase());
+  const haystack = lines.join("\n");
+
+  if (markers.length > 0 && markers.some((m) => haystack.includes(m))) {
+    return true;
+  }
+
   if (candidates.length === 0) return false;
 
   if (process.platform === "win32") {
-    const out = lines.join("\n");
+    const out = haystack;
     return candidates.some((n) => out.includes(`${n}.exe`) || out.includes(n));
   }
 
   return candidates.some((name) =>
     lines.some((line) => line === name || line.endsWith(`/${name}`) || line.includes(name))
   );
+}
+
+async function probeMacosApplications(toolId: string): Promise<boolean> {
+  if (process.platform !== "darwin") return false;
+  const apps = TOOL_MACOS_APPS[toolId] || [];
+  if (apps.length === 0) return false;
+  const home = os.homedir();
+  const roots = ["/Applications", path.join(home, "Applications")];
+  for (const app of apps) {
+    for (const root of roots) {
+      if (await pathExists(path.join(root, app))) return true;
+    }
+  }
+  return false;
 }
 
 /** Phát hiện process đang chạy — dùng buildDiscoveryScanContext() để gọi ps một lần. */
@@ -184,10 +221,11 @@ export async function discoverTool(
   const config = health?.exists ?? (await pathExists(configPath));
   const vscodeMarkers = TOOL_VSCODE_EXTENSIONS[toolId];
 
-  const [binary, home, jetbrains] = await Promise.all([
+  const [binary, home, jetbrains, macApp] = await Promise.all([
     probeBinary(toolId),
     probeHomeMarkers(toolId),
     probeJetBrainsMarkers(toolId),
+    probeMacosApplications(toolId),
   ]);
 
   let vscodeHit = false;
@@ -211,8 +249,11 @@ export async function discoverTool(
   if (home) signals.home = true;
   if (running) signals.process = true;
   if (jetbrains) signals.jetbrains = true;
+  if (macApp) signals.application = true;
 
-  const installed = Boolean(binary.found || config || vscodeHit || home || running || jetbrains);
+  const installed = Boolean(
+    binary.found || config || vscodeHit || home || running || jetbrains || macApp
+  );
 
   return {
     toolId: tool.id,
@@ -254,5 +295,6 @@ export function formatDiscoverySignal(signals: Partial<Record<DiscoverySignal, b
   if (signals.home) parts.push("home");
   if (signals.process) parts.push("process");
   if (signals.jetbrains) parts.push("jetbrains");
+  if (signals.application) parts.push("app");
   return parts.length > 0 ? parts.join("+") : "—";
 }

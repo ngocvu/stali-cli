@@ -3,7 +3,7 @@ import { Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
 
-export type GatewayMenuAction = "plan" | "install" | "back";
+export type GatewayMenuAction = "plan" | "auto" | "install" | "back";
 
 interface GatewayMenuProps {
   summary?: {
@@ -17,6 +17,7 @@ interface GatewayMenuProps {
 
 export const GatewayMenu: React.FC<GatewayMenuProps> = ({ summary, onSelect }) => {
   const items = [
+    { label: "⚡ Quét & cài gateway tự động", value: "auto" as const },
     { label: "📋 Xem kế hoạch cài (gateway plan)", value: "plan" as const },
     { label: "🌐 Cài gateway vào app đã phát hiện", value: "install" as const },
     { label: "⬅️  Quay lại Menu chính", value: "back" as const },
@@ -35,7 +36,7 @@ export const GatewayMenu: React.FC<GatewayMenuProps> = ({ summary, onSelect }) =
         )}
         <SelectInput items={items} onSelect={(item) => onSelect(item.value)} />
         <Box justifyContent="center" marginTop={1}>
-          <Text color="gray">💡 CLI: stali gw plan --json | stali gw install</Text>
+          <Text color="gray">💡 CLI: stali gw auto | stali gw plan --json</Text>
         </Box>
       </Box>
     </Card>

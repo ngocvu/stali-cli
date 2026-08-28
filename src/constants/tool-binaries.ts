@@ -15,6 +15,29 @@ export const TOOL_BINARY_NAMES: Record<string, string[]> = {
   jcode: ["jcode"],
 };
 
+/** Substring markers trong full process command line (ps args / tasklist). */
+export const TOOL_PROCESS_MARKERS: Record<string, string[]> = {
+  claude: ["claude-code", "@anthropic-ai/claude", "anthropic.claude"],
+  codex: ["@openai/codex", "openai.codex", "codex-cli"],
+  openclaw: ["openclaw", "@openclaw"],
+  "deepseek-tui": ["deepseek-tui", "@deepseek"],
+  qwen: ["qwen-code", "@qwen"],
+  opencode: ["opencode", "@opencode"],
+  kilo: ["kilocode", "kilo-code"],
+  droid: ["factory-droid", "droid-cli"],
+  cline: ["cline", "claude-dev"],
+  roo: ["roo-cline", "roocode"],
+  "grok-build": ["grok-build", "@xai/grok"],
+  cowork: ["cowork"],
+  jcode: ["jcode"],
+};
+
+/** macOS .app bundles under /Applications or ~/Applications */
+export const TOOL_MACOS_APPS: Record<string, string[]> = {
+  claude: ["Claude.app"],
+  codex: ["Codex.app"],
+};
+
 /** VS Code / Cursor / Windsurf extension folder markers (substring match). */
 export const TOOL_VSCODE_EXTENSIONS: Record<string, string[]> = {
   claude: ["anthropic.claude-code", "claude-dev", "anthropic.claude"],

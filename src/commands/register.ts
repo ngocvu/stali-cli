@@ -330,8 +330,10 @@ export function registerCommands(program: Command): void {
       const offline = opts.offline ?? (opts.json && !opts.online);
       const info = await gatherCliInfo({
         offline,
-        validateAuth: opts.online,
+        validateAuth: opts.online || (!offline && !opts.json),
         checkNpm: opts.online || (!offline && !opts.json),
+        skipPluginScan: true,
+        skipBunVersion: offline,
       });
       if (opts.json) {
         console.log(JSON.stringify(info, null, 2));
@@ -643,7 +645,7 @@ export function registerCommands(program: Command): void {
     .command("gateway")
     .alias("gw")
     .description("Quét app AI đang dùng và cài Stali gateway (base URL + API key)")
-    .argument("[action]", "scan | plan | install (mặc định: scan)")
+    .argument("[action]", "scan | plan | auto | install (mặc định: scan)")
     .option("--json", "JSON output (scan | plan | install)")
     .option("--dry-run", "Với install: preview, không ghi file")
     .option("--all", "Cài gateway cho cả 13 tool (bỏ qua quét)")

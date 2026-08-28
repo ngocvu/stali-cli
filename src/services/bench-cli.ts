@@ -69,6 +69,7 @@ export function runColdStartBench(options?: {
     { name: "--help", args: ["--help"] },
     { name: "info --json", args: ["info", "--json"] },
     { name: "gateway plan --json", args: ["gateway", "plan", "--json"] },
+    { name: "gateway auto --dry-run --json", args: ["gateway", "auto", "--dry-run", "--json"] },
     { name: "gateway scan --json", args: ["gateway", "scan", "--json"] },
     { name: "doctor --json", args: ["doctor", "--json"] },
     { name: "doctor --tools-only --json", args: ["doctor", "--tools-only", "--json"] },
