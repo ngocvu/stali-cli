@@ -84,3 +84,14 @@ export const TOOL_HOME_MARKERS: Record<string, string[]> = {
   cowork: [".cowork"],
   jcode: [".jcode"],
 };
+
+/** Linux snap/flatpak export paths (relative to ~ or absolute). */
+export const TOOL_LINUX_PACKAGE_DIRS: string[] = [
+  ".local/share/flatpak/exports/bin",
+  "snap/bin",
+];
+
+export const TOOL_LINUX_SNAP_NAMES: Record<string, string[]> = {
+  claude: ["claude", "claude-code"],
+  codex: ["codex"],
+};

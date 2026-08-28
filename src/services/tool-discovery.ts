@@ -8,6 +8,8 @@ import {
   TOOL_BINARY_NAMES,
   TOOL_HOME_MARKERS,
   TOOL_JETBRAINS_MARKERS,
+  TOOL_LINUX_PACKAGE_DIRS,
+  TOOL_LINUX_SNAP_NAMES,
   TOOL_MACOS_APPS,
   TOOL_PROCESS_MARKERS,
   TOOL_VSCODE_EXTENSIONS,
@@ -24,7 +26,8 @@ export type DiscoverySignal =
   | "home"
   | "process"
   | "jetbrains"
-  | "application";
+  | "application"
+  | "package";
 
 export interface ToolDiscoveryEntry {
   toolId: string;
@@ -129,6 +132,25 @@ export function probeRunningProcessFromList(lines: string[], toolId: string): bo
   );
 }
 
+async function probeLinuxPackages(toolId: string): Promise<boolean> {
+  if (process.platform !== "linux") return false;
+  const home = os.homedir();
+  const binaryNames = TOOL_BINARY_NAMES[toolId] || [];
+  const snapNames = TOOL_LINUX_SNAP_NAMES[toolId] || [];
+  const names = [...new Set([...binaryNames, ...snapNames])].map((n) => n.toLowerCase());
+
+  for (const rel of TOOL_LINUX_PACKAGE_DIRS) {
+    const dir = rel.startsWith("/") ? rel : path.join(home, rel);
+    try {
+      const entries = (await readdir(dir)).map((e) => e.toLowerCase());
+      if (names.some((n) => entries.includes(n))) return true;
+    } catch {
+      /* skip */
+    }
+  }
+  return false;
+}
+
 async function probeMacosApplications(toolId: string): Promise<boolean> {
   if (process.platform !== "darwin") return false;
   const apps = TOOL_MACOS_APPS[toolId] || [];
@@ -197,11 +219,12 @@ export async function discoverTool(
   const config = health?.exists ?? (await pathExists(configPath));
   const vscodeMarkers = TOOL_VSCODE_EXTENSIONS[toolId];
 
-  const [binary, home, jetbrains, macApp] = await Promise.all([
+  const [binary, home, jetbrains, macApp, linuxPkg] = await Promise.all([
     probeBinary(toolId),
     probeHomeMarkers(toolId),
     probeJetBrainsMarkers(toolId),
     probeMacosApplications(toolId),
+    probeLinuxPackages(toolId),
   ]);
 
   let vscodeHit = false;
@@ -226,9 +249,10 @@ export async function discoverTool(
   if (running) signals.process = true;
   if (jetbrains) signals.jetbrains = true;
   if (macApp) signals.application = true;
+  if (linuxPkg) signals.package = true;
 
   const installed = Boolean(
-    binary.found || config || vscodeHit || home || running || jetbrains || macApp
+    binary.found || config || vscodeHit || home || running || jetbrains || macApp || linuxPkg
   );
 
   return {
@@ -272,5 +296,6 @@ export function formatDiscoverySignal(signals: Partial<Record<DiscoverySignal, b
   if (signals.process) parts.push("process");
   if (signals.jetbrains) parts.push("jetbrains");
   if (signals.application) parts.push("app");
+  if (signals.package) parts.push("package");
   return parts.length > 0 ? parts.join("+") : "—";
 }

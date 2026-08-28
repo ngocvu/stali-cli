@@ -58,7 +58,8 @@ export async function setTelemetryEnabled(enabled: boolean): Promise<TelemetryCo
 
 export async function fetchTelemetryEndpointHealth(): Promise<{ ok: boolean; status?: number }> {
   try {
-    const r = await fetch(DEFAULT_URL, {
+    const url = DEFAULT_URL.includes("?") ? `${DEFAULT_URL}&ping=1` : `${DEFAULT_URL}?ping=1`;
+    const r = await fetch(url, {
       method: "GET",
       signal: AbortSignal.timeout(2500),
     });

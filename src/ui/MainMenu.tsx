@@ -8,6 +8,7 @@ import { VERSION } from "../version";
 interface MainMenuProps {
   apiKey?: string;
   installMode?: string;
+  gatewayPending?: number;
   onSelect: (
     action:
       | "configure"
@@ -26,7 +27,12 @@ interface MainMenuProps {
   ) => void;
 }
 
-export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, installMode, onSelect }) => {
+export const MainMenu: React.FC<MainMenuProps> = ({
+  apiKey,
+  installMode,
+  gatewayPending,
+  onSelect,
+}) => {
   const items = [
     { label: "⚡ Cấu hình ứng dụng AI", value: "configure" as const },
     { label: "⚙️  Cấu hình hàng loạt (configure-all)", value: "configure-all" as const },
@@ -36,7 +42,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, installMode, onSelec
     { label: "🔌 Plugin tùy chỉnh (sync / doctor)", value: "plugins" as const },
     { label: "⬆️  Cập nhật stali-cli (update)", value: "update" as const },
     { label: "📦 Cài đặt / nâng cấp CLI (install)", value: "install" as const },
-    { label: "🌐 Gateway Stali (plan / cài)", value: "gateway" as const },
+    {
+      label:
+        gatewayPending && gatewayPending > 0
+          ? `🌐 Gateway Stali — ${gatewayPending} app chờ (auto)`
+          : "🌐 Gateway Stali (plan / auto / cài)",
+      value: "gateway" as const,
+    },
     { label: "⌨️  Cài shell completion (bash/fish/zsh)", value: "completion" as const },
     { label: "🔑 Cài đặt API Token", value: "change-key" as const },
     { label: "🔗 Mở Dashboard Keys (trình duyệt)", value: "open-keys" as const },
@@ -55,6 +67,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({ apiKey, installMode, onSelec
           stali-cli v{VERSION}
           {installMode ? ` · ${installMode}` : ""} · ~/.stali
         </Text>
+        {gatewayPending && gatewayPending > 0 ? (
+          <Text color="yellow">
+            💡 {gatewayPending} app chưa gateway — chọn mục đầu hoặc: stali gw auto
+          </Text>
+        ) : null}
         <SelectInput items={items} onSelect={(item) => onSelect(item.value)} />
 
         <Box justifyContent="center" marginTop={1}>

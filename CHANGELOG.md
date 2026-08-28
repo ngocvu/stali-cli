@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.23.0] — 2026-08-28
+
+### Added
+- **Linux discovery** — flatpak exports + snap bin (`package` signal)
+- **Wizard menu** — hiển thị số app chờ gateway + gợi ý `stali gw auto`
+- **Telemetry ping** — `telemetry status` dùng `?ping=1`
+
+### Changed
+- Gateway menu label động khi có app pending
+
 ## [3.22.0] — 2026-08-28
 
 ### Added

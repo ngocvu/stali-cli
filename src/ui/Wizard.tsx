@@ -100,6 +100,17 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     pending: number;
     targets: number;
   }>();
+  const [gatewayPending, setGatewayPending] = useState(0);
+
+  const refreshGatewayPending = async () => {
+    try {
+      const { planGatewayInstall } = await import("../services/gateway-install");
+      const plan = await planGatewayInstall();
+      setGatewayPending(plan.targets.length);
+    } catch {
+      setGatewayPending(0);
+    }
+  };
 
   const refreshInstallMode = async () => {
     const { detectInstallMode } = await import("../services/install-mode");
@@ -147,7 +158,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           setModels(res.models);
           setApiDefaultModel(res.defaultModel);
           setStep("menu");
-          await refreshInstallMode();
+          await Promise.all([refreshInstallMode(), refreshGatewayPending()]);
         } else {
           setError(res.error || "Token đã lưu không hợp lệ. Vui lòng nhập lại.");
           setStep("token");
@@ -170,7 +181,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       setApiDefaultModel(res.defaultModel);
       await saveStaliConfig({ apiKey: token });
       setStep("menu");
-      await refreshInstallMode();
+      await Promise.all([refreshInstallMode(), refreshGatewayPending()]);
     } else {
       setError(res.error || "Token không hợp lệ");
     }
@@ -954,7 +965,12 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       )}
 
       {step === "menu" && (
-        <MainMenu apiKey={apiKey} installMode={installModeLabel} onSelect={handleMenuSelect} />
+        <MainMenu
+          apiKey={apiKey}
+          installMode={installModeLabel}
+          gatewayPending={gatewayPending}
+          onSelect={handleMenuSelect}
+        />
       )}
 
       {step === "pricing" && (
