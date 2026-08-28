@@ -59,10 +59,23 @@ export interface CliInfoSnapshot {
   gateway: CliGatewaySummary;
 }
 
-function detectBunVersion(): string | undefined {
-  const bun = process.env.BUN_BIN || "bun";
-  const r = spawnSync(bun, ["--version"], { encoding: "utf8", timeout: 5000 });
-  return r.stdout?.trim() || undefined;
+export interface GatherCliInfoOptions {
+  /** Không gọi mạng (auth validate, npm latest). Mặc định true khi `--json`. */
+  offline?: boolean;
+  /** Kiểm tra API key qua mạng (chậm). */
+  validateAuth?: boolean;
+  /** Lấy phiên bản npm mới nhất. */
+  checkNpm?: boolean;
+  /** Bỏ qua scan chi tiết plugin (chỉ đếm). */
+  skipPluginScan?: boolean;
+  /** Bỏ spawn `bun --version`. */
+  skipBunVersion?: boolean;
+}
+
+async function summarizePluginsFast(): Promise<{ configured: number; total: number }> {
+  const { loadPlugins } = await import("./plugins");
+  const plugins = await loadPlugins();
+  return { configured: 0, total: plugins.length };
 }
 
 function summarizeGateway(entries: ToolDiscoveryEntry[]): CliGatewaySummary {
@@ -81,28 +94,54 @@ function summarizeGateway(entries: ToolDiscoveryEntry[]): CliGatewaySummary {
   };
 }
 
-export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
+function detectBunVersion(): string | undefined {
+  const bun = process.env.BUN_BIN || "bun";
+  const r = spawnSync(bun, ["--version"], { encoding: "utf8", timeout: 5000 });
+  return r.stdout?.trim() || undefined;
+}
+
+export async function gatherCliInfo(options?: GatherCliInfoOptions): Promise<CliInfoSnapshot> {
+  const offline = options?.offline ?? false;
+  const validateAuth = options?.validateAuth ?? !offline;
+  const checkNpm = options?.checkNpm ?? !offline;
+  const skipPluginScan = options?.skipPluginScan ?? offline;
+  const skipBun = options?.skipBunVersion ?? offline;
+
   const configPath = getStaliConfigPath();
   const configExists = await fs
     .access(configPath)
     .then(() => true)
     .catch(() => false);
 
-  const [auth, pluginReport, installInfo, gatewayEntries, npm] = await Promise.all([
-    authStatus(),
-    runPluginsDoctor(),
+  const authPromise = validateAuth
+    ? authStatus()
+    : authStatus({ localOnly: true });
+
+  const pluginPromise = skipPluginScan
+    ? summarizePluginsFast()
+    : runPluginsDoctor().then((r) => ({
+        configured: r.plugins.filter((p) => p.configuredForStali).length,
+        total: r.plugins.length,
+      }));
+
+  const npmPromise = checkNpm
+    ? fetchNpmLatestVersion()
+    : Promise.resolve(undefined as VersionCheckResult | undefined);
+
+  const [auth, pluginSummary, installInfo, gatewayEntries, npm] = await Promise.all([
+    authPromise,
+    pluginPromise,
     detectInstallMode(),
     discoverInstalledTools(),
-    fetchNpmLatestVersion(),
+    npmPromise,
   ]);
   const configured = gatewayEntries.filter((e) => e.configuredForStali).length;
-  const pluginsConfigured = pluginReport.plugins.filter((p) => p.configuredForStali).length;
 
   return {
     version: VERSION,
     platform: `${process.platform} ${process.arch}`,
     nodeVersion: process.version,
-    bunVersion: detectBunVersion(),
+    bunVersion: skipBun ? undefined : detectBunVersion(),
     installMode: installInfo.mode,
     installDetail: installInfo.detail,
     installVersion: installInfo.version,
@@ -121,10 +160,10 @@ export async function gatherCliInfo(): Promise<CliInfoSnapshot> {
       total: gatewayEntries.length,
     },
     plugins: {
-      configured: pluginsConfigured,
-      total: pluginReport.plugins.length,
+      configured: pluginSummary.configured,
+      total: pluginSummary.total,
     },
-    npm,
+    npm: npm ?? undefined,
     gateway: summarizeGateway(gatewayEntries),
   };
 }

@@ -65,6 +65,16 @@ export function registerCommands(program: Command): void {
       const globals = actionCommand.optsWithGlobals?.() ?? thisCommand.opts();
       const lang = globals.lang || process.env.STALI_LANG;
       if (lang) setLocale(resolveLocale(String(lang)));
+    })
+    .hook("postAction", async (_thisCommand, actionCommand) => {
+      const name = actionCommand.name();
+      if (!name || name === "telemetry") return;
+      try {
+        const { recordCliTelemetry } = await import("../services/telemetry");
+        await recordCliTelemetry(name);
+      } catch {
+        /* ignore */
+      }
     });
 
   program.action(async (options: { reset?: boolean; logout?: boolean; models?: boolean; key?: string }) => {
@@ -312,9 +322,16 @@ export function registerCommands(program: Command): void {
     .command("info")
     .description("Thông tin cài đặt stali-cli, auth và doctor tóm tắt")
     .option("--json", "Xuất JSON")
-    .action(async (opts: { json?: boolean }) => {
+    .option("--offline", "Không gọi mạng (nhanh; mặc định với --json)")
+    .option("--online", "Validate auth + kiểm tra npm (chậm hơn)")
+    .action(async (opts: { json?: boolean; offline?: boolean; online?: boolean }) => {
       const { gatherCliInfo } = await import("../services/cli-info");
-      const info = await gatherCliInfo();
+      const offline = opts.offline ?? (opts.json && !opts.online);
+      const info = await gatherCliInfo({
+        offline,
+        validateAuth: opts.online,
+        checkNpm: opts.online || (!offline && !opts.json),
+      });
       if (opts.json) {
         console.log(JSON.stringify(info, null, 2));
         process.exit(0);
@@ -626,7 +643,7 @@ export function registerCommands(program: Command): void {
     .alias("gw")
     .description("Quét app AI đang dùng và cài Stali gateway (base URL + API key)")
     .argument("[action]", "scan | install (mặc định: scan)")
-    .option("--json", "JSON output (scan)")
+    .option("--json", "JSON output (scan | install)")
     .option("--dry-run", "Với install: preview, không ghi file")
     .option("--all", "Cài gateway cho cả 13 tool (bỏ qua quét)")
     .option("--force", "Cài lại cả tool đã trỏ Stali")
@@ -690,6 +707,50 @@ export function registerCommands(program: Command): void {
         console.log(formatBenchReport(report));
       }
       process.exit(report.failed ? 1 : 0);
+    });
+
+  const telemetryCmd = program
+    .command("telemetry")
+    .description("Telemetry ẩn danh opt-in (command + version, không gửi API key)");
+
+  telemetryCmd
+    .command("status")
+    .description("Trạng thái telemetry")
+    .option("--json", "JSON output")
+    .action(async (opts: { json?: boolean }) => {
+      const { readTelemetryConfig } = await import("../services/telemetry");
+      const cfg = await readTelemetryConfig();
+      if (opts.json) {
+        console.log(JSON.stringify(cfg, null, 2));
+        process.exit(0);
+      }
+      console.log(chalk.bold.cyan("\n📡 STALI TELEMETRY\n"));
+      console.log(
+        `Trạng thái: ${cfg.enabled ? chalk.green("bật") : chalk.gray("tắt (mặc định)")}`
+      );
+      if (cfg.consentAt) console.log(`Đồng ý lúc: ${cfg.consentAt}`);
+      console.log(chalk.gray("\nChỉ gửi: tên lệnh, phiên bản CLI, platform. Không gửi API key.\n"));
+      process.exit(0);
+    });
+
+  telemetryCmd
+    .command("on")
+    .description("Bật telemetry ẩn danh")
+    .action(async () => {
+      const { setTelemetryEnabled } = await import("../services/telemetry");
+      await setTelemetryEnabled(true);
+      console.log(chalk.green("✅ Đã bật telemetry (opt-in). Tắt: stali telemetry off\n"));
+      process.exit(0);
+    });
+
+  telemetryCmd
+    .command("off")
+    .description("Tắt telemetry")
+    .action(async () => {
+      const { setTelemetryEnabled } = await import("../services/telemetry");
+      await setTelemetryEnabled(false);
+      console.log(chalk.green("✅ Đã tắt telemetry.\n"));
+      process.exit(0);
     });
 
   program

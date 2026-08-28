@@ -24,7 +24,13 @@ export async function runGatewayCommand(
 
   if (action === "install") {
     if (!apiKey?.trim()) {
-      console.error(chalk.red("❌ Thiếu API key. Dùng -k hoặc lưu token qua stali auth login."));
+      if (opts.json) {
+        console.log(
+          JSON.stringify({ ok: false, error: "missing_api_key", dryRun: Boolean(opts.dryRun) }, null, 2)
+        );
+      } else {
+        console.error(chalk.red("❌ Thiếu API key. Dùng -k hoặc lưu token qua stali auth login."));
+      }
       process.exit(1);
     }
 
@@ -43,6 +49,25 @@ export async function runGatewayCommand(
       continueOnError: opts.continueOnError,
       includePlugins,
     });
+
+    if (opts.json) {
+      console.log(
+        JSON.stringify(
+          {
+            ok: allOk,
+            dryRun: Boolean(opts.dryRun),
+            targets,
+            all: Boolean(opts.all),
+            force: Boolean(opts.force),
+            includePlugins,
+            items,
+          },
+          null,
+          2
+        )
+      );
+      process.exit(allOk ? 0 : 1);
+    }
 
     if (opts.dryRun) {
       console.log(chalk.bold.cyan("\n🔍 Gateway install (dry-run)\n"));
@@ -64,6 +89,6 @@ export async function runGatewayCommand(
 
   console.error(chalk.red(`❌ Lệnh gateway không hợp lệ: ${action}`));
   console.log(chalk.cyan("  stali gateway scan [--json]"));
-  console.log(chalk.cyan("  stali gateway install [-k] [--dry-run] [--all] [--force]\n"));
+  console.log(chalk.cyan("  stali gateway install [-k] [--dry-run] [--json] [--all] [--force]\n"));
   process.exit(1);
 }

@@ -14,6 +14,7 @@ export const STALI_SUBCOMMANDS = new Set([
   "gw",
   "install",
   "bench",
+  "telemetry",
   "configure",
   "configure-all",
   "export-env",

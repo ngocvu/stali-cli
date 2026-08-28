@@ -49,7 +49,7 @@ function benchCase(
     "--version": Number(process.env.STALI_BENCH_MAX_VERSION_MS || 120),
     "--help": Number(process.env.STALI_BENCH_MAX_HELP_MS || 150),
     "gateway scan --json": Number(process.env.STALI_BENCH_MAX_GATEWAY_MS || 250),
-    "info --json": Number(process.env.STALI_BENCH_MAX_INFO_MS || 280),
+    "info --json": Number(process.env.STALI_BENCH_MAX_INFO_MS || 180),
   };
   const limit = limits[name];
   return { name, ms, overLimit: limit ? ms > limit : false };

@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.18.0] — 2026-08-28
+
+### Added
+- **`stali telemetry on|off|status`** — telemetry ẩn danh opt-in (command + version + platform)
+- **`stali gateway install --json`** — JSON cho install và dry-run
+- **`stali info --offline` / `--online`** — kiểm soát gọi mạng
+
+### Changed
+- **`stali info --json`** mặc định offline (~150ms): không validate API key / npm registry
+- `authStatus({ localOnly: true })` — đọc key local không gọi API
+- Post-action telemetry hook (chỉ khi opt-in)
+
 ## [3.17.0] — 2026-08-28
 
 ### Added

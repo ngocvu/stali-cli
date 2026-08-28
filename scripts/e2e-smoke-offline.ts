@@ -188,6 +188,28 @@ async function main() {
     }
   }
 
+  const gatewayDryJson = run([
+    "gateway",
+    "install",
+    "--dry-run",
+    "--json",
+    "-k",
+    "sk-stali-test-key-for-dry-run-only-000000000000",
+  ]);
+  assert("gateway install dry-run --json exit 0|1", gatewayDryJson.status === 0 || gatewayDryJson.status === 1);
+  if (gatewayDryJson.status === 0) {
+    try {
+      const parsed = JSON.parse(gatewayDryJson.stdout || "{}");
+      assert("gateway install JSON has targets", Array.isArray(parsed.targets));
+      assert("gateway install JSON dryRun", parsed.dryRun === true);
+    } catch {
+      assert("gateway install JSON parseable", false);
+    }
+  }
+
+  const telemetryStatus = run(["telemetry", "status", "--json"]);
+  assert("telemetry status --json exit 0", telemetryStatus.status === 0);
+
   const prom = run(["doctor", "--tools-only", "--prometheus"]);
   assert("doctor --prometheus", prom.status === 0 || prom.status === 1);
   assert(

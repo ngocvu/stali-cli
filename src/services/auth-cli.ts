@@ -54,7 +54,29 @@ export async function authLogin(
   };
 }
 
-export async function authStatus(): Promise<AuthStatusResult> {
+export async function authStatusLocal(): Promise<AuthStatusResult> {
+  const { config, corrupt } = await loadStaliConfigOrCorrupt();
+  if (corrupt) {
+    return { hasKey: false, corrupt: true, error: "config.json bị lỗi định dạng" };
+  }
+  if (!config?.apiKey?.trim()) {
+    return { hasKey: false };
+  }
+  return {
+    hasKey: true,
+    masked: maskToken(config.apiKey),
+    lastUpdated: config.lastUpdated,
+    baseUrl: config.baseUrl,
+  };
+}
+
+export async function authStatus(options?: {
+  /** Bỏ qua gọi API validate (nhanh, dùng cho `stali info --json`). */
+  localOnly?: boolean;
+}): Promise<AuthStatusResult> {
+  if (options?.localOnly) {
+    return authStatusLocal();
+  }
   const { config, corrupt } = await loadStaliConfigOrCorrupt();
   if (corrupt) {
     return { hasKey: false, corrupt: true, error: "config.json bị lỗi định dạng" };
