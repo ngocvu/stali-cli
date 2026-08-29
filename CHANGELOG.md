@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.45.1] — 2026-08-29
+
+### Fixed
+- **Release CI** — Windows standalone build dùng `env:` thay cú pháp bash; bỏ smoke cross-compile (linux-arm64, darwin-x64 trên ubuntu); thay macos-13 queue bằng cross-compile; npm verify retry 120s sau publish
+
 ## [3.45.0] — 2026-08-28
 
 ### Added
