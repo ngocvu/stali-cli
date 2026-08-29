@@ -48,18 +48,25 @@ jobs:
           - runner: ubuntu-latest
             target: bun-linux-x64
             asset: stali-standalone-linux-x64
+            smoke: true
+          # Cross-compile — không exec smoke trên runner x64 (binary arm64).
           - runner: ubuntu-latest
             target: bun-linux-arm64
             asset: stali-standalone-linux-arm64
+            smoke: false
           - runner: macos-latest
             target: bun-darwin-arm64
             asset: stali-standalone-darwin-arm64
-          - runner: macos-13
+            smoke: true
+          # Tránh queue macos-13 (workflow từng timeout 24h); cross-compile từ ubuntu.
+          - runner: ubuntu-latest
             target: bun-darwin-x64
             asset: stali-standalone-darwin-x64
+            smoke: false
           - runner: windows-latest
             target: bun-windows-x64
             asset: stali-standalone-win-x64
+            smoke: true
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -72,11 +79,11 @@ jobs:
         run: bun install
 
       - name: Build standalone (${{ matrix.asset }})
-        run: |
-          STALI_BUILD_STANDALONE=1 \
-          STALI_STANDALONE_NAME=${{ matrix.asset }} \
-          STALI_COMPILE_TARGET=${{ matrix.target }} \
-          bun run build
+        env:
+          STALI_BUILD_STANDALONE: "1"
+          STALI_STANDALONE_NAME: ${{ matrix.asset }}
+          STALI_COMPILE_TARGET: ${{ matrix.target }}
+        run: bun run build
 
       - name: Verify standalone artifact exists
         shell: bash
@@ -94,6 +101,7 @@ jobs:
           fi
 
       - name: Standalone smoke (offline)
+        if: matrix.smoke != false
         shell: bash
         env:
           STALI_STANDALONE_BIN: dist/${{ matrix.asset }}
@@ -160,8 +168,17 @@ jobs:
             exit 0
           fi
           VER=$(node -p "require('./package.json').version")
-          npm view "stali-cli@${VER}" version
-          test "$(npm view stali-cli@${VER} version)" = "$VER"
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            published=$(npm view "stali-cli@${VER}" version 2>/dev/null || true)
+            if [ "$published" = "$VER" ]; then
+              echo "stali-cli@${VER} visible on registry (attempt ${attempt})"
+              exit 0
+            fi
+            echo "waiting for npm registry propagation (${attempt}/12)…"
+            sleep 10
+          done
+          echo "::error::stali-cli@${VER} not visible on registry after 120s"
+          exit 1
 
   publish-release:
     needs: [verify, build-standalone]
