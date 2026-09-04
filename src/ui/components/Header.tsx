@@ -1,41 +1,52 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { VERSION } from "../../version";
+import { BRAND, colors, getBorderStyle, glyphs } from "../theme";
+import { useTerminalLayout } from "../hooks/useTerminalLayout";
 
 interface HeaderProps {
   version?: string;
+  compact?: boolean;
 }
 
-const STALI_LOGO_LINES = [
-  "  ███████╗████████╗ █████╗ ██╗     ██╗",
-  "  ██╔════╝╚══██╔══╝██╔══██╗██║     ██║",
-  "  ███████╗   ██║   ███████║██║     ██║",
-  "  ╚════██║   ██║   ██╔══██║██║     ██║",
-  "  ███████║   ██║   ██║  ██║███████╗██║",
-  "  ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝",
-];
+export const Header: React.FC<HeaderProps> = ({ version = VERSION, compact }) => {
+  const layout = useTerminalLayout();
+  const isCompact = compact ?? layout.compact;
+  const borderStyle = getBorderStyle();
 
-export const Header: React.FC<HeaderProps> = ({ version = VERSION }) => {
-  return (
-    <Box flexDirection="column" marginY={1}>
-      <Box flexDirection="column">
-        {STALI_LOGO_LINES.map((line, idx) => (
-          <Text key={idx} color="#EE202E" bold>
-            {line}
-          </Text>
-        ))}
+  if (isCompact) {
+    return (
+      <Box marginBottom={1} gap={1}>
+        <Text color={BRAND} bold>
+          {glyphs.spark} stali
+        </Text>
+        <Text color={colors.muted}>v{version}</Text>
       </Box>
+    );
+  }
 
-      <Box paddingLeft={2} marginTop={0}>
-        <Text color="#EE202E" italic>
+  return (
+    <Box
+      flexDirection="column"
+      borderStyle={borderStyle}
+      borderColor={BRAND}
+      paddingX={1}
+      marginBottom={1}
+    >
+      <Box justifyContent="space-between">
+        <Box gap={1}>
+          <Text color={BRAND} bold>
+            {glyphs.spark} stali
+          </Text>
+          <Text color={colors.muted}>v{version}</Text>
+        </Box>
+        <Text color={colors.muted}>api.stali.vn</Text>
+      </Box>
+      {!layout.narrow ? (
+        <Text color={BRAND} italic>
           Small Deeds Lead To A Better Life
         </Text>
-      </Box>
-
-      <Box justifyContent="space-between" marginTop={1} paddingX={1}>
-        <Text color="gray">Stali API Config Manager & CLI Integrator (https://api.stali.vn)</Text>
-        <Text color="cyan">v{version}</Text>
-      </Box>
+      ) : null}
     </Box>
   );
 };

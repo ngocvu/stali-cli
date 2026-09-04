@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Box, useApp } from "ink";
-import { Header } from "./components/Header";
+import { useApp } from "ink";
+import { Screen } from "./components/Screen";
 import { TokenInput } from "./TokenInput";
 import { MainMenu } from "./MainMenu";
+import type { MainMenuAction } from "./menu-groups";
+import {
+  CONFIGURE_STEPS,
+  LOADING,
+  configureStepIndex,
+  hintsForStep,
+  isConfigureFlow,
+  type WizardStep,
+} from "./nav";
 import { PriceTable } from "./PriceTable";
 import { AppSelect } from "./AppSelect";
 import { ToolDetailMenu, ToolMenuAction } from "./ToolDetailMenu";
@@ -51,30 +60,12 @@ interface WizardProps {
   initialKey?: string;
 }
 
-type WizardStep =
-  | "token"
-  | "menu"
-  | "pricing"
-  | "doctor"
-  | "configure-all"
-  | "install"
-  | "gateway"
-  | "gateway-plan"
-  | "plugins"
-  | "plugin-preview"
-  | "plugin-suggest"
-  | "app"
-  | "tool-detail"
-  | "model"
-  | "manual-model"
-  | "context"
-  | "manual-context"
-  | "review"
-  | "done";
-
 export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   const { exit } = useApp();
   const [step, setStep] = useState<WizardStep>("token");
+  const [booting, setBooting] = useState(() => !initialKey);
+  const [loadingMessage, setLoadingMessage] = useState<string>(LOADING.boot);
+  const [tokenCanGoBack, setTokenCanGoBack] = useState(false);
   const [apiKey, setApiKey] = useState<string>(initialKey || "");
   const [models, setModels] = useState<StaliModel[]>([]);
   const [apiDefaultModel, setApiDefaultModel] = useState<string>("claude-fable-5");
@@ -103,7 +94,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   const [doctorInstalledTools, setDoctorInstalledTools] = useState<DoctorInstalledToolSummary[]>([]);
   const [pendingGatewayIds, setPendingGatewayIds] = useState<string[]>([]);
   const [doctorReturnStep, setDoctorReturnStep] = useState<"menu" | "plugins">("menu");
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(!initialKey);
   const [error, setError] = useState<string | undefined>();
   const [results, setResults] = useState<SyncerResult[]>([]);
   const [installModeLabel, setInstallModeLabel] = useState<string>("");
@@ -169,20 +160,23 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         return;
       }
 
+      setLoadingMessage(LOADING.boot);
+      setLoading(true);
       const { config, corrupt } = await loadStaliConfigOrCorrupt();
       if (corrupt) {
         setError("File ~/.stali/config.json bị lỗi định dạng. Vui lòng nhập token lại.");
         setStep("token");
+        setLoading(false);
+        setBooting(false);
         return;
       }
 
       if (config?.apiKey) {
         setApiKey(config.apiKey);
-        setLoading(true);
+        setLoadingMessage(LOADING.auth);
         const res = await validateApiKeyAndFetchModels(config.apiKey, {
           baseUrl: config.baseUrl,
         });
-        setLoading(false);
         if (res.valid) {
           setModels(res.models);
           setApiDefaultModel(res.defaultModel);
@@ -197,12 +191,15 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           setStep("token");
         }
       }
+      setLoading(false);
+      setBooting(false);
     }
     init();
   }, [initialKey]);
 
   const handleTokenSubmit = async (token: string) => {
     setLoading(true);
+    setLoadingMessage(LOADING.auth);
     setError(undefined);
 
     const res = await validateApiKeyAndFetchModels(token);
@@ -225,6 +222,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         });
         setGatewayFirstRun(true);
         setLoading(true);
+        setLoadingMessage(LOADING.gateway);
         try {
           const gw = await import("../services/gateway-install");
           const { mapGatewayItemsToSyncerResults } = await import("../services/wizard-gateway");
@@ -264,23 +262,14 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     }
   };
 
-  const handleMenuSelect = async (
-    action:
-      | "configure"
-      | "configure-all"
-      | "models"
-      | "change-key"
-      | "doctor"
-      | "fix-all"
-      | "open-keys"
-      | "update"
-      | "install"
-      | "gateway"
-      | "completion"
-      | "plugins"
-      | "exit"
-  ) => {
+  const handleMenuSelect = async (action: MainMenuAction) => {
     switch (action) {
+      case "more":
+        setStep("advanced");
+        break;
+      case "back":
+        setStep("menu");
+        break;
       case "configure":
         setStep("app");
         break;
@@ -293,6 +282,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         break;
       case "doctor":
         setLoading(true);
+        setLoadingMessage(LOADING.doctor);
         setDoctorReturnStep("menu");
         await loadUnifiedDoctor();
         setLoading(false);
@@ -313,6 +303,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         break;
       case "gateway": {
         setLoading(true);
+        setLoadingMessage(LOADING.gatewayPlan);
         setError(undefined);
         setGatewayFirstRun(false);
         try {
@@ -335,6 +326,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       }
       case "update": {
         setLoading(true);
+        setLoadingMessage(LOADING.update);
         setError(undefined);
         const { selfUpdate } = await import("../services/self-update");
         const res = await selfUpdate();
@@ -358,6 +350,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       }
       case "completion": {
         setLoading(true);
+        setLoadingMessage(LOADING.completion);
         setError(undefined);
         try {
           const { installAllCompletions } = await import("../services/completion-install");
@@ -382,6 +375,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         break;
       }
       case "change-key":
+        setTokenCanGoBack(true);
         setStep("token");
         break;
       case "open-keys": {
@@ -409,6 +403,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
   const handleDoctorFix = async () => {
     setLoading(true);
+    setLoadingMessage(LOADING.fix);
     setError(undefined);
     const fixRes = await runDoctorFix({ apiKey });
     setResults(
@@ -433,6 +428,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       return;
     }
     setLoading(true);
+    setLoadingMessage(LOADING.batch);
     setError(undefined);
     const skipAdvanced = action !== "batch-13";
     const dryRun = action === "dry-run-11";
@@ -473,6 +469,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       return;
     }
     setLoading(true);
+    setLoadingMessage(LOADING.install);
     setError(undefined);
     try {
       if (action === "check-update") {
@@ -570,6 +567,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
       return;
     }
     setLoading(true);
+    setLoadingMessage(action === "plan" ? LOADING.gatewayPlan : LOADING.gateway);
     setError(undefined);
     try {
       if (action === "plan") {
@@ -607,6 +605,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
   const handleGatewayPlanInstall = async () => {
     setLoading(true);
+    setLoadingMessage(LOADING.gateway);
     setError(undefined);
     try {
       const gw = await import("../services/gateway-install");
@@ -633,6 +632,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     }
     if (action === "doctor") {
       setLoading(true);
+      setLoadingMessage(LOADING.doctor);
       setDoctorReturnStep("plugins");
       await loadUnifiedDoctor();
       setLoading(false);
@@ -641,6 +641,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     }
     if (action === "preview") {
       setLoading(true);
+      setLoadingMessage(LOADING.plugins);
       setError(undefined);
       const previewKey = apiKey || "sk-stali-preview-only-" + "0".repeat(24);
       const { items } = await runPluginsSync({ apiKey: previewKey, preview: true });
@@ -651,6 +652,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     }
     if (action === "suggest") {
       setLoading(true);
+      setLoadingMessage(LOADING.plugins);
       setError(undefined);
       const suggestions = await suggestPluginPatchStyles();
       setPluginSuggestions(suggestions);
@@ -660,6 +662,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     }
     if (action === "sync") {
       setLoading(true);
+      setLoadingMessage(LOADING.plugins);
       setError(undefined);
       const syncRes = await runPluginsSync({ apiKey });
       setResults(
@@ -681,6 +684,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
   const handlePluginPreviewConfirm = async () => {
     setLoading(true);
+    setLoadingMessage(LOADING.plugins);
     setError(undefined);
     const syncRes = await runPluginsSync({ apiKey });
     setResults(
@@ -701,6 +705,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
   const handleDoctorGatewayAuto = async () => {
     setLoading(true);
+    setLoadingMessage(LOADING.gateway);
     setError(undefined);
     try {
       const gw = await import("../services/gateway-install");
@@ -723,6 +728,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
   const handlePluginsSyncAll = async () => {
     setLoading(true);
+    setLoadingMessage(LOADING.plugins);
     const syncRes = await runPluginsSync({ apiKey });
     setResults(
       syncRes.items.map((item) => ({
@@ -783,6 +789,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
     if (isGenericFlowTool(selectedTool)) {
       if (action === "reset") {
         setLoading(true);
+        setLoadingMessage(LOADING.apply);
         const res = await resetTool(selectedTool);
         setResults([res]);
         setSelectedModel("Default");
@@ -815,6 +822,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
     if (action === "reset") {
       setLoading(true);
+      setLoadingMessage(LOADING.apply);
       let res: SyncerResult;
       if (selectedTool === "claude") {
         res = await resetClaudeSettings();
@@ -868,6 +876,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
   const handleConfirmApply = async () => {
     setLoading(true);
+    setLoadingMessage(LOADING.apply);
     let res: SyncerResult;
 
     if (selectedTool === "claude") {
@@ -1088,27 +1097,34 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
   };
 
   const reviewMeta = getReviewMeta();
+  const overlayLoading = booting || (loading && step !== "token");
 
   return (
-    <Box flexDirection="column" paddingX={1}>
-      <Header />
-
+    <Screen
+      hints={hintsForStep(step, tokenCanGoBack)}
+      steps={isConfigureFlow(step) ? CONFIGURE_STEPS : undefined}
+      currentStep={configureStepIndex(step)}
+      loading={overlayLoading}
+      loadingMessage={loadingMessage}
+    >
       {step === "token" && (
         <TokenInput
           existingToken={apiKey}
-          loading={loading}
+          loading={loading && !booting}
           error={error}
           onSubmit={handleTokenSubmit}
+          onBack={tokenCanGoBack ? () => setStep("menu") : undefined}
         />
       )}
 
-      {step === "menu" && (
+      {(step === "menu" || step === "advanced") && (
         <MainMenu
           apiKey={apiKey}
           installMode={installModeLabel}
           gatewayPending={gatewayPending}
           pendingGatewayCount={menuPendingGatewayCount}
           gatewayReady={menuGatewayReady}
+          advanced={step === "advanced"}
           onSelect={handleMenuSelect}
         />
       )}
@@ -1128,9 +1144,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           onSyncAllPlugins={handlePluginsSyncAll}
           onGatewayAuto={pendingGatewayIds.length > 0 ? handleDoctorGatewayAuto : undefined}
           backLabel={
-            doctorReturnStep === "plugins"
-              ? "⬅️  Quay lại Menu Plugin"
-              : "⬅️  Quay lại Menu chính"
+            doctorReturnStep === "plugins" ? "Quay lại menu plugin" : "Quay lại menu chính"
           }
         />
       )}
@@ -1202,9 +1216,9 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
       {step === "manual-context" && (
         <ManualInput
-          title="✍️ NHẬP SỐ TOKEN CONTEXT WINDOW THỦ CÔNG"
-          subtitle="Nhập số token tối đa cho CLAUDE_CODE_MAX_CONTEXT_TOKENS (ví dụ: 998000, 498000, 198000...)"
-          placeholder="Nhập số tokens (ví dụ: 998000)..."
+          title="Nhập số token context window"
+          subtitle="CLAUDE_CODE_MAX_CONTEXT_TOKENS — Enter để giữ giá trị mặc định"
+          placeholder="Ví dụ: 998000"
           defaultValue={claudeDraft.context}
           onSubmit={handleManualContextSubmit}
           onCancel={() => setStep("context")}
@@ -1222,17 +1236,17 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
 
       {step === "manual-model" && (
         <ManualInput
-          title={`✍️ NHẬP MÃ MODEL THỦ CÔNG (${
+          title={`Nhập mã model (${
             selectedTool === "codex"
               ? selectedTier === "haiku"
-                ? "SUBAGENT MODEL"
-                : "MAIN MODEL"
+                ? "subagent"
+                : "main"
               : isGenericFlowTool(selectedTool)
-              ? "MODEL"
-              : selectedTier.toUpperCase()
+              ? "model"
+              : selectedTier
           })`}
-          subtitle="Nhập tên hoặc mã model tùy chỉnh (ví dụ: req/gpt-5.6-sol, claude-fable-5, ...)"
-          placeholder="Nhập mã model..."
+          subtitle="Ví dụ: req/gpt-5.6-sol, claude-fable-5 — Enter để giữ mặc định"
+          placeholder="Nhập mã model…"
           defaultValue={
             isGenericFlowTool(selectedTool)
               ? genericModel
@@ -1257,7 +1271,7 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
         <ConfigReview
           toolName={reviewMeta.name}
           filePath={reviewMeta.path}
-          configJson={getPreviewJson()}
+          configJson={getPreviewJson() as Record<string, unknown>}
           onConfirm={handleConfirmApply}
           onCancel={() => setStep("tool-detail")}
         />
@@ -1271,6 +1285,6 @@ export const Wizard: React.FC<WizardProps> = ({ initialKey }) => {
           onExit={() => exit()}
         />
       )}
-    </Box>
+    </Screen>
   );
 };

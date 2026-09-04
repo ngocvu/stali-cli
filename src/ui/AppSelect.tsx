@@ -1,38 +1,38 @@
 import React from "react";
 import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
+import { Menu, type MenuItem } from "./components/Menu";
 import { SUPPORTED_TOOLS } from "../constants/tools";
+import { glyphs } from "./theme";
 
 interface AppSelectProps {
   onSelect: (toolId: string) => void;
 }
 
 export const AppSelect: React.FC<AppSelectProps> = ({ onSelect }) => {
-  const items = [
+  const items: MenuItem<string>[] = [
     ...SUPPORTED_TOOLS.map((tool) => ({
-      label: `${tool.icon} ${tool.name}`,
+      label: tool.name,
       value: tool.id,
+      icon: tool.icon,
+      description: tool.description,
+      hint: tool.defaultModel,
     })),
-    {
-      label: "⬅️  Quay lại Menu chính",
-      value: "back",
-    },
+    { label: "Quay lại menu chính", value: "back", icon: "←" },
   ];
 
   return (
-    <Card title="🎯 CHỌN ỨNG DỤNG CẦN CẤU HÌNH STALI API" borderColor="cyan">
+    <Card
+      title={`${glyphs.pointer} Chọn ứng dụng`}
+      subtitle={`${SUPPORTED_TOOLS.length} công cụ — model mặc định hiện bên phải`}
+    >
       <Box flexDirection="column" gap={1}>
-        <Text color="gray">
-          Hỗ trợ {SUPPORTED_TOOLS.length} công cụ AI CLI / IDE — chọn một để bắt đầu cấu hình.
-        </Text>
-        <SelectInput items={items} onSelect={(item) => onSelect(item.value)} />
-
-        <Box justifyContent="center" marginTop={1}>
-          <Text color="gray">
-            💡 [ ↑ ][ ↓ ] Di chuyển | [ Enter ] Chọn
-          </Text>
-        </Box>
+        <Text color="gray">Chọn một app để cấu hình Stali API. Wizard điền sẵn model phù hợp.</Text>
+        <Menu
+          groups={[{ items }]}
+          onSelect={onSelect}
+          onBack={() => onSelect("back")}
+        />
       </Box>
     </Card>
   );

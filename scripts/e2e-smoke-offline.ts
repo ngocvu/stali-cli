@@ -140,6 +140,27 @@ async function main() {
     await fs.access(wizardOnlyDir).then(() => true).catch(() => false)
   );
 
+  const wizardLaunchers = (await fs.readdir(wizardOnlyDir)).filter((f) =>
+    f.startsWith("wizard-launcher")
+  );
+  assert("wizard-launcher chunk exists", wizardLaunchers.length === 1);
+  if (wizardLaunchers[0]) {
+    const launcherSrc = await fs.readFile(path.join(wizardOnlyDir, wizardLaunchers[0]), "utf8");
+    assert(
+      "wizard-launcher does not import sibling as ./wizard-only/",
+      !launcherSrc.includes('import("./wizard-only/')
+    );
+    const parentImports = [...launcherSrc.matchAll(/from["'](\.\.\/[^"']+\.js)["']/g)].map(
+      (m) => m[1]
+    );
+    let parentOk = true;
+    for (const spec of parentImports) {
+      const resolved = path.normalize(path.join(wizardOnlyDir, spec));
+      if (!(await fs.access(resolved).then(() => true).catch(() => false))) parentOk = false;
+    }
+    assert("wizard-launcher parent imports exist", parentOk);
+  }
+
   const watchSmoke = run(["doctor", "--tools-only", "--watch", "--max-cycles", "2", "-i", "1", "--json"]);
   assert("doctor watch --max-cycles exit 0|1", watchSmoke.status === 0 || watchSmoke.status === 1);
   assert(

@@ -1,36 +1,40 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { colors, getBorderStyle, type Tone, toneColor } from "../theme";
 
 interface CardProps {
   title?: string;
   subtitle?: string;
   borderColor?: string;
+  tone?: Tone;
   children: React.ReactNode;
 }
 
 export const Card: React.FC<CardProps> = ({
   title,
   subtitle,
-  borderColor = "cyan",
+  borderColor,
+  tone,
   children,
 }) => {
+  const color = borderColor ?? (tone ? toneColor[tone] : colors.accent);
   return (
     <Box
       flexDirection="column"
-      borderStyle="round"
-      borderColor={borderColor}
+      borderStyle={getBorderStyle()}
+      borderColor={color}
       paddingX={1}
       paddingY={0}
-      marginY={1}
+      marginBottom={1}
     >
       {(title || subtitle) && (
-        <Box marginBottom={1} flexDirection="column">
-          {title && (
-            <Text bold color={borderColor}>
+        <Box marginBottom={title && !subtitle ? 0 : 0} flexDirection="column">
+          {title ? (
+            <Text bold color={color}>
               {title}
             </Text>
-          )}
-          {subtitle && <Text color="gray">{subtitle}</Text>}
+          ) : null}
+          {subtitle ? <Text color={colors.muted}>{subtitle}</Text> : null}
         </Box>
       )}
       {children}

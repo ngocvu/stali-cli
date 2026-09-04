@@ -1,21 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
-import { Card } from "../components/Card";
-import { maskToken } from "../../utils/token";
+import { SimpleToolMenu, type SimpleToolAction } from "../components/SimpleToolMenu";
 import { getProtocolModelShortcuts } from "../../utils/tool-utils";
 import { getToolSyncStatus } from "../../services/syncers";
 import type { ToolSyncStatus } from "../../services/syncers/status";
 
-export type OpenCodeMenuAction =
-  | "quick-setup"
-  | "set-model"
-  | "apply"
-  | "reset"
-  | "back"
-  | `use-model:${string}`;
+export type OpenCodeMenuAction = SimpleToolAction;
 
-/** Menu wizard riêng cho OpenCode (OpenAI provider JSON). */
 export const OpenCodeDetailMenu: React.FC<{
   model: string;
   apiKey: string;
@@ -38,54 +28,20 @@ export const OpenCodeDetailMenu: React.FC<{
     };
   }, []);
 
-  const shortcuts = getProtocolModelShortcuts("opencode");
-
-  const items: { label: string; value: OpenCodeMenuAction }[] = [
-    { label: "⚡ Quick setup (req/gpt-5.6-sol)", value: "quick-setup" },
-    ...shortcuts.map((m) => ({
-      label: `🎯 Dùng model: ${m}`,
-      value: `use-model:${m}` as OpenCodeMenuAction,
-    })),
-    { label: "🤖 Chọn model khác (danh sách API)", value: "set-model" },
-    { label: "✅ Xem trước & Áp dụng cấu hình", value: "apply" },
-    { label: "🔄 Khôi phục từ backup gần nhất", value: "reset" },
-    { label: "⬅️  Quay lại danh sách ứng dụng", value: "back" },
-  ];
-
-  const statusLine = loading
-    ? "Đang kiểm tra..."
-    : status?.configured
-    ? `✅ Đã trỏ Stali${status.model ? ` · ${status.model}` : ""}`
-    : "○ Chưa cấu hình Stali";
-
   return (
-    <Card title="🟢 CẤU HÌNH OPENCODE" borderColor="green">
-      <Box flexDirection="column" gap={1}>
-        <Text>
-          Token: <Text color="yellow">{maskToken(apiKey)}</Text>
-        </Text>
-        <Text>
-          Model chọn: <Text color="green" bold>{model}</Text>
-        </Text>
-        <Text color={status?.configured ? "green" : "yellow"}>{statusLine}</Text>
-        {status?.endpoint ? (
-          <Text color="gray">
-            Base URL: <Text color="white">{status.endpoint}</Text>
-          </Text>
-        ) : null}
-        <Text color="gray">
-          File: <Text color="white">~/.opencode/config.json</Text>
-        </Text>
-        <Text color="gray">
-          Patch: defaultProvider=stali, provider.stali.options.baseURL + apiKey
-        </Text>
-
-        <SelectInput items={items} onSelect={(item) => onSelectAction(item.value)} />
-
-        <Box justifyContent="center" marginTop={1}>
-          <Text color="gray">💡 [ ↑ ][ ↓ ] Di chuyển | [ Enter ] Chọn</Text>
-        </Box>
-      </Box>
-    </Card>
+    <SimpleToolMenu
+      title="🟢 OpenCode"
+      borderColor="green"
+      apiKey={apiKey}
+      model={model}
+      status={status}
+      loading={loading}
+      file="~/.opencode/config.json"
+      patchHint="defaultProvider=stali, provider.stali.options.baseURL + apiKey"
+      shortcuts={getProtocolModelShortcuts("opencode")}
+      quickSetupLabel="Quick setup (req/gpt-5.6-sol)"
+      endpointLabel="Base URL"
+      onSelectAction={onSelectAction}
+    />
   );
 };

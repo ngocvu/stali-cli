@@ -1,8 +1,9 @@
 import React from "react";
 import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
+import { Menu } from "./components/Menu";
 import { SUPPORTED_TOOLS } from "../constants/tools";
+import { colors } from "./theme";
 
 export type ConfigureAllAction = "batch-11" | "batch-13" | "dry-run-11" | "back";
 
@@ -15,43 +16,51 @@ export const ConfigureAllMenu: React.FC<ConfigureAllMenuProps> = ({
   pluginCount,
   onSelect,
 }) => {
-  const pluginHint =
-    pluginCount > 0 ? ` + ${pluginCount} plugin (tự động)` : "";
-
-  const items = [
-    {
-      label: `⚡ Cấu hình 11 tool${pluginHint} (bỏ Claude/Codex — khuyến nghị)`,
-      value: "batch-11" as const,
-    },
-    {
-      label: `🔧 Cấu hình cả 13 tool${pluginHint} (gồm Claude + Codex)`,
-      value: "batch-13" as const,
-    },
-    {
-      label: `🔍 Dry-run xem trước (11 tool${pluginHint}, không ghi file)`,
-      value: "dry-run-11" as const,
-    },
-    { label: "⬅️  Quay lại Menu chính", value: "back" as const },
-  ];
+  const pluginHint = pluginCount > 0 ? ` + ${pluginCount} plugin` : "";
 
   return (
-    <Card title="⚙️ CẤU HÌNH HÀNG LOẠT (CONFIGURE-ALL)" borderColor="yellow">
+    <Card
+      title="Cấu hình hàng loạt"
+      subtitle={`Patch ${SUPPORTED_TOOLS.length} công cụ — mỗi file có backup timestamp`}
+      tone="warning"
+    >
       <Box flexDirection="column" gap={1}>
-        <Text color="gray">
-          Patch đồng loạt {SUPPORTED_TOOLS.length} công cụ AI — mỗi file có backup timestamp.
-        </Text>
-        <Text color="yellow">
+        <Text color={colors.warning}>
           Claude/Codex cần wizard nâng cao — mặc định bỏ qua trong batch 11 tool.
         </Text>
         {pluginCount > 0 ? (
-          <Text color="magenta">
-            plugins.json có {pluginCount} entry — batch tự sync plugin.
-          </Text>
+          <Text color={colors.info}>plugins.json có {pluginCount} entry — batch tự sync plugin.</Text>
         ) : null}
-        <SelectInput items={items} onSelect={(item) => onSelect(item.value)} />
-        <Box justifyContent="center" marginTop={1}>
-          <Text color="gray">💡 [ ↑ ][ ↓ ] Di chuyển | [ Enter ] Chọn</Text>
-        </Box>
+
+        <Menu
+          groups={[
+            {
+              items: [
+                {
+                  label: `Cấu hình 11 tool${pluginHint}`,
+                  value: "batch-11",
+                  icon: "⚡",
+                  description: "Bỏ Claude/Codex — khuyến nghị",
+                },
+                {
+                  label: `Cấu hình cả 13 tool${pluginHint}`,
+                  value: "batch-13",
+                  icon: "⚙",
+                  description: "Gồm Claude + Codex",
+                },
+                {
+                  label: `Dry-run xem trước${pluginHint}`,
+                  value: "dry-run-11",
+                  icon: "▣",
+                  description: "Không ghi file",
+                },
+                { label: "Quay lại menu chính", value: "back", icon: "←" },
+              ],
+            },
+          ]}
+          onSelect={onSelect}
+          onBack={() => onSelect("back")}
+        />
       </Box>
     </Card>
   );

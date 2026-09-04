@@ -1,9 +1,11 @@
 import React from "react";
-import { Box, Text, useInput } from "ink";
-import SelectInput from "ink-select-input";
+import { Box, Text } from "ink";
 import { Card } from "./components/Card";
+import { Menu } from "./components/Menu";
+import { StatusBadge } from "./components/StatusBadge";
 import { SyncerResult } from "../types";
 import { ONBOARDING_DOC_URL } from "../services/user-cli";
+import { colors, getBorderStyle, glyphs } from "./theme";
 
 interface SetupDoneProps {
   results: SyncerResult[];
@@ -18,13 +20,9 @@ export const SetupDone: React.FC<SetupDoneProps> = ({
   onMenu,
   onExit,
 }) => {
-  useInput((input, key) => {
-    if (input === "q" || input === "Q" || key.escape) {
-      onExit();
-    }
-  });
-
   const isReset = model === "Default";
+  const ok = results.filter((r) => r.success);
+  const fail = results.filter((r) => !r.success);
 
   const commandMap: Record<string, string> = {
     claude: "claude",
@@ -42,94 +40,81 @@ export const SetupDone: React.FC<SetupDoneProps> = ({
     jcode: "jcode",
   };
 
-  const successfulTools = results.filter((r) => r.success);
-  const commands = successfulTools.map((t) => commandMap[t.toolId] || t.toolId);
-  const uniqueCommands = Array.from(new Set(commands));
-
-  const actionItems = [
-    { label: "⬅️  Quay lại Menu chính", value: "menu" },
-    { label: "❌  Thoát CLI", value: "exit" },
-  ];
-
-  const handleActionSelect = (item: { value: string }) => {
-    if (item.value === "menu") {
-      onMenu();
-    } else {
-      onExit();
-    }
-  };
+  const commands = [...new Set(ok.map((t) => commandMap[t.toolId] || t.toolId))];
 
   return (
     <Card
-      title={isReset ? "🔄 RESET THÀNH CÔNG!" : "🎉 CÀI ĐẶT THÀNH CÔNG!"}
-      borderColor="green"
+      title={isReset ? `${glyphs.check} Reset thành công` : `${glyphs.check} Hoàn tất`}
+      tone={fail.length > 0 ? "warning" : "success"}
     >
       <Box flexDirection="column" gap={1}>
-        <Text bold color="green">
-          {isReset
-            ? "✅ Đã khôi phục cài đặt gốc thành công!"
-            : "✅ Đã hoàn tất cài đặt Stali API cho công cụ của bạn!"}
-        </Text>
+        <Box gap={2}>
+          <StatusBadge status="pass" count={ok.length} filled />
+          {fail.length > 0 ? <StatusBadge status="fail" count={fail.length} filled /> : null}
+        </Box>
 
-        {!isReset && (
-          <Box flexDirection="column" marginY={0}>
-            <Text bold color="yellow">
-              🤖 Model / Cấu hình: <Text color="white">{model}</Text>
+        {!isReset ? (
+          <Box flexDirection="column">
+            <Text color={colors.muted}>
+              Model / cấu hình  <Text color={colors.text}>{model}</Text>
             </Text>
-            <Text bold color="cyan">
-              📁 File cấu hình Stali: <Text color="white">~/.stali/config.json</Text>
-            </Text>
+            <Text color={colors.muted}>File Stali  ~/.stali/config.json</Text>
           </Box>
-        )}
+        ) : null}
 
         <Box flexDirection="column">
-          <Text bold color="magenta">Chi tiết các file đã patch an toàn:</Text>
           {results.map((res, i) => (
-            <Box key={i} flexDirection="column" marginLeft={1} marginY={0}>
-              <Text color="green">
-                • {res.toolName}: <Text color="white">{res.configPath}</Text>
+            <Box key={`${res.toolId}-${i}`} flexDirection="column">
+              <Text color={res.success ? colors.success : colors.error}>
+                {res.success ? glyphs.check : glyphs.cross} {res.toolName}
+                {res.configPath ? `  ${res.configPath}` : ""}
               </Text>
-              {res.backupPath && (
-                <Box marginLeft={2}>
-                  <Text color="gray">↳ Bản sao lưu timestamp: {res.backupPath}</Text>
-                </Box>
-              )}
+              {res.backupPath ? (
+                <Text color={colors.muted}>
+                  {"  "}backup {res.backupPath}
+                </Text>
+              ) : null}
+              {res.error ? <Text color={colors.error}>{"  "}{res.error}</Text> : null}
             </Box>
           ))}
         </Box>
 
-        <Box borderStyle="single" borderColor="green" paddingX={1} marginTop={1} flexDirection="column">
-          <Text bold color="yellow">
-            🚀 Hướng dẫn khởi chạy:
-          </Text>
-          <Text color="white">
-            Mở terminal mới và gõ lệnh:{" "}
-            {uniqueCommands.length > 0 ? (
-              uniqueCommands.map((cmd, idx) => (
-                <React.Fragment key={cmd}>
-                  {idx > 0 && <Text color="white"> hoặc </Text>}
-                  <Text bold color="cyan">{cmd}</Text>
-                </React.Fragment>
-              ))
-            ) : (
-              <Text bold color="cyan">claude</Text>
-            )}{" "}
-            để bắt đầu sử dụng ngay!
-          </Text>
-        </Box>
+        {commands.length > 0 ? (
+          <Box
+            borderStyle={getBorderStyle()}
+            borderColor={colors.success}
+            paddingX={1}
+            flexDirection="column"
+          >
+            <Text color={colors.warning} bold>
+              Khởi chạy
+            </Text>
+            <Text>
+              Mở terminal mới:{" "}
+              <Text color={colors.accent} bold>
+                {commands.join("  |  ")}
+              </Text>
+            </Text>
+          </Box>
+        ) : null}
 
-        <Box flexDirection="column" marginTop={1} gap={1}>
-          <Text color="gray">
-            Hướng dẫn đầy đủ: <Text color="cyan">{ONBOARDING_DOC_URL}</Text>
-          </Text>
-          <Text color="gray">
-            Telemetry ẩn danh (opt-in): <Text color="cyan">stali telemetry on</Text>
-          </Text>
-          <Text color="gray">
-            Dùng phím mũi tên [ ↑ ] [ ↓ ] và nhấn [ Enter ] để chọn hoặc nhấn [ Q ] / [ Esc ] để Thoát:
-          </Text>
-          <SelectInput items={actionItems} onSelect={handleActionSelect} />
-        </Box>
+        <Text color={colors.muted}>Hướng dẫn: {ONBOARDING_DOC_URL}</Text>
+
+        <Menu
+          groups={[
+            {
+              items: [
+                { label: "Về menu chính", value: "menu", icon: "←" },
+                { label: "Thoát", value: "exit", icon: "×" },
+              ],
+            },
+          ]}
+          onSelect={(value) => {
+            if (value === "menu") onMenu();
+            else onExit();
+          }}
+          onBack={onMenu}
+        />
       </Box>
     </Card>
   );

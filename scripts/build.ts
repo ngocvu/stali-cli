@@ -68,11 +68,36 @@ function sha256File(filePath: string): string {
 
 function extractLocalImports(src: string): string[] {
   const imports = new Set<string>();
-  for (const re of [/from"\.\/([^"]+\.js)"/g, /import\("\.\/([^"]+\.js)"\)/g]) {
+  for (const re of [
+    /from"\.\/([^"]+\.js)"/g,
+    /import\("\.\/([^"]+\.js)"\)/g,
+    /import"\.\/([^"]+\.js)"/g,
+  ]) {
     let m: RegExpExecArray | null;
     while ((m = re.exec(src))) imports.add(m[1]);
   }
   return [...imports];
+}
+
+/** `./x.js` or `../x.js` specifiers (minified bun output). */
+function extractRelativeSpecifiers(src: string): string[] {
+  const out: string[] = [];
+  for (const re of [
+    /from["'](\.\.?\/[^"']+\.js)["']/g,
+    /import\(["'](\.\.?\/[^"']+\.js)["']\)/g,
+    /import["'](\.\.?\/[^"']+\.js)["']/g,
+  ]) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src))) out.push(m[1]);
+  }
+  return out;
+}
+
+function replaceDotImport(src: string, fromFile: string, toSpec: string): string {
+  return src
+    .replaceAll(`from"./${fromFile}"`, `from"${toSpec}"`)
+    .replaceAll(`import("./${fromFile}")`, `import("${toSpec}")`)
+    .replaceAll(`import"./${fromFile}"`, `import"${toSpec}"`);
 }
 
 function reachableFrom(entry: string, dir: string, files: Set<string>): Set<string> {
@@ -90,16 +115,11 @@ function reachableFrom(entry: string, dir: string, files: Set<string>): Set<stri
   return seen;
 }
 
-function rewriteImports(filePath: string, rewrites: Map<string, string>) {
-  let src = fs.readFileSync(filePath, "utf8");
-  for (const [from, to] of rewrites) {
-    src = src.replaceAll(`from"./${from}"`, `from"./${to}"`);
-    src = src.replaceAll(`import("./${from}")`, `import("./${to}")`);
-  }
-  fs.writeFileSync(filePath, src);
-}
-
-/** Chunks chỉ wizard entry cần → dist/runtime/wizard-only/ */
+/**
+ * Chunks chỉ wizard cần → dist/runtime/wizard-only/.
+ * File ở runtime/: ./Moved.js → ./wizard-only/Moved.js
+ * File ở wizard-only/: ./Shared.js → ../Shared.js (sibling moved giữ ./Moved.js)
+ */
 function partitionWizardOnlyChunks() {
   const topFiles = fs.readdirSync(runtimeDir).filter((f) => f.endsWith(".js"));
   const fileSet = new Set(topFiles);
@@ -110,27 +130,58 @@ function partitionWizardOnlyChunks() {
   if (wizardOnly.length === 0) return { moved: 0, wizardOnlyKb: 0 };
 
   fs.mkdirSync(wizardOnlyDir, { recursive: true });
-  const rewrites = new Map<string, string>();
+  const movedSet = new Set(wizardOnly);
   let wizardOnlyKb = 0;
 
   for (const f of wizardOnly) {
     const srcPath = path.join(runtimeDir, f);
     const destPath = path.join(wizardOnlyDir, f);
     fs.renameSync(srcPath, destPath);
-    rewrites.set(f, `wizard-only/${f}`);
     wizardOnlyKb += fs.statSync(destPath).size / 1024;
   }
 
-  const allRuntimeJs: string[] = [];
   for (const f of fs.readdirSync(runtimeDir)) {
-    if (f.endsWith(".js")) allRuntimeJs.push(path.join(runtimeDir, f));
+    if (!f.endsWith(".js")) continue;
+    const abs = path.join(runtimeDir, f);
+    let src = fs.readFileSync(abs, "utf8");
+    for (const moved of wizardOnly) {
+      src = replaceDotImport(src, moved, `./wizard-only/${moved}`);
+    }
+    fs.writeFileSync(abs, src);
   }
-  for (const f of listJsFiles(wizardOnlyDir)) {
-    allRuntimeJs.push(path.join(wizardOnlyDir, f));
+
+  for (const f of wizardOnly) {
+    const abs = path.join(wizardOnlyDir, f);
+    let src = fs.readFileSync(abs, "utf8");
+    const deps = extractLocalImports(src).filter((dep) => !dep.includes("/"));
+    for (const dep of deps) {
+      if (movedSet.has(dep)) continue;
+      src = replaceDotImport(src, dep, `../${dep}`);
+    }
+    fs.writeFileSync(abs, src);
   }
-  for (const abs of allRuntimeJs) rewriteImports(abs, rewrites);
 
   return { moved: wizardOnly.length, wizardOnlyKb };
+}
+
+function assertRuntimeImportsResolve() {
+  const broken: string[] = [];
+  for (const rel of listJsFiles(runtimeDir)) {
+    const abs = path.join(runtimeDir, rel);
+    const src = fs.readFileSync(abs, "utf8");
+    for (const spec of extractRelativeSpecifiers(src)) {
+      const resolved = path.normalize(path.join(path.dirname(abs), spec));
+      if (!fs.existsSync(resolved)) {
+        broken.push(`${rel} → ${spec}`);
+      }
+    }
+  }
+  if (broken.length > 0) {
+    console.error("❌ Runtime import trỏ file không tồn tại:");
+    for (const line of broken.slice(0, 20)) console.error(`   ${line}`);
+    if (broken.length > 20) console.error(`   … và ${broken.length - 20} import khác`);
+    process.exit(1);
+  }
 }
 
 function writeChecksumManifest(version: string) {
@@ -234,6 +285,7 @@ if (mode === "wizard") {
   }
 
   const { moved, wizardOnlyKb } = partitionWizardOnlyChunks();
+  assertRuntimeImportsResolve();
   const runtimeKb = dirTotalKb(runtimeDir);
   const topLevelCount = fs.readdirSync(runtimeDir).filter((f) => f.endsWith(".js")).length;
   console.log(

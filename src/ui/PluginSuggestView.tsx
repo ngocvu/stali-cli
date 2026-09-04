@@ -1,7 +1,9 @@
 import React from "react";
 import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
+import { Menu } from "./components/Menu";
+import { StatusBadge } from "./components/StatusBadge";
+import { colors } from "./theme";
 import type { PluginPatchSuggestion } from "../services/plugin-suggest";
 
 interface PluginSuggestViewProps {
@@ -14,34 +16,32 @@ export const PluginSuggestView: React.FC<PluginSuggestViewProps> = ({
   onBack,
 }) => {
   return (
-    <Card title="💡 GỢI Ý patchStyle" borderColor="magenta">
+    <Card title="Gợi ý patchStyle" subtitle="Phân tích file config → cập nhật ~/.stali/plugins.json rồi sync" borderColor="magenta">
       <Box flexDirection="column" gap={1}>
-        <Text color="gray">
-          Phân tích file config thực tế → cập nhật ~/.stali/plugins.json rồi sync.
-        </Text>
         {suggestions.length === 0 ? (
-          <Text color="yellow">Không có plugin — stali plugins --init</Text>
+          <Text color={colors.warning}>Không có plugin — stali plugins --init</Text>
         ) : (
           suggestions.map((s) => (
             <Box key={s.pluginId} flexDirection="column" marginBottom={1}>
-              <Text bold color="white">
-                {s.pluginName} ({s.pluginId})
-                {s.changed ? (
-                  <Text color="yellow"> — đề xuất đổi</Text>
-                ) : s.currentPatchStyle ? (
-                  <Text color="green"> — OK</Text>
-                ) : (
-                  <Text color="gray"> — mới</Text>
-                )}
+              <Box gap={1}>
+                <StatusBadge
+                  status={s.changed ? "warn" : s.currentPatchStyle ? "pass" : "info"}
+                />
+                <Text bold color={colors.text}>
+                  {s.pluginName} ({s.pluginId})
+                </Text>
+              </Box>
+              <Text color={colors.muted}>
+                {"  "}file: {s.configFile}
+                {s.configExists ? "" : " (chưa có)"}
               </Text>
-              <Text color="gray">  file: {s.configFile}{s.configExists ? "" : " (chưa có)"}</Text>
-              <Text color="cyan">
+              <Text color={colors.accent}>
                 {"  → "}
                 {s.suggestedPatchStyle}
-                <Text color="gray"> — {s.reason}</Text>
+                <Text color={colors.muted}> — {s.reason}</Text>
               </Text>
               {s.currentPatchStyle && s.currentPatchStyle !== s.suggestedPatchStyle ? (
-                <Text color="yellow">
+                <Text color={colors.warning}>
                   {"  hiện tại: "}
                   {s.currentPatchStyle}
                 </Text>
@@ -49,9 +49,10 @@ export const PluginSuggestView: React.FC<PluginSuggestViewProps> = ({
             </Box>
           ))
         )}
-        <SelectInput
-          items={[{ label: "⬅️  Quay lại Menu Plugin", value: "back" }]}
+        <Menu
+          groups={[{ items: [{ label: "Quay lại menu plugin", value: "back", icon: "←" }] }]}
           onSelect={() => onBack()}
+          onBack={onBack}
         />
       </Box>
     </Card>
