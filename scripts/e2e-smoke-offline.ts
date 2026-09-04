@@ -5,6 +5,7 @@
 import { spawnSync } from "child_process";
 import fs from "fs/promises";
 import path from "path";
+import { pathToFileURL } from "url";
 import pkg from "../package.json" with { type: "json" };
 
 const CLI_ROOT = path.resolve(import.meta.dir, "..");
@@ -139,6 +140,17 @@ async function main() {
     "wizard-only dir exists",
     await fs.access(wizardOnlyDir).then(() => true).catch(() => false)
   );
+  const wizFiles = await fs.readdir(wizardOnlyDir);
+  const launcher = wizFiles.find((f) => f.startsWith("wizard-launcher-"));
+  assert("wizard-launcher chunk exists", !!launcher);
+  if (launcher) {
+    try {
+      await import(pathToFileURL(path.join(wizardOnlyDir, launcher)).href);
+      assert("wizard-launcher module resolves", true);
+    } catch (e) {
+      assert("wizard-launcher module resolves", false, String(e));
+    }
+  }
 
   const watchSmoke = run(["doctor", "--tools-only", "--watch", "--max-cycles", "2", "-i", "1", "--json"]);
   assert("doctor watch --max-cycles exit 0|1", watchSmoke.status === 0 || watchSmoke.status === 1);

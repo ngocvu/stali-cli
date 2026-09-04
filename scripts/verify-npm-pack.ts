@@ -4,7 +4,7 @@
  */
 import { execSync } from "child_process";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "fs";
-import { join } from "path";
+import { join, dirname, normalize } from "path";
 import { tmpdir } from "os";
 
 function fail(msg: string): never {
@@ -68,6 +68,36 @@ try {
     fail(`tarball must have 0 runtime dependencies (prebuilt dist), got ${depCount}`);
   }
   ok("zero runtime dependencies (fast npm install)");
+
+  // Relative imports in dist/runtime (+ wizard-only) must resolve on disk
+  const runtimeDir = join(pkgDir, "dist", "runtime");
+  function listJs(dir: string, prefix = ""): string[] {
+    const out: string[] = [];
+    for (const name of readdirSync(dir)) {
+      const abs = join(dir, name);
+      const rel = prefix ? `${prefix}/${name}` : name;
+      if (statSync(abs).isDirectory()) out.push(...listJs(abs, rel));
+      else if (name.endsWith(".js")) out.push(rel);
+    }
+    return out;
+  }
+  const importRe = /(?:from|import\()"(\.\.?\/[^"]+\.js)"/g;
+  let broken = 0;
+  for (const rel of listJs(runtimeDir)) {
+    const abs = join(runtimeDir, rel);
+    const src = readFileSync(abs, "utf8");
+    let m: RegExpExecArray | null;
+    importRe.lastIndex = 0;
+    while ((m = importRe.exec(src))) {
+      const target = normalize(join(dirname(abs), m[1]));
+      if (!statSync(target, { throwIfNoEntry: false })) {
+        console.error(`  broken: dist/runtime/${rel} → ${m[1]}`);
+        broken++;
+      }
+    }
+  }
+  if (broken > 0) fail(`${broken} broken relative import(s) in dist/runtime`);
+  ok("dist/runtime relative imports resolve");
 } finally {
   rmSync(stage, { recursive: true, force: true });
   rmSync(join(root, tgzName), { force: true });

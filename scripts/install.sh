@@ -21,6 +21,8 @@ EXPECTED_SHA="${STALI_CLI_SHA256:-}"
 STALI_HOME="${STALI_HOME:-$HOME/.stali}"
 INSTALL_ROOT="${STALI_CLI_INSTALL_DIR:-$STALI_HOME/cli}"
 STALI_BIN="$STALI_HOME/bin"
+# User-facing PATH dir (tránh FlyEnv/nvm prefix khó tìm trên Windows Git Bash)
+LOCAL_BIN="${STALI_CLI_LOCAL_BIN:-$HOME/.local/bin}"
 LEGACY_SHARE="${XDG_DATA_HOME:-$HOME/.local/share}/stali-cli"
 
 log() { printf '> %s\n' "$*"; }
@@ -51,11 +53,12 @@ register_global_stali() {
   local root="$1"
   local shell_shim="$root/bin/stali"
   local stali_js="$root/bin/stali.js"
-  mkdir -p "$STALI_BIN"
+  mkdir -p "$STALI_BIN" "$LOCAL_BIN"
   if [[ -f "$shell_shim" ]]; then
-    log "Cài wrapper: $STALI_BIN/stali (từ bin/stali)"
+    log "Cài wrapper: $STALI_BIN/stali + $LOCAL_BIN/stali (từ bin/stali)"
     cp "$shell_shim" "$STALI_BIN/stali"
-    chmod +x "$STALI_BIN/stali"
+    cp "$shell_shim" "$LOCAL_BIN/stali"
+    chmod +x "$STALI_BIN/stali" "$LOCAL_BIN/stali"
     return 0
   fi
   [[ -f "$stali_js" ]] || die "Thiếu bin/stali hoặc bin/stali.js"
@@ -67,12 +70,9 @@ register_global_stali() {
     runtime_bin="$(command -v bun)"
     runtime_name="bun"
   fi
-  log "Cài wrapper: $STALI_BIN/stali (${runtime_name} + stali.js)"
-  cat >"$STALI_BIN/stali" <<EOF
-#!/usr/bin/env bash
-exec "$runtime_bin" "$stali_js" "\$@"
-EOF
-  chmod +x "$STALI_BIN/stali"
+  log "Cài wrapper: $STALI_BIN/stali + $LOCAL_BIN/stali (${runtime_name} + stali.js)"
+  write_stali_wrapper "$STALI_BIN/stali" "$stali_js" "$runtime_bin"
+  write_stali_wrapper "$LOCAL_BIN/stali" "$stali_js" "$runtime_bin"
 }
 
 install_standalone_binary() {
@@ -157,13 +157,47 @@ console.log("Checksums OK (" + Object.keys(manifest.files).length + " files)");
 NODE
 }
 
+write_stali_wrapper() {
+  local dest="$1"
+  local stali_js="$2"
+  local runtime_bin="$3"
+  mkdir -p "$(dirname "$dest")"
+  cat >"$dest" <<EOF
+#!/usr/bin/env bash
+exec "$runtime_bin" "$stali_js" "\$@"
+EOF
+  chmod +x "$dest"
+}
+
+# Link stali vào ~/.local/bin + ~/.stali/bin (không phụ thuộc FlyEnv npm prefix trong PATH).
+link_user_bins_from_npm() {
+  local npm_root stali_js runtime_bin
+  npm_root="$(npm root -g 2>/dev/null || true)"
+  stali_js="${npm_root}/stali-cli/bin/stali.js"
+  [[ -f "$stali_js" ]] || {
+    log "Warning: không thấy $stali_js — bỏ qua link ~/.local/bin"
+    return 1
+  }
+  if command -v node >/dev/null 2>&1; then
+    runtime_bin="$(command -v node)"
+  else
+    runtime_bin="$(command -v bun)" || die "Cần node hoặc bun để tạo wrapper"
+  fi
+  mkdir -p "$STALI_BIN" "$LOCAL_BIN"
+  write_stali_wrapper "$STALI_BIN/stali" "$stali_js" "$runtime_bin"
+  write_stali_wrapper "$LOCAL_BIN/stali" "$stali_js" "$runtime_bin"
+  log "Linked bin: $LOCAL_BIN/stali (và $STALI_BIN/stali) → $stali_js"
+  export PATH="$LOCAL_BIN:$STALI_BIN:$PATH"
+}
+
 install_from_npm() {
   command -v npm >/dev/null 2>&1 || die "Cần npm (Node.js >= 18). Cài: https://nodejs.org"
   local spec="$NPM_PKG"
   [[ -n "$VERSION" ]] && spec="${NPM_PKG}@${VERSION}"
   log "Cài ${spec} từ npm (prebuilt dist, không build)…"
   npm install -g "$spec" --no-fund --no-audit --loglevel="${NPM_CONFIG_LOGLEVEL:-error}"
-  export PATH="$(npm bin -g 2>/dev/null || true):$STALI_BIN:$PATH"
+  link_user_bins_from_npm || true
+  export PATH="$LOCAL_BIN:$STALI_BIN:$(npm bin -g 2>/dev/null || true):$PATH"
 }
 
 fetch_source() {
@@ -246,11 +280,12 @@ main() {
     *) die "Unknown STALI_CLI_INSTALL_METHOD=$METHOD" ;;
   esac
 
-  export PATH="$STALI_BIN:$PATH"
-  command -v stali >/dev/null 2>&1 || die "stali chưa trong PATH. Thêm: export PATH=\"$STALI_BIN:\$PATH\""
+  export PATH="$LOCAL_BIN:$STALI_BIN:$PATH"
+  command -v stali >/dev/null 2>&1 || die "stali chưa trong PATH. Thêm: export PATH=\"$LOCAL_BIN:\$PATH\""
 
   log "Done. Chạy: stali"
-  log "Paths: cli=$INSTALL_ROOT bin=$STALI_BIN"
+  log "Paths: bin=$LOCAL_BIN (cũng $STALI_BIN)"
+  log "Nếu terminal mới không thấy stali: export PATH=\"$LOCAL_BIN:\$PATH\""
   stali --version 2>/dev/null || true
   if [[ "${STALI_CLI_NO_RUN:-0}" != "1" ]]; then
     exec stali

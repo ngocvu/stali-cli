@@ -66,9 +66,20 @@ function sha256File(filePath: string): string {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
-function extractLocalImports(src: string): string[] {
+/** Flat `./chunk.js` imports (pre-partition graph). */
+function extractFlatImports(src: string): string[] {
   const imports = new Set<string>();
-  for (const re of [/from"\.\/([^"]+\.js)"/g, /import\("\.\/([^"]+\.js)"\)/g]) {
+  for (const re of [/from"\.\/([^"/]+\.js)"/g, /import\("\.\/([^"/]+\.js)"\)/g]) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src))) imports.add(m[1]);
+  }
+  return [...imports];
+}
+
+/** Any relative `./` or `../` JS import (post-partition verify). */
+function extractRelativeImports(src: string): string[] {
+  const imports = new Set<string>();
+  for (const re of [/from"(\.\.?\/[^"]+\.js)"/g, /import\("(\.\.?\/[^"]+\.js)"\)/g]) {
     let m: RegExpExecArray | null;
     while ((m = re.exec(src))) imports.add(m[1]);
   }
@@ -83,23 +94,68 @@ function reachableFrom(entry: string, dir: string, files: Set<string>): Set<stri
     if (seen.has(f) || !files.has(f)) continue;
     seen.add(f);
     const src = fs.readFileSync(path.join(dir, f), "utf8");
-    for (const dep of extractLocalImports(src)) {
-      if (!dep.includes("/")) queue.push(dep);
+    for (const dep of extractFlatImports(src)) {
+      queue.push(dep);
     }
   }
   return seen;
 }
 
+/**
+ * Rewrite `from"./X"` / `import("./X")` → `from"${to}"` where `to` is a full
+ * relative specifier (`./wizard-only/X` or `../X`).
+ */
 function rewriteImports(filePath: string, rewrites: Map<string, string>) {
   let src = fs.readFileSync(filePath, "utf8");
   for (const [from, to] of rewrites) {
-    src = src.replaceAll(`from"./${from}"`, `from"./${to}"`);
-    src = src.replaceAll(`import("./${from}")`, `import("./${to}")`);
+    src = src.replaceAll(`from"./${from}"`, `from"${to}"`);
+    src = src.replaceAll(`import("./${from}")`, `import("${to}")`);
   }
   fs.writeFileSync(filePath, src);
 }
 
-/** Chunks chỉ wizard entry cần → dist/runtime/wizard-only/ */
+function listAllRuntimeJsAbs(): string[] {
+  const out: string[] = [];
+  for (const f of fs.readdirSync(runtimeDir)) {
+    if (f.endsWith(".js")) out.push(path.join(runtimeDir, f));
+  }
+  if (fs.existsSync(wizardOnlyDir)) {
+    for (const rel of listJsFiles(wizardOnlyDir)) {
+      out.push(path.join(wizardOnlyDir, rel));
+    }
+  }
+  return out;
+}
+
+/** Fail build if any relative import no longer resolves on disk. */
+function assertRuntimeImportsResolve() {
+  let missing = 0;
+  for (const abs of listAllRuntimeJsAbs()) {
+    const dir = path.dirname(abs);
+    const src = fs.readFileSync(abs, "utf8");
+    for (const dep of extractRelativeImports(src)) {
+      const target = path.normalize(path.join(dir, dep));
+      if (!fs.existsSync(target)) {
+        console.error(
+          `❌ Broken import: ${path.relative(distDir, abs).replace(/\\/g, "/")} → ${dep}`
+        );
+        missing++;
+      }
+    }
+  }
+  if (missing > 0) {
+    console.error(`❌ ${missing} broken relative import(s) after wizard-only partition`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Chunks chỉ wizard entry cần → dist/runtime/wizard-only/
+ *
+ * Import rewrite phải theo vị trí file sau khi move:
+ * - runtime/*.js còn lại: `./moved.js` → `./wizard-only/moved.js`
+ * - wizard-only/*.js: `./shared.js` → `../shared.js` (không prefix wizard-only/)
+ */
 function partitionWizardOnlyChunks() {
   const topFiles = fs.readdirSync(runtimeDir).filter((f) => f.endsWith(".js"));
   const fileSet = new Set(topFiles);
@@ -110,25 +166,37 @@ function partitionWizardOnlyChunks() {
   if (wizardOnly.length === 0) return { moved: 0, wizardOnlyKb: 0 };
 
   fs.mkdirSync(wizardOnlyDir, { recursive: true });
-  const rewrites = new Map<string, string>();
+  const movedSet = new Set(wizardOnly);
   let wizardOnlyKb = 0;
 
   for (const f of wizardOnly) {
     const srcPath = path.join(runtimeDir, f);
     const destPath = path.join(wizardOnlyDir, f);
     fs.renameSync(srcPath, destPath);
-    rewrites.set(f, `wizard-only/${f}`);
     wizardOnlyKb += fs.statSync(destPath).size / 1024;
   }
 
-  const allRuntimeJs: string[] = [];
+  // Parent (runtime/): point at moved chunks under wizard-only/
+  const parentRewrites = new Map<string, string>();
+  for (const f of wizardOnly) {
+    parentRewrites.set(f, `./wizard-only/${f}`);
+  }
   for (const f of fs.readdirSync(runtimeDir)) {
-    if (f.endsWith(".js")) allRuntimeJs.push(path.join(runtimeDir, f));
+    if (f.endsWith(".js")) rewriteImports(path.join(runtimeDir, f), parentRewrites);
   }
-  for (const f of listJsFiles(wizardOnlyDir)) {
-    allRuntimeJs.push(path.join(wizardOnlyDir, f));
+
+  // Child (wizard-only/): shared chunks stay in parent → ../shared.js
+  // Same-folder moved imports remain ./moved.js (no rewrite).
+  const sharedTop = topFiles.filter((f) => !movedSet.has(f));
+  const childRewrites = new Map<string, string>();
+  for (const f of sharedTop) {
+    childRewrites.set(f, `../${f}`);
   }
-  for (const abs of allRuntimeJs) rewriteImports(abs, rewrites);
+  for (const rel of listJsFiles(wizardOnlyDir)) {
+    rewriteImports(path.join(wizardOnlyDir, rel), childRewrites);
+  }
+
+  assertRuntimeImportsResolve();
 
   return { moved: wizardOnly.length, wizardOnlyKb };
 }

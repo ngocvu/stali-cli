@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.45.2] — 2026-09-04
+
+### Fixed
+- **wizard-only partition** — rewrite import đúng theo vị trí file sau khi move (`./shared` → `../shared` trong `wizard-only/`; không còn prefix `wizard-only/` sai khiến `ERR_MODULE_NOT_FOUND` trên Windows/npm)
+- **Build gate** — fail nếu relative import trong `dist/runtime` không resolve trên disk
+- **Install** — sau `npm install -g`, link wrapper vào `~/.local/bin` (+ `~/.stali/bin`) thay vì phụ thuộc FlyEnv/npm prefix trong PATH
+
 ## [3.45.1] — 2026-08-29
 
 ### Fixed
