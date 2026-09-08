@@ -81,18 +81,25 @@ try {
     }
     return out;
   }
-  const importRe = /(?:from|import\()"(\.\.?\/[^"]+\.js)"/g;
+  // Bun minify: from"..."; import"..."; import("...")
+  const importRes = [
+    /from"(\.\.?\/[^"]+\.js)"/g,
+    /import"(\.\.?\/[^"]+\.js)"/g,
+    /import\("(\.\.?\/[^"]+\.js)"\)/g,
+  ];
   let broken = 0;
   for (const rel of listJs(runtimeDir)) {
     const abs = join(runtimeDir, rel);
     const src = readFileSync(abs, "utf8");
-    let m: RegExpExecArray | null;
-    importRe.lastIndex = 0;
-    while ((m = importRe.exec(src))) {
-      const target = normalize(join(dirname(abs), m[1]));
-      if (!statSync(target, { throwIfNoEntry: false })) {
-        console.error(`  broken: dist/runtime/${rel} → ${m[1]}`);
-        broken++;
+    for (const importRe of importRes) {
+      importRe.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = importRe.exec(src))) {
+        const target = normalize(join(dirname(abs), m[1]));
+        if (!statSync(target, { throwIfNoEntry: false })) {
+          console.error(`  broken: dist/runtime/${rel} → ${m[1]}`);
+          broken++;
+        }
       }
     }
   }

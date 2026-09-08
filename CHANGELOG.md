@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.45.3] — 2026-09-08
+
+### Fixed
+- **wizard-only partition** — Bun minify dùng `import"./chunk.js"` (side-effect, không ngoặc); bản 3.45.2 chỉ rewrite `from"./…"` / `import("./…")` nên sau khi move chunk sang `wizard-only/` vẫn trỏ `./shared` thay vì `../shared` → `ERR_MODULE_NOT_FOUND` trên Windows khi chạy `stali` sau `npm install -g`
+- **verify-npm-pack / build gate** — bắt cả dạng `import"./…"` để không publish tarball gãy import nữa
+
 ## [3.45.2] — 2026-09-04
 
 ### Fixed

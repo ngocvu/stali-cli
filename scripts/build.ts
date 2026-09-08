@@ -69,7 +69,12 @@ function sha256File(filePath: string): string {
 /** Flat `./chunk.js` imports (pre-partition graph). */
 function extractFlatImports(src: string): string[] {
   const imports = new Set<string>();
-  for (const re of [/from"\.\/([^"/]+\.js)"/g, /import\("\.\/([^"/]+\.js)"\)/g]) {
+  // Bun minify emits: from"./x.js" | import"./x.js" | import("./x.js")
+  for (const re of [
+    /from"\.\/([^"/]+\.js)"/g,
+    /import"\.\/([^"/]+\.js)"/g,
+    /import\("\.\/([^"/]+\.js)"\)/g,
+  ]) {
     let m: RegExpExecArray | null;
     while ((m = re.exec(src))) imports.add(m[1]);
   }
@@ -79,7 +84,11 @@ function extractFlatImports(src: string): string[] {
 /** Any relative `./` or `../` JS import (post-partition verify). */
 function extractRelativeImports(src: string): string[] {
   const imports = new Set<string>();
-  for (const re of [/from"(\.\.?\/[^"]+\.js)"/g, /import\("(\.\.?\/[^"]+\.js)"\)/g]) {
+  for (const re of [
+    /from"(\.\.?\/[^"]+\.js)"/g,
+    /import"(\.\.?\/[^"]+\.js)"/g,
+    /import\("(\.\.?\/[^"]+\.js)"\)/g,
+  ]) {
     let m: RegExpExecArray | null;
     while ((m = re.exec(src))) imports.add(m[1]);
   }
@@ -102,13 +111,15 @@ function reachableFrom(entry: string, dir: string, files: Set<string>): Set<stri
 }
 
 /**
- * Rewrite `from"./X"` / `import("./X")` → `from"${to}"` where `to` is a full
- * relative specifier (`./wizard-only/X` or `../X`).
+ * Rewrite relative chunk imports → `to` (full specifier like `./wizard-only/X` or `../X`).
+ * Bun minify emits three shapes: from"./X" | import"./X" | import("./X")
+ * (3.45.2 missed side-effect `import"./X"` → ERR_MODULE_NOT_FOUND on Windows/npm).
  */
 function rewriteImports(filePath: string, rewrites: Map<string, string>) {
   let src = fs.readFileSync(filePath, "utf8");
   for (const [from, to] of rewrites) {
     src = src.replaceAll(`from"./${from}"`, `from"${to}"`);
+    src = src.replaceAll(`import"./${from}"`, `import"${to}"`);
     src = src.replaceAll(`import("./${from}")`, `import("${to}")`);
   }
   fs.writeFileSync(filePath, src);
