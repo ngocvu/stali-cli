@@ -1,8 +1,9 @@
 import React from "react";
 import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
+import { Menu } from "./components/Menu";
 import { VERSION } from "../version";
+import { colors } from "./theme";
 
 export type InstallMenuAction =
   | "check-update"
@@ -17,28 +18,30 @@ interface InstallMenuProps {
 }
 
 export const InstallMenu: React.FC<InstallMenuProps> = ({ installMode, onSelect }) => {
-  const items = [
-    { label: "🔍 Kiểm tra phiên bản mới (update --check)", value: "check-update" as const },
-    { label: "📦 Nâng cấp qua npm global (nhanh nhất)", value: "npm-upgrade" as const },
-    { label: "⏰ Bật auto-update 04:00 (cron / launchd / Task Scheduler)", value: "auto-update" as const },
-    { label: "📋 Hướng dẫn onboarding đầy đủ (guide onboarding)", value: "guide" as const },
-    { label: "⬅️  Quay lại Menu chính", value: "back" as const },
-  ];
-
   return (
-    <Card title="📦 CÀI ĐẶT / NÂNG CẤP STALI-CLI" borderColor="green">
+    <Card title="Cài đặt / nâng cấp" subtitle={`v${VERSION}${installMode ? ` · ${installMode}` : ""}`} tone="success">
       <Box flexDirection="column" gap={1}>
-        <Text color="gray">
-          Hiện tại: v{VERSION}
-          {installMode ? ` · ${installMode}` : ""}
-        </Text>
-        <Text color="gray">
-          Khuyến nghị: npm install -g stali-cli@latest · CLI: stali guide onboarding
-        </Text>
-        <SelectInput items={items} onSelect={(item) => onSelect(item.value)} />
-        <Box justifyContent="center" marginTop={1}>
-          <Text color="gray">💡 [ ↑ ][ ↓ ] Di chuyển | [ Enter ] Chọn</Text>
-        </Box>
+        <Text color={colors.muted}>Khuyến nghị: npm install -g stali-cli@latest</Text>
+        <Menu
+          groups={[
+            {
+              items: [
+                { label: "Kiểm tra phiên bản mới", value: "check-update", icon: "▣" },
+                { label: "Nâng cấp qua npm global", value: "npm-upgrade", icon: "📦", description: "Nhanh nhất" },
+                {
+                  label: "Bật auto-update 04:00",
+                  value: "auto-update",
+                  icon: "⏰",
+                  description: "cron / launchd / Task Scheduler",
+                },
+                { label: "Hướng dẫn onboarding", value: "guide", icon: "ℹ" },
+                { label: "Quay lại menu chính", value: "back", icon: "←" },
+              ],
+            },
+          ]}
+          onSelect={onSelect}
+          onBack={() => onSelect("back")}
+        />
       </Box>
     </Card>
   );

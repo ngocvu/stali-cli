@@ -2,8 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { Card } from "../components/Card";
+import { StatusBadge } from "../components/StatusBadge";
+import { SpinnerLine } from "../components/LoadingCard";
 import { getClaudeStatus, ClaudeStatus } from "../../services/syncers/claude";
 import { formatContextDisplay } from "../ContextSelect";
+import { colors, getBorderStyle, glyphs, maskPretty } from "../theme";
+import { useTerminalLayout } from "../hooks/useTerminalLayout";
 
 export type ClaudeMenuAction =
   | "apply"
@@ -46,10 +50,10 @@ const MODEL_FIELDS: ModelFieldDef[] = [
 const CONTEXT_PRESETS = ["", "198000", "298000", "498000", "998000"];
 
 const ACTION_BUTTONS: { id: ClaudeMenuAction; label: string; color: string }[] = [
-  { id: "quick-setup", label: "⚡ Quick Setup", color: "yellow" },
-  { id: "apply", label: "💾 🚀 Áp dụng", color: "green" },
-  { id: "reset", label: "🔄 Reset", color: "red" },
-  { id: "back", label: "⬅️ Quay lại", color: "cyan" },
+  { id: "quick-setup", label: "Quick Setup", color: "yellow" },
+  { id: "apply", label: "Áp dụng", color: "green" },
+  { id: "reset", label: "Reset", color: "red" },
+  { id: "back", label: "Quay lại", color: "cyan" },
 ];
 
 export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
@@ -57,6 +61,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
   onDraftChange,
   onSelectAction,
 }) => {
+  const { narrow } = useTerminalLayout();
   const [claudeStatus, setClaudeStatus] = useState<ClaudeStatus | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -80,6 +85,26 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
   useInput((input, key) => {
     if (key.escape) {
       onSelectAction("back");
+      return;
+    }
+
+    const inText = rowIndex < 4 && colIndex === 0;
+    if (!inText && (input === "j" || input === "k")) {
+      if (input === "k") {
+        setRowIndex((prev) => {
+          const next = prev > 0 ? prev - 1 : 5;
+          if (next === 5) setColIndex(0);
+          else if (colIndex > 2) setColIndex(0);
+          return next;
+        });
+      } else {
+        setRowIndex((prev) => {
+          const next = prev < 5 ? prev + 1 : 0;
+          if (next === 5) setColIndex(0);
+          else if (colIndex > 2) setColIndex(0);
+          return next;
+        });
+      }
       return;
     }
 
@@ -193,15 +218,44 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
 
   const isConfigured = claudeStatus?.configured;
 
+  const statusPanel = (
+    <Box
+      borderStyle={getBorderStyle()}
+      borderColor={isConfigured ? colors.success : colors.muted}
+      paddingX={1}
+      paddingY={0}
+      flexDirection="column"
+      width={narrow ? undefined : 30}
+    >
+      <Text bold color={colors.warning}>
+        {glyphs.info} Trạng thái
+      </Text>
+      {loading ? (
+        <SpinnerLine message="Đang đọc…" />
+      ) : (
+        <Box gap={1}>
+          <StatusBadge status={isConfigured ? "pass" : "warn"} />
+          <Text color={isConfigured ? colors.success : colors.error}>
+            {isConfigured ? "Đã kết nối Stali" : "Chưa cấu hình"}
+          </Text>
+        </Box>
+      )}
+      <Text color={colors.muted}>~/.claude/settings.json</Text>
+      <Text color={colors.muted}>https://api.stali.vn</Text>
+      {claudeStatus?.apiKey ? (
+        <Text color={colors.muted}>{maskPretty(claudeStatus.apiKey)}</Text>
+      ) : null}
+    </Box>
+  );
+
   return (
     <Card
-      title="🟧 CẤU HÌNH CLAUDE CODE"
-      subtitle="Anthropic Claude Code CLI"
+      title="🟧 Claude Code"
+      subtitle="Anthropic Claude Code CLI — model mặc định đã điền sẵn"
       borderColor="yellow"
     >
       <Box flexDirection="column" gap={1}>
-        {/* Full Width 2-Column Section */}
-        <Box flexDirection="row" gap={2} alignItems="stretch" marginY={0}>
+        <Box flexDirection={narrow ? "column" : "row"} gap={2} alignItems="stretch" marginY={0}>
           {/* CỘT TRÁI: Cụm Form Model & Nút mở rộng theo chiều ngang */}
           <Box flexDirection="column" flexGrow={1} gap={0}>
             {/* 4 Hàng Model */}
@@ -217,7 +271,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
                   {/* Left Label */}
                   <Box width={22} justifyContent="flex-start">
                     <Text bold color={isRowActive ? "yellow" : "white"}>
-                      {isRowActive ? "👉 " : "   "}
+                      {isRowActive ? `${glyphs.pointer} ` : "  "}
                       {field.label}
                     </Text>
                     <Text color="gray"> →</Text>
@@ -226,7 +280,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
                   {/* Center Input Box: Mở rộng tự nhiên */}
                   <Box
                     flexGrow={1}
-                    borderStyle="single"
+                    borderStyle={getBorderStyle()}
                     borderColor={isInputActive ? "yellow" : isRowActive ? "cyan" : "gray"}
                     paddingX={1}
                     justifyContent="space-between"
@@ -261,7 +315,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
                   {/* Right Action Button: Select Model */}
                   <Box
                     marginLeft={1}
-                    borderStyle="single"
+                    borderStyle={getBorderStyle()}
                     borderColor={isBtnActive ? "cyan" : "gray"}
                     paddingX={1}
                   >
@@ -269,7 +323,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
                       bold={isBtnActive}
                       color={isBtnActive ? "cyan" : "white"}
                     >
-                      {isBtnActive ? "👉 Select Model" : "Select Model"}
+                      {isBtnActive ? `${glyphs.pointer} Model` : "Model"}
                     </Text>
                   </Box>
                 </Box>
@@ -286,7 +340,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
                   {/* Left Label */}
                   <Box width={22} justifyContent="flex-start">
                     <Text bold color={isRowActive ? "yellow" : "white"}>
-                      {isRowActive ? "👉 " : "   "}
+                      {isRowActive ? `${glyphs.pointer} ` : "  "}
                       Context window
                     </Text>
                     <Text color="gray"> →</Text>
@@ -295,7 +349,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
                   {/* Center Select Dropdown Box */}
                   <Box
                     flexGrow={1}
-                    borderStyle="single"
+                    borderStyle={getBorderStyle()}
                     borderColor={isRowActive ? "yellow" : "gray"}
                     paddingX={1}
                     justifyContent="space-between"
@@ -323,7 +377,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
                 return (
                   <Box
                     key={btn.id}
-                    borderStyle="single"
+                    borderStyle={getBorderStyle()}
                     borderColor={isBtnSelected ? (btn.id === "apply" ? "green" : "yellow") : "gray"}
                     paddingX={1}
                   >
@@ -331,7 +385,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
                       bold={isBtnSelected}
                       color={isBtnSelected ? (btn.id === "apply" ? "green" : "yellow") : "white"}
                     >
-                      {isBtnSelected ? `👉 ${btn.label}` : btn.label}
+                      {isBtnSelected ? `${glyphs.pointer} ${btn.label}` : btn.label}
                     </Text>
                   </Box>
                 );
@@ -339,55 +393,7 @@ export const ClaudeDetailMenu: React.FC<ClaudeDetailMenuProps> = ({
             </Box>
           </Box>
 
-          {/* CỘT PHẢI: Khối thông tin Trạng thái */}
-          <Box
-            borderStyle="single"
-            borderColor={isConfigured ? "green" : "gray"}
-            paddingX={1}
-            paddingY={1}
-            flexDirection="column"
-            width={30}
-            justifyContent="space-around"
-          >
-            <Box flexDirection="column">
-              <Text bold color="yellow">ℹ️ TRẠNG THÁI</Text>
-              <Box marginTop={0}>
-                {loading ? (
-                  <Text color="gray">Đang đọc...</Text>
-                ) : isConfigured ? (
-                  <Text bold color="green">✓ Đã kết nối Stali</Text>
-                ) : (
-                  <Text bold color="red">✗ Chưa cấu hình</Text>
-                )}
-              </Box>
-            </Box>
-
-            <Box flexDirection="column" marginTop={1}>
-              <Text bold color="cyan">📁 Config File:</Text>
-              <Text color="white" wrap="truncate">~/.claude/settings.json</Text>
-            </Box>
-
-            <Box flexDirection="column" marginTop={1}>
-              <Text bold color="cyan">🌐 Endpoint:</Text>
-              <Text color="white" wrap="truncate">https://api.stali.vn</Text>
-            </Box>
-
-            {claudeStatus?.apiKey && (
-              <Box flexDirection="column" marginTop={1}>
-                <Text bold color="cyan">🔑 API Token:</Text>
-                <Text color="gray">
-                  {claudeStatus.apiKey.slice(0, 7)}...{claudeStatus.apiKey.slice(-4)}
-                </Text>
-              </Box>
-            )}
-          </Box>
-        </Box>
-
-        {/* Footer Navigation Hints */}
-        <Box justifyContent="center" paddingX={1} marginTop={0}>
-          <Text color="gray">
-            💡 [ ↑ ][ ↓ ] Chuyển hàng | [ ← ][ → ] Chọn ô/nút | [ Tab ] Sang nút | [ Enter ] Thực thi / Chọn | [ Esc ] Quay lại
-          </Text>
+          {statusPanel}
         </Box>
       </Box>
     </Card>

@@ -1,7 +1,9 @@
 import React from "react";
 import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
+import { Menu } from "./components/Menu";
+import { KeyValueTable } from "./components/KeyValueTable";
+import { flattenConfigRows, colors, getBorderStyle, glyphs } from "./theme";
 import type { PluginSyncItem } from "../services/plugin-sync";
 
 interface PluginPreviewViewProps {
@@ -15,39 +17,45 @@ export const PluginPreviewView: React.FC<PluginPreviewViewProps> = ({
   onConfirm,
   onBack,
 }) => {
-  const itemsMenu = [
-    { label: "✅ Xác nhận & ghi config plugin", value: "confirm" },
-    { label: "⬅️  Quay lại Menu Plugin", value: "back" },
-  ];
-
   return (
-    <Card title="🔍 PREVIEW PLUGINS SYNC" borderColor="cyan">
+    <Card title="Preview plugins sync" subtitle="API key đã mask — chưa ghi file cho đến khi xác nhận">
       <Box flexDirection="column" gap={1}>
-        <Text color="gray">
-          Xem trước config sẽ ghi (API key đã mask). Không thay đổi file cho đến khi xác nhận.
-        </Text>
         {items.map((item) => (
           <Box key={item.pluginId} flexDirection="column" marginBottom={1}>
-            <Text bold color="white">
+            <Text bold color={colors.text}>
               {item.pluginName || item.pluginId}
               {item.patchStyle ? ` (${item.patchStyle})` : ""}
             </Text>
-            {item.configPath ? <Text color="gray">  ↳ {item.configPath}</Text> : null}
+            {item.configPath ? <Text color={colors.muted}>{item.configPath}</Text> : null}
             {item.preview ? (
-              <Box borderStyle="single" borderColor="gray" paddingX={1} marginTop={0}>
-                <Text>{JSON.stringify(item.preview, null, 2)}</Text>
+              <Box
+                borderStyle={getBorderStyle()}
+                borderColor={colors.muted}
+                paddingX={1}
+                flexDirection="column"
+              >
+                <KeyValueTable rows={flattenConfigRows(item.preview)} />
               </Box>
             ) : (
-              <Text color="yellow">  (không có preview)</Text>
+              <Text color={colors.warning}>  (không có preview)</Text>
             )}
           </Box>
         ))}
-        <SelectInput
-          items={itemsMenu}
-          onSelect={(item) => {
-            if (item.value === "confirm") onConfirm();
+
+        <Menu
+          groups={[
+            {
+              items: [
+                { label: "Xác nhận & ghi config plugin", value: "confirm", icon: glyphs.check },
+                { label: "Quay lại menu plugin", value: "back", icon: "←" },
+              ],
+            },
+          ]}
+          onSelect={(value) => {
+            if (value === "confirm") onConfirm();
             else onBack();
           }}
+          onBack={onBack}
         />
       </Box>
     </Card>

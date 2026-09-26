@@ -5,6 +5,8 @@ import { StaliModel } from "../types";
 import { Card } from "./components/Card";
 import { formatPricingSummary, formatTokens } from "../utils/format";
 import { isAnthropicTool } from "../utils/tool-utils";
+import { colors, getBorderStyle, glyphs, truncate } from "./theme";
+import { useTerminalLayout } from "./hooks/useTerminalLayout";
 
 interface ModelSelectProps {
   toolId: string;
@@ -21,11 +23,11 @@ export const ModelSelect: React.FC<ModelSelectProps> = ({
   models,
   onSelect,
 }) => {
+  const { compact, columns } = useTerminalLayout();
   const [query, setQuery] = useState<string>("");
   const [page, setPage] = useState<number>(0);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
-  // Filter compatible models based on tool protocol
   const protocolFiltered = models.filter((m) => {
     if (isAnthropicTool(toolId)) {
       return m.supported_endpoint_types.includes("anthropic");
@@ -35,7 +37,6 @@ export const ModelSelect: React.FC<ModelSelectProps> = ({
 
   const baseModels = protocolFiltered.length > 0 ? protocolFiltered : models;
 
-  // Filter by search query
   const filteredModels = baseModels.filter((m) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
@@ -69,7 +70,6 @@ export const ModelSelect: React.FC<ModelSelectProps> = ({
       return;
     }
 
-    // Up / Down arrow for moving row selection
     if (key.upArrow) {
       if (selectedIndex > 0) {
         setSelectedIndex((prev) => prev - 1);
@@ -100,131 +100,120 @@ export const ModelSelect: React.FC<ModelSelectProps> = ({
   };
 
   const getTitle = () => {
+    const n = filteredModels.length;
     if (toolId === "claude") {
       switch (tier) {
         case "fable":
-          return `🟧 CHỌN MODEL CHO CLAUDE FABLE (${filteredModels.length} models)`;
+          return `Chọn model Claude Fable (${n})`;
         case "opus":
-          return `🟧 CHỌN MODEL CHO CLAUDE OPUS (${filteredModels.length} models)`;
+          return `Chọn model Claude Opus (${n})`;
         case "sonnet":
-          return `🟧 CHỌN MODEL CHO CLAUDE SONNET (${filteredModels.length} models)`;
+          return `Chọn model Claude Sonnet (${n})`;
         case "haiku":
-          return `🟧 CHỌN MODEL CHO CLAUDE HAIKU (${filteredModels.length} models)`;
+          return `Chọn model Claude Haiku (${n})`;
         default:
-          return `🟧 QUICK SETUP - CHỌN 1 MODEL CHO TẤT CẢ CLAUDE TIERS (${filteredModels.length} models)`;
+          return `Quick setup — 1 model cho mọi tier (${n})`;
       }
     }
-    return `🤖 CHỌN MODEL CHO ỨNG DỤNG (${filteredModels.length} models)`;
+    return `Chọn model (${n})`;
   };
 
-  const getBorderColor = () => {
-    return toolId === "claude" ? "yellow" : "cyan";
-  };
+  const nameW = compact ? "70%" : "48%";
+  const priceW = compact ? "30%" : "24%";
+  const ctxW = "12%";
+  const protoW = "16%";
+  const nameMax = Math.max(16, Math.floor(columns * 0.42));
 
   return (
-    <Card title={getTitle()} borderColor={getBorderColor()}>
+    <Card title={getTitle()} borderColor={toolId === "claude" ? "yellow" : "cyan"}>
       <Box flexDirection="column" gap={1}>
-        {/* Search input box */}
-        <Box borderStyle="single" borderColor="yellow" paddingX={1}>
-          <Text color="yellow" bold>
-            🔍 Tìm kiếm:{" "}
+        <Box borderStyle={getBorderStyle()} borderColor={colors.warning} paddingX={1}>
+          <Text color={colors.warning} bold>
+            {glyphs.pointer}{" "}
           </Text>
           <TextInput
             value={query}
             onChange={handleQueryChange}
-            placeholder="Nhập tên hoặc mã model (vd: claude, gpt, deepseek, ...)"
+            placeholder="Tìm tên hoặc mã model…"
           />
         </Box>
 
-        {/* Table Header */}
-        <Box
-          justifyContent="space-between"
-          borderStyle="single"
-          borderColor="gray"
-          paddingX={1}
-        >
-          <Box width="52%">
-            <Text bold color="cyan">
-              Tên Model / Mã ID
-            </Text>
+        {!compact ? (
+          <Box justifyContent="space-between" paddingX={1}>
+            <Box width={nameW}>
+              <Text bold color={colors.accent}>
+                Tên / ID
+              </Text>
+            </Box>
+            <Box width={priceW}>
+              <Text bold color={colors.warning}>
+                Giá
+              </Text>
+            </Box>
+            <Box width={ctxW}>
+              <Text bold color="magenta">
+                Context
+              </Text>
+            </Box>
+            <Box width={protoW}>
+              <Text bold color={colors.success}>
+                Protocol
+              </Text>
+            </Box>
           </Box>
-          <Box width="23%">
-            <Text bold color="yellow">
-              Giá Token / Lượt
-            </Text>
-          </Box>
-          <Box width="11%">
-            <Text bold color="magenta">
-              Context
-            </Text>
-          </Box>
-          <Box width="14%">
-            <Text bold color="green">
-              Giao thức
-            </Text>
-          </Box>
-        </Box>
+        ) : null}
 
-        {/* Table Body (5 items) */}
         {displayList.length > 0 ? (
           displayList.map((model, idx) => {
             const isSelected = idx === selectedIndex;
+            const rowColor = isSelected ? colors.accent : colors.text;
             return (
               <Box key={model.id} justifyContent="space-between" paddingX={1}>
-                <Box width="52%">
-                  <Text color={isSelected ? "cyan" : "gray"} bold={isSelected}>
-                    {isSelected ? "👉 " : "   "}
+                <Box width={nameW}>
+                  <Text color={isSelected ? colors.accent : colors.muted} bold={isSelected}>
+                    {isSelected ? `${glyphs.pointer} ` : "  "}
                   </Text>
-                  <Text bold={isSelected} color={isSelected ? "cyan" : "white"}>
-                    {model.display_name}{" "}
+                  <Text bold={isSelected} color={rowColor}>
+                    {truncate(model.display_name, compact ? nameMax : 28)}{" "}
                   </Text>
-                  <Text color={isSelected ? "cyan" : "gray"}>({model.id})</Text>
+                  <Text color={isSelected ? colors.accent : colors.muted}>
+                    ({truncate(model.id, compact ? 18 : 22)})
+                  </Text>
                 </Box>
-                <Box width="23%">
-                  <Text bold={isSelected} color="yellow">
+                <Box width={priceW}>
+                  <Text bold={isSelected} color={colors.warning}>
                     {formatPricingSummary(model.billing_unit, model.pricing)}
                   </Text>
                 </Box>
-                <Box width="11%">
-                  <Text bold={isSelected} color="magenta">
-                    {formatTokens(model.context_window)}
-                  </Text>
-                </Box>
-                <Box width="14%">
-                  <Text bold={isSelected} color="green">
-                    {model.supported_endpoint_types.join(", ")}
-                  </Text>
-                </Box>
+                {!compact ? (
+                  <>
+                    <Box width={ctxW}>
+                      <Text bold={isSelected} color="magenta">
+                        {formatTokens(model.context_window)}
+                      </Text>
+                    </Box>
+                    <Box width={protoW}>
+                      <Text bold={isSelected} color={colors.success}>
+                        {model.supported_endpoint_types.join(", ")}
+                      </Text>
+                    </Box>
+                  </>
+                ) : null}
               </Box>
             );
           })
         ) : (
           <Box justifyContent="center" paddingY={1}>
-            <Text color="red">Không tìm thấy model nào khớp với "{query}"</Text>
+            <Text color={colors.error}>Không tìm thấy model khớp “{query}”</Text>
           </Box>
         )}
 
-        {/* Footer controls & pagination */}
-        <Box
-          marginTop={1}
-          borderStyle="single"
-          borderColor="cyan"
-          paddingX={1}
-          justifyContent="space-between"
-        >
-          <Text color="gray">
-            Trang{" "}
-            <Text bold color="yellow">
-              {totalPages === 0 ? 0 : currentPage + 1}/{totalPages}
-            </Text>{" "}
-            (Hiển thị {filteredModels.length === 0 ? 0 : startIndex + 1} -{" "}
-            {Math.min(startIndex + PAGE_SIZE, filteredModels.length)} /{" "}
-            {filteredModels.length} kết quả)
-          </Text>
-          <Text color="cyan" bold>
-            [ ↑ ][ ↓ ] Chọn | [ ← ][ → ] Trang | [ M ] Nhập thủ công | [ Enter ] Chọn | [ Esc ] Quay lại
-          </Text>
-        </Box>
+        <Text color={colors.muted}>
+          Trang {totalPages === 0 ? 0 : currentPage + 1}/{totalPages}
+          {"  "}
+          {filteredModels.length === 0 ? 0 : startIndex + 1}–
+          {Math.min(startIndex + PAGE_SIZE, filteredModels.length)}/{filteredModels.length}
+        </Text>
       </Box>
     </Card>
   );

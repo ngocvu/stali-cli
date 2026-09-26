@@ -1,7 +1,9 @@
 import React from "react";
 import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
+import { Menu, type MenuItem } from "./components/Menu";
+import { StatusBadge } from "./components/StatusBadge";
+import { colors, glyphs } from "./theme";
 import type { GatewayPlan } from "../services/gateway-install";
 
 interface GatewayPlanViewProps {
@@ -11,61 +13,67 @@ interface GatewayPlanViewProps {
 }
 
 export const GatewayPlanView: React.FC<GatewayPlanViewProps> = ({ plan, onInstall, onBack }) => {
-  const items = [
+  const items: MenuItem<string>[] = [
     ...(plan.targets.length > 0
-      ? [{ label: `⚡ Cài ${plan.targets.length} app (gateway install)`, value: "install" }]
+      ? [{ label: `Cài ${plan.targets.length} app`, value: "install", icon: "⚡" }]
       : []),
-    { label: "⬅️  Quay lại Gateway menu", value: "back" },
+    { label: "Quay lại Gateway", value: "back", icon: "←" },
   ];
 
   return (
-    <Card title="📋 GATEWAY PLAN" borderColor="cyan">
+    <Card title="Gateway plan" subtitle="Xem trước trước khi ghi config">
       <Box flexDirection="column" gap={1}>
-        <Text color="gray">
-          Phát hiện {plan.summary.installed} app · {plan.summary.configured} đã gateway ·{" "}
-          {plan.targets.length} sẽ cài
-        </Text>
+        <Box gap={2}>
+          <StatusBadge status="info" label="APP" count={plan.summary.installed} />
+          <StatusBadge status="pass" count={plan.summary.configured} />
+          <StatusBadge status="warn" label="SẼ CÀI" count={plan.targets.length} />
+        </Box>
+
         {plan.targets.length > 0 ? (
           <>
-            <Text bold color="yellow">
-              Sẽ cài gateway:
+            <Text bold color={colors.warning}>
+              Sẽ cài gateway
             </Text>
             {plan.targets.map((id) => {
               const entry = plan.tools.find((t) => t.toolId === id);
               return (
-                <Text key={id} color="white">
-                  • {entry?.toolName || id}
-                  {entry ? ` — ${entry.configPath}` : ""}
+                <Text key={id} color={colors.text}>
+                  {glyphs.bullet} {entry?.toolName || id}
+                  {entry ? `  ${entry.configPath}` : ""}
                 </Text>
               );
             })}
           </>
         ) : (
-          <Text color="green">Không có app cần cài gateway.</Text>
+          <Text color={colors.success}>{glyphs.check} Không có app cần cài gateway.</Text>
         )}
+
         {plan.skipped.length > 0 ? (
           <>
-            <Text bold color="gray">
-              Bỏ qua ({plan.skipped.length}):
+            <Text bold color={colors.muted}>
+              Bỏ qua ({plan.skipped.length})
             </Text>
             {plan.skipped.slice(0, 6).map((s) => (
-              <Text key={s.toolId} color="gray">
-                • {s.toolName} — {s.reason}
+              <Text key={s.toolId} color={colors.muted}>
+                {glyphs.bullet} {s.toolName} — {s.reason}
               </Text>
             ))}
             {plan.skipped.length > 6 ? (
-              <Text color="gray">… và {plan.skipped.length - 6} app khác</Text>
+              <Text color={colors.muted}>
+                {glyphs.ellipsis} và {plan.skipped.length - 6} app khác
+              </Text>
             ) : null}
           </>
         ) : null}
-        <SelectInput
-          items={items}
-          onSelect={(item) => {
-            if (item.value === "install") onInstall();
+
+        <Menu
+          groups={[{ items }]}
+          onSelect={(value) => {
+            if (value === "install") onInstall();
             else onBack();
           }}
+          onBack={onBack}
         />
-        <Text color="gray">CLI: stali gw plan --json</Text>
       </Box>
     </Card>
   );

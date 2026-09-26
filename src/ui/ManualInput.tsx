@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { Card } from "./components/Card";
+import { colors, getBorderStyle, glyphs } from "./theme";
 
 interface ManualInputProps {
   title: string;
@@ -15,32 +16,34 @@ interface ManualInputProps {
 export const ManualInput: React.FC<ManualInputProps> = ({
   title,
   subtitle,
-  placeholder = "Nhập giá trị...",
+  placeholder = "Nhập giá trị…",
   defaultValue = "",
   onSubmit,
   onCancel,
 }) => {
   const [value, setValue] = useState(defaultValue);
 
-  useInput((input, key) => {
-    if (key.escape) {
-      onCancel();
-    }
+  useInput((_input, key) => {
+    if (key.escape) onCancel();
   });
 
   const handleSubmit = () => {
     const trimmed = value.trim();
-    if (trimmed) {
-      onSubmit(trimmed);
-    }
+    if (trimmed) onSubmit(trimmed);
   };
 
   return (
-    <Card title={title} subtitle={subtitle} borderColor="yellow">
+    <Card title={title} subtitle={subtitle} tone="warning">
       <Box flexDirection="column" gap={1}>
-        <Box borderStyle="single" borderColor="yellow" paddingX={1}>
-          <Text color="yellow" bold>
-            ✍️ Nhập:{" "}
+        {defaultValue ? (
+          <Text color={colors.muted}>
+            Mặc định: <Text color={colors.warning}>{defaultValue}</Text> — Enter để giữ, hoặc sửa rồi Enter
+          </Text>
+        ) : null}
+
+        <Box borderStyle={getBorderStyle()} borderColor={colors.warning} paddingX={1}>
+          <Text color={colors.warning} bold>
+            {glyphs.pointer}{" "}
           </Text>
           <TextInput
             value={value}
@@ -48,12 +51,6 @@ export const ManualInput: React.FC<ManualInputProps> = ({
             onSubmit={handleSubmit}
             placeholder={placeholder}
           />
-        </Box>
-
-        <Box justifyContent="space-between" paddingX={1}>
-          <Text color="gray">
-            Nhấn <Text bold color="cyan">[ Enter ]</Text> để lưu vào nháp | Nhấn <Text bold color="red">[ Esc ]</Text> để hủy
-          </Text>
         </Box>
       </Box>
     </Card>

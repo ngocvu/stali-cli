@@ -1,10 +1,13 @@
 import React from "react";
 import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
 import { Card } from "./components/Card";
-import { maskToken } from "../utils/token";
+import { Menu } from "./components/Menu";
+import { StatusBadge } from "./components/StatusBadge";
+import { maskPretty, colors, glyphs } from "./theme";
 import { VERSION } from "../version";
-import { ONBOARDING_DOC_URL } from "../services/user-cli";
+import { buildMainMenuGroups, type MainMenuAction } from "./menu-groups";
+
+export type { MainMenuAction };
 
 interface MainMenuProps {
   apiKey?: string;
@@ -12,22 +15,8 @@ interface MainMenuProps {
   gatewayPending?: number;
   pendingGatewayCount?: number;
   gatewayReady?: boolean;
-  onSelect: (
-    action:
-      | "configure"
-      | "configure-all"
-      | "models"
-      | "change-key"
-      | "doctor"
-      | "fix-all"
-      | "open-keys"
-      | "update"
-      | "install"
-      | "gateway"
-      | "completion"
-      | "plugins"
-      | "exit"
-  ) => void;
+  advanced?: boolean;
+  onSelect: (action: MainMenuAction) => void;
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({
@@ -36,64 +25,54 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   gatewayPending,
   pendingGatewayCount,
   gatewayReady,
+  advanced = false,
   onSelect,
 }) => {
-  const items = [
-    { label: "⚡ Cấu hình ứng dụng AI", value: "configure" as const },
-    { label: "⚙️  Cấu hình hàng loạt (configure-all)", value: "configure-all" as const },
-    { label: "📊 Xem bảng giá & danh sách Model Stali API", value: "models" as const },
-    { label: "🩺 Kiểm tra trạng thái cấu hình (doctor)", value: "doctor" as const },
-    { label: "🔧 Sửa tất cả tool chưa OK (doctor fix)", value: "fix-all" as const },
-    { label: "🔌 Plugin tùy chỉnh (sync / doctor)", value: "plugins" as const },
-    { label: "⬆️  Cập nhật stali-cli (update)", value: "update" as const },
-    { label: "📦 Cài đặt / nâng cấp CLI (install)", value: "install" as const },
-    {
-      label:
-        gatewayPending && gatewayPending > 0
-          ? `🌐 Gateway Stali — ${gatewayPending} app chờ (auto)`
-          : "🌐 Gateway Stali (plan / auto / cài)",
-      value: "gateway" as const,
-    },
-    { label: "⌨️  Cài shell completion (bash/fish/zsh)", value: "completion" as const },
-    { label: "🔑 Cài đặt API Token", value: "change-key" as const },
-    { label: "🔗 Mở Dashboard Keys (trình duyệt)", value: "open-keys" as const },
-    { label: "🚪 Thoát", value: "exit" as const },
-  ];
+  const pending = pendingGatewayCount ?? 0;
+  const groups = buildMainMenuGroups({
+    advanced,
+    gatewayPending,
+    pendingGatewayCount,
+  });
 
   return (
-    <Card title="📋 MENU CHÍNH - STALI API" borderColor="cyan">
+    <Card
+      title={advanced ? `${glyphs.spark} Tùy chọn khác` : `${glyphs.spark} stali`}
+      subtitle={advanced ? "Esc để quay lại menu đơn giản" : "Chọn app AI, còn lại để mặc định"}
+      borderColor="cyan"
+    >
       <Box flexDirection="column" gap={1}>
-        {apiKey && (
-          <Text color="gray">
-            Token hiện tại: <Text color="yellow">{maskToken(apiKey)}</Text>
+        {apiKey ? (
+          <Text color={colors.muted}>
+            Key  <Text color={colors.warning}>{maskPretty(apiKey)}</Text>
+            <Text color={colors.muted}>
+              {"  "}v{VERSION}
+              {installMode && advanced ? ` · ${installMode}` : ""}
+            </Text>
           </Text>
+        ) : (
+          <Text color={colors.warning}>Chưa có API key — chọn cấu hình để nhập.</Text>
         )}
-        <Text color="gray">
-          stali-cli v{VERSION}
-          {installMode ? ` · ${installMode}` : ""} · ~/.stali
-        </Text>
-        {pendingGatewayCount !== undefined && pendingGatewayCount > 0 ? (
-          <Text color="yellow">
-            ⏳ {pendingGatewayCount} app gateway chờ — chọn Gateway hoặc: stali gw auto
-          </Text>
-        ) : gatewayReady ? (
-          <Text color="green">✅ Gateway OK — app đã cài đều trỏ Stali</Text>
-        ) : null}
-        {gatewayPending && gatewayPending > 0 ? (
-          <Text color="yellow">
-            💡 {gatewayPending} app chưa gateway — chọn mục đầu hoặc: stali gw auto
-          </Text>
-        ) : null}
-        <SelectInput items={items} onSelect={(item) => onSelect(item.value)} />
 
-        <Box justifyContent="center" marginTop={1}>
-          <Text color="gray">💡 [ ↑ ][ ↓ ] Di chuyển | [ Enter ] Chọn</Text>
-        </Box>
-        <Text color="gray">
-          Hướng dẫn: <Text color="cyan">stali guide onboarding</Text>
-          {" · "}
-          <Text color="cyan">{ONBOARDING_DOC_URL}</Text>
-        </Text>
+        {!advanced && pending > 0 ? (
+          <Box gap={1}>
+            <StatusBadge status="warn" />
+            <Text color={colors.warning}>{pending} app chưa trỏ Stali — chọn Cài gateway</Text>
+          </Box>
+        ) : null}
+
+        {!advanced && gatewayReady && pending === 0 ? (
+          <Box gap={1}>
+            <StatusBadge status="pass" />
+            <Text color={colors.success}>Sẵn sàng</Text>
+          </Box>
+        ) : null}
+
+        <Menu
+          groups={groups}
+          onSelect={onSelect}
+          onBack={advanced ? () => onSelect("back") : undefined}
+        />
       </Box>
     </Card>
   );
