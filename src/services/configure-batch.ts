@@ -3,6 +3,7 @@ import { validateApiKeyAndFetchModels, type ValidateResult } from "./api";
 import { syncTool } from "./syncers";
 import { buildToolConfigPreview } from "./syncers/preview";
 import { getToolById, resolveToolDefaultModel, resolveToolId } from "../utils/tool-utils";
+import { pickModelForTool } from "./model-catalog";
 import type { SyncerResult } from "../types";
 import { validateTokenFormat } from "../utils/token";
 
@@ -99,8 +100,23 @@ async function configureOneTool(
   models: ValidateResult["models"]
 ): Promise<ConfigureBatchItem> {
   const tool = getToolById(toolId)!;
-  const resolvedModel =
-    opts.model || resolveToolDefaultModel(toolId, apiDefault, models) || tool.defaultModel;
+
+  // Chọn model từ DANH MỤC THẬT của API, để không ghim model đã bị NCC gỡ.
+  // `opts.model` được ưu tiên, nhưng nếu model đó không còn tồn tại thì
+  // pickModelForTool tự thay bằng model hợp lệ và ghi rõ lý do.
+  let resolvedModel: string;
+  let modelNote: string | undefined;
+  if (models && models.length > 0) {
+    const picked = pickModelForTool(
+      { models, apiDefault, fetchedAt: Date.now() },
+      toolId,
+      { requested: opts.model, preferred: resolveToolDefaultModel(toolId, apiDefault, models) }
+    );
+    resolvedModel = picked.model || tool.defaultModel;
+    if (picked.stale) modelNote = picked.reason;
+  } else {
+    resolvedModel = opts.model || resolveToolDefaultModel(toolId, apiDefault, models) || tool.defaultModel;
+  }
 
   if (opts.dryRun) {
     return {
@@ -120,7 +136,7 @@ async function configureOneTool(
       toolId,
       toolName: tool.name,
       success: result.success,
-      message: result.message,
+      message: modelNote ? `${result.message} ⚠ ${modelNote}` : result.message,
       configPath: result.configPath,
       backupPath: result.backupPath,
       error: result.error,

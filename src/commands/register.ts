@@ -124,6 +124,18 @@ export function registerCommands(program: Command): void {
     });
 
   program
+    .command("verify")
+    .description("Xác minh THẬT: gọi API kiểm tra key còn sống + model còn tồn tại")
+    .option("-k, --key <token>", "Stali API key (mặc định: key đã lưu)")
+    .option("-t, --tool <toolId>", "Chỉ xác minh một tool")
+    .option("--json", "JSON output")
+    .action(async (opts: { key?: string; tool?: string; json?: boolean }) => {
+      const globals = program.opts<{ key?: string }>();
+      const { runVerify } = await import("../services/verify-cli");
+      process.exit(await runVerify({ apiKey: opts.key || globals.key, toolId: opts.tool, json: opts.json }));
+    });
+
+  program
     .command("check")
     .description("Kiểm tra setup (mặc định nhanh như status; --full = auth + doctor đầy đủ)")
     .option("--quick", "Giống stali status (mặc định khi không --full/--json)")
