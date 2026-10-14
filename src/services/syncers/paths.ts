@@ -11,6 +11,9 @@
  *   - "verified"   : đã đối chiếu với tool cài thật / package thật
  *   - "convention" : theo quy ước chuẩn (XDG, VS Code globalStorage)
  *   - "unverified" : chưa kiểm chứng được — KHÔNG hứa hẹn
+ *
+ * Trạng thái 2026-10-14: claude, codex, deepseek-tui, qwen = verified;
+ * opencode, cline, roo, kilo = convention; 5 tool còn lại = unverified.
  * và `doctor --paths` in ra đúng nhãn đó để người dùng biết mức tin cậy.
  */
 import fs from "fs/promises";
@@ -171,13 +174,16 @@ const SPECS: Record<string, PathSpec> = {
     note: "Codex cần cả config.toml (model_provider) và auth.json (OPENAI_API_KEY)",
   },
   qwen: {
-    confidence: "unverified",
+    confidence: "verified",
     candidates: () => [
-      { path: path.join(HOME(), ".qwen", "settings.json"), note: "đường dẫn cũ của stali-cli" },
+      {
+        path: path.join(HOME(), ".qwen", "settings.json"),
+        note: "Qwen Code tạo ~/.qwen; bundle có i18n 'edit ~/.qwen/settings.json' (đã kiểm chứng)",
+      },
     ],
     note:
-      "Qwen Code TẠO thư mục ~/.qwen (đã kiểm chứng) nhưng TÊN file cấu hình " +
-      "(settings.json) chưa được xác minh — có thể là ~/.qwen/.env hoặc QWEN_API_KEY/QWEN_BASE_URL",
+      "Qwen Code lưu vào ~/.qwen/settings.json — schema: " +
+      "security.auth.selectedType/apiKey + model.name/model.baseUrl",
   },
   opencode: {
     confidence: "convention",
