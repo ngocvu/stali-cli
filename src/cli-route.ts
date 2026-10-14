@@ -98,7 +98,12 @@ export function rewriteArgvForKeySetup(argv: string[]): boolean {
 
 /**
  * Wizard: không args, hoặc chỉ global flags (-k, --lang).
- * Subcommand: có tên lệnh hoặc --reset/--logout/--models.
+ * Subcommand: có tên lệnh, --reset/--logout/--models, hoặc một từ LẠ.
+ *
+ * Vì sao từ lạ → subcommand: trước đây `stali hepl` (gõ sai) bị coi là
+ * "không có lệnh" nên MỞ WIZARD Ink — người dùng tưởng CLI treo, và trong
+ * môi trường không phải TTY thì nổ "Raw mode is not supported". Giờ đi vào
+ * nhánh subcommand để in lỗi rõ ràng kèm gợi ý lệnh gần đúng.
  */
 export function resolveCliMode(argv: string[]): CliMode {
   const args = argv.slice(2);
@@ -113,6 +118,7 @@ export function resolveCliMode(argv: string[]): CliMode {
     return "subcommand";
   }
 
+  let sawUnknownWord = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg.startsWith("-")) {
@@ -121,7 +127,14 @@ export function resolveCliMode(argv: string[]): CliMode {
     }
     if (arg === WIZARD_SUBCOMMAND) return "wizard";
     if (STALI_SUBCOMMANDS.has(arg)) return "subcommand";
+    // Từ đầu tiên không phải lệnh đã biết → lệnh gõ sai.
+    sawUnknownWord = true;
+    break;
   }
 
+  // Có từ lạ → để nhánh subcommand báo lỗi + gợi ý.
+  if (sawUnknownWord) return "subcommand";
+
+  // Chỉ có global flags (vd `stali --help`) → wizard vẫn hợp lý.
   return "wizard";
 }

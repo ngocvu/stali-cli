@@ -84,7 +84,24 @@ export function registerCommands(program: Command): void {
       }
     });
 
+  // Cho phép tham số thừa để tự xử lý lệnh gõ sai (thay vì commander báo lỗi khô khan).
+  program.allowExcessArguments(true);
+
   program.action(async (options: { reset?: boolean; logout?: boolean; models?: boolean; key?: string }) => {
+    // Lệnh không tồn tại → gợi ý lệnh gần đúng.
+    const unknown = (program.args || []).filter((a) => typeof a === "string" && !a.startsWith("-"));
+    if (unknown.length > 0 && !options.reset && !options.logout && !options.models) {
+      const { suggestCommands } = await import("../constants/command-docs");
+      const typed = unknown[0];
+      const suggestions = suggestCommands(typed);
+      console.error(chalk.red(`\n✖ Không có lệnh: ${chalk.bold(typed)}`));
+      if (suggestions.length > 0) {
+        console.error(chalk.yellow(`  Có phải bạn muốn: ${suggestions.map((x) => chalk.bold(x)).join(", ")} ?`));
+      }
+      console.error(chalk.gray(`\n  Xem toàn bộ lệnh: stali help advanced`));
+      console.error(chalk.gray(`  Bắt đầu nhanh:   stali setup -k sk-stali-...\n`));
+      process.exit(1);
+    }
     if (options.reset || options.logout) {
       await resetStaliConfig();
       console.log(chalk.green("✅ Đã xóa token đã lưu trong ~/.stali/config.json thành công."));
@@ -1509,28 +1526,4 @@ export function registerCommands(program: Command): void {
     });
 
   applyCommandVisibility(program);
-  attachUnknownCommandSuggestions(program);
-}
-
-/**
- * Gõ sai lệnh → gợi ý lệnh gần đúng thay vì chỉ báo lỗi khô khan.
- * Commander in "unknown command" trước; ta thêm gợi ý + gợi ý khởi đầu.
- */
-function attachUnknownCommandSuggestions(program: Command): void {
-  program.showSuggestionAfterError(false);
-  program.on("command:*", (operands: string[]) => {
-    const typed = operands[0];
-    void (async () => {
-      const { suggestCommands } = await import("../constants/command-docs");
-      const suggestions = suggestCommands(typed);
-      if (suggestions.length > 0) {
-        console.error(
-          chalk.yellow(`\nCó phải bạn muốn: ${suggestions.map((s) => chalk.bold(s)).join(", ")} ?`)
-        );
-      }
-      console.error(chalk.gray(`\nXem toàn bộ lệnh: stali help advanced`));
-      console.error(chalk.gray(`Bắt đầu nhanh:   stali setup -k sk-stali-...\n`));
-      process.exit(1);
-    })();
-  });
 }

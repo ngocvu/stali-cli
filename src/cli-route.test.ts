@@ -67,4 +67,18 @@ describe("resolveCliMode", () => {
   test("--models → subcommand", () => {
     expect(resolveCliMode(["bun", "stali", "--models"])).toBe("subcommand");
   });
+
+  test("lệnh gõ sai → subcommand (để báo lỗi + gợi ý, KHÔNG mở wizard)", () => {
+    expect(resolveCliMode(["bun", "stali", "hepl"])).toBe("subcommand");
+    expect(resolveCliMode(["bun", "stali", "confgure", "claude"])).toBe("subcommand");
+    expect(resolveCliMode(["bun", "stali", "zzz-not-a-command"])).toBe("subcommand");
+  });
+
+  test("chỉ global flags → vẫn wizard", () => {
+    expect(resolveCliMode(["bun", "stali", "--lang", "en"])).toBe("wizard");
+  });
+
+  test("--help → wizard (không phải lệnh sai)", () => {
+    expect(resolveCliMode(["bun", "stali", "--help"])).toBe("wizard");
+  });
 });
