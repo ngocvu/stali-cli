@@ -1,5 +1,31 @@
 # Changelog
 
+## [3.46.0] — 2026-10-14
+
+### Fixed
+- **Bảo toàn file cấu hình người dùng** — mọi syncer trước đây đọc JSON rồi ghi lại
+  TOÀN BỘ file bằng `JSON.stringify`, làm mất chú thích `//`, thứ tự key và mọi key
+  lạ (`permissions`, `hooks`, `statusLine`, provider khác của bạn). Giờ chỉ vá đúng
+  giá trị cần đổi qua `jsonc-parser`, phần còn lại giữ nguyên byte-for-byte.
+- **Không ghi đè file hỏng** — file cấu hình parse lỗi trước đây bị thay bằng `{}`,
+  mất sạch. Giờ CLI DỪNG, báo rõ đường dẫn, hướng dẫn sửa/sao lưu rồi chạy lại.
+- **Ghi nguyên tử** — `writeFile` cắt file về 0 byte trước khi ghi; mất điện hoặc bị
+  kill giữa chừng là mất config. Giờ ghi ra file tạm rồi `rename`.
+- **Backup chứa API key để quyền 0644** → đã siết còn `0600`; thêm giới hạn số bản
+  giữ lại (`STALI_BACKUP_KEEP`, mặc định 10) để không phình thư mục.
+- **Telemetry chặn lệnh** — khi bật telemetry mà mạng chậm/bị chặn, mọi lệnh `stali`
+  treo thêm tới ~10s. Giờ ghi queue local rồi gửi nền, không chờ mạng.
+- **Lệnh gõ sai mở wizard Ink** — `stali hepl` im lặng mở giao diện tương tác (và nổ
+  "Raw mode is not supported" khi không có TTY). Giờ báo lỗi rõ kèm gợi ý lệnh gần đúng.
+- **launchd/cron/systemd** — escape XML cho plist và quote đường dẫn, tránh hỏng khi
+  thư mục Home chứa `&` hoặc khoảng trắng.
+
+### Added
+- **`stali help` offline** — danh mục lệnh theo nhóm kèm ví dụ, in tức thì từ binary
+  (trước đây phải tải hướng dẫn từ GitHub). `stali help advanced` xem toàn bộ.
+- **Gợi ý lệnh gõ sai** — Levenshtein: `stali stauts` → "Có phải bạn muốn: status ?".
+- Test: `jsonc`, `safety` (không phá config người dùng), `command-docs`, `cli-route`.
+
 ## [3.45.3] — 2026-09-08
 
 ### Fixed
