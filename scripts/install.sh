@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# stali-cli installer — pin version + optional checksum verify
+# stali-cli installer — npm-first (Win / macOS / Linux giống nhau)
 #
+# Canonical (mọi OS):
+#   npm install -g stali-cli@latest
+#
+# One-liner (npm bên trong; fallback GitHub+Bun nếu npm lỗi):
 #   curl -fsSL https://api.stali.vn/install/stali-cli.sh | bash
-#   STALI_CLI_VERSION=3.6.0 bash scripts/install.sh
+#   STALI_CLI_VERSION=3.45.3 bash scripts/install.sh
 #
 # Env:
-#   STALI_CLI_VERSION     — tag hoặc branch (mặc định: latest từ package.json repo)
-#   STALI_CLI_SHA256      — sha256 của GitHub zip (tùy chọn, verify sau curl)
-#   STALI_CLI_STANDALONE   — 1 = tải binary từ GitHub Release (cần STALI_CLI_VERSION)
+#   STALI_CLI_INSTALL_METHOD — auto | npm | git (default: auto)
+#   STALI_CLI_VERSION        — npm tag/version (default: latest; reject 3.45.2)
+#   STALI_CLI_SHA256         — sha256 của GitHub zip (tùy chọn)
+#   STALI_CLI_STANDALONE     — 1 = binary GitHub Release (cần STALI_CLI_VERSION)
 #   STALI_CLI_REPO, STALI_CLI_BRANCH, STALI_HOME, STALI_CLI_INSTALL_DIR
 
 set -euo pipefail
@@ -27,6 +32,61 @@ LEGACY_SHARE="${XDG_DATA_HOME:-$HOME/.local/share}/stali-cli"
 
 log() { printf '> %s\n' "$*"; }
 die() { printf '✖ %s\n' "$*" >&2; exit 1; }
+
+# npm 9+ removed `npm bin -g`; prefix + /bin is portable on Unix.
+npm_global_bin_dir() {
+  local prefix
+  prefix="$(npm prefix -g 2>/dev/null || true)"
+  prefix="${prefix//$'\r'/}"
+  prefix="${prefix%%$'\n'*}"
+  [[ -n "$prefix" ]] || return 0
+  if [[ -d "$prefix/bin" ]]; then
+    printf '%s' "$prefix/bin"
+  else
+    printf '%s' "$prefix"
+  fi
+}
+
+# Fail fast so auto mode can fall back to git when a broken npm pack
+# ships relative imports that throw ERR_MODULE_NOT_FOUND at runtime.
+smoke_npm_stali() {
+  local out="" combined=""
+  export PATH="$LOCAL_BIN:$STALI_BIN:$(npm_global_bin_dir):${PATH:-}"
+  if command -v stali >/dev/null 2>&1; then
+    out="$(stali --version 2>&1 || true)"
+  else
+    local npm_root stali_js
+    npm_root="$(npm root -g 2>/dev/null || true)"
+    npm_root="${npm_root//$'\r'/}"
+    npm_root="${npm_root%%$'\n'*}"
+    stali_js="${npm_root}/stali-cli/bin/stali.js"
+    [[ -f "$stali_js" ]] || {
+      log "npm stali smoke failed: stali shim missing after npm install"
+      return 1
+    }
+    command -v node >/dev/null 2>&1 || {
+      log "npm stali smoke failed: node missing"
+      return 1
+    }
+    out="$(node "$stali_js" --version 2>&1 || true)"
+  fi
+  combined="$out"
+  if printf '%s' "$combined" | grep -Eq 'ERR_MODULE_NOT_FOUND|Cannot find module|MODULE_NOT_FOUND'; then
+    log "npm stali smoke failed (MODULE_NOT_FOUND) — broken pack; auto will try git"
+    return 1
+  fi
+  if ! printf '%s' "$out" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+'; then
+    log "npm stali smoke failed: unexpected --version output: $out"
+    return 1
+  fi
+  # 3.45.2 shipped broken wizard-only side-effect imports — refuse and fall back.
+  if printf '%s' "$out" | grep -Eq '(^|[[:space:]])3\.45\.2([[:space:]]|$)'; then
+    log "stali 3.45.2 is broken (wizard-only MODULE_NOT_FOUND); refusing npm install"
+    return 1
+  fi
+  log "npm smoke OK: $(printf '%s' "$out" | tr -d '\r' | head -n1)"
+  return 0
+}
 
 need_bun() {
   export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
@@ -192,12 +252,23 @@ link_user_bins_from_npm() {
 
 install_from_npm() {
   command -v npm >/dev/null 2>&1 || die "Cần npm (Node.js >= 18). Cài: https://nodejs.org"
-  local spec="$NPM_PKG"
-  [[ -n "$VERSION" ]] && spec="${NPM_PKG}@${VERSION}"
+  # Prefer @latest (>= 3.45.3). Known-bad 3.45.2 must never install via this path.
+  local pin="${VERSION:-latest}"
+  if [[ "$pin" == "3.45.2" || "$pin" == "v3.45.2" ]]; then
+    log "stali-cli@3.45.2 is broken; refusing pin — use latest (>= 3.45.3)"
+    return 1
+  fi
+  local spec="${NPM_PKG}@${pin}"
   log "Cài ${spec} từ npm (prebuilt dist, không build)…"
-  npm install -g "$spec" --no-fund --no-audit --loglevel="${NPM_CONFIG_LOGLEVEL:-error}"
+  # npm 10+ may skip package postinstall unless allow-scripts; CLI still works from prebuilt dist.
+  # Older npm may reject unknown --allow-scripts → fallback without the flag.
+  if ! npm install -g "$spec" --no-fund --no-audit --allow-scripts=stali-cli --loglevel="${NPM_CONFIG_LOGLEVEL:-error}"; then
+    log "npm --allow-scripts không dùng được — thử lại không flag…"
+    npm install -g "$spec" --no-fund --no-audit --loglevel="${NPM_CONFIG_LOGLEVEL:-error}" || return 1
+  fi
   link_user_bins_from_npm || true
-  export PATH="$LOCAL_BIN:$STALI_BIN:$(npm bin -g 2>/dev/null || true):$PATH"
+  export PATH="$LOCAL_BIN:$STALI_BIN:$(npm_global_bin_dir):${PATH:-}"
+  smoke_npm_stali || return 1
 }
 
 fetch_source() {

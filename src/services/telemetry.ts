@@ -152,7 +152,44 @@ export async function readTelemetryQueueDepth(): Promise<number> {
   }
 }
 
-export async function recordCliTelemetry(command: string): Promise<void> {
+/**
+ * Gửi telemetry cho một lệnh — KHÔNG được chặn lệnh của người dùng.
+ *
+ * Trước đây hàm này `await` toàn bộ (flush queue + POST, retry 3 lần ×
+ * timeout 2,5s). Cài mới: chưa opt-in nên thoát sớm — nhưng khi đã bật
+ * telemetry mà mạng chậm/chặn, MỌI lệnh `stali` bị treo thêm tới ~10s.
+ * Giờ chỉ ghi vào queue (local, nhanh) rồi gửi nền; tắt tiến trình không
+ * cần chờ mạng.
+ */
+export function recordCliTelemetry(command: string): void {
+  if (process.env.STALI_TELEMETRY === "0") return;
+  if (process.env.STALI_TELEMETRY_SYNC === "1") {
+    void recordCliTelemetrySync(command);
+    return;
+  }
+  if (SKIP_COMMANDS.has(command)) return;
+
+  void (async () => {
+    try {
+      const cfg = await readTelemetryConfig();
+      if (!cfg.enabled) return;
+
+      const body: TelemetryPayload = {
+        v: 1,
+        command,
+        cliVersion: VERSION,
+        platform: `${process.platform}/${process.arch}`,
+        ts: new Date().toISOString(),
+      };
+      await enqueueTelemetryPayload(body);
+    } catch {
+      /* telemetry không bao giờ được làm hỏng lệnh */
+    }
+  })();
+}
+
+/** Bản chờ-đồng-bộ (dùng cho `stali telemetry flush` hoặc test). */
+export async function recordCliTelemetrySync(command: string): Promise<void> {
   if (process.env.STALI_TELEMETRY === "0") return;
   if (SKIP_COMMANDS.has(command)) return;
 

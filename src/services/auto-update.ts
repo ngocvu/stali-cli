@@ -177,6 +177,20 @@ function launchctlUnload(plistPath: string): void {
   spawnSync("launchctl", ["unload", "-w", plistPath], { encoding: "utf8" });
 }
 
+/**
+ * Escape ký tự đặc biệt XML trước khi nhúng đường dẫn vào plist.
+ * Tên user trên macOS có thể chứa `&` hoặc `<` (ví dụ thư mục Home có `&`)
+ * → plist hỏng, launchd không load được, thậm chí chèn được key lạ vào plist.
+ */
+function xmlEscape(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 /** macOS LaunchAgent — daily 04:00 `stali update`. */
 export async function installAutoUpdateLaunchd(channel = "stable"): Promise<{
   ok: boolean;
@@ -204,10 +218,10 @@ export async function installAutoUpdateLaunchd(channel = "stable"): Promise<{
   <string>${LAUNCHD_LABEL}</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${stali}</string>
+    <string>${xmlEscape(stali)}</string>
     <string>update</string>
     <string>--channel</string>
-    <string>${channel}</string>
+    <string>${xmlEscape(channel)}</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>
@@ -217,9 +231,9 @@ export async function installAutoUpdateLaunchd(channel = "stable"): Promise<{
     <integer>0</integer>
   </dict>
   <key>StandardOutPath</key>
-  <string>${logPath}</string>
+  <string>${xmlEscape(logPath)}</string>
   <key>StandardErrorPath</key>
-  <string>${logPath}</string>
+  <string>${xmlEscape(logPath)}</string>
 </dict>
 </plist>
 `;
@@ -266,7 +280,9 @@ export async function installAutoUpdateCron(channel = "stable"): Promise<{
   const stali = path.join(getStaliBinDir(), "stali");
   const logPath = path.join(getStaliHome(), LOG_FILE);
   await fs.mkdir(getStaliHome(), { recursive: true });
-  const cronLine = `0 4 * * * "${stali}" update --channel ${channel} >> "${logPath}" 2>&1 # ${CRON_MARKER}`;
+  // Bọc nháy đơn cho đường dẫn (an toàn cả khi HOME có khoảng trắng/ký tự lạ).
+  const q = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`;
+  const cronLine = `0 4 * * * ${q(stali)} update --channel ${q(channel)} >> ${q(logPath)} 2>&1 # ${CRON_MARKER}`;
 
   const existing = readCrontab();
   if (existing.includes(CRON_MARKER)) {
@@ -367,7 +383,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=${stali} update --channel ${channel}
+ExecStart="${stali}" update --channel "${channel}"
 StandardOutput=append:${logPath}
 StandardError=append:${logPath}
 `;

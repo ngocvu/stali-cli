@@ -2,7 +2,7 @@ import path from "path";
 import os from "os";
 import { SyncerResult } from "../../types";
 import { resolveStaliUrls } from "../../utils/stali-urls";
-import { readJsonFile, writeJsonFile, ensureParentDir } from "../../utils/file";
+import { readJsonFileDetailed, patchJsoncFile } from "../../utils/file";
 import { createTimestampBackup } from "../../utils/backup";
 import { loadStaliConfig } from "../config";
 import type { SyncOptions } from "./sync-options";
@@ -27,11 +27,11 @@ export interface ClaudeStatus {
 }
 
 export async function getClaudeStatus(): Promise<ClaudeStatus> {
-  const existing = await readJsonFile(CLAUDE_SETTINGS_PATH);
-  if (!existing || !existing.env) {
+  const existing = await readJsonFileDetailed<any>(CLAUDE_SETTINGS_PATH);
+  if (!existing.data || !existing.data.env) {
     return { configured: false };
   }
-  const env = existing.env;
+  const env = existing.data.env;
   const configured = Boolean(env.ANTHROPIC_BASE_URL?.includes("stali"));
   return {
     configured,
@@ -57,70 +57,74 @@ export async function patchClaudeSettings(
   const settingsPath = CLAUDE_SETTINGS_PATH;
 
   try {
-    // 1. Create backup with timestamp if file exists
+    // 1. Backup có timestamp (không đụng nếu file chưa tồn tại)
     const backupPath = await createTimestampBackup(settingsPath);
 
-    // 2. Read existing settings
-    const existing = (await readJsonFile(settingsPath)) || {};
-
-    // 3. Prepare env block
-    const env = { ...(existing.env || {}) };
-    env.ANTHROPIC_BASE_URL = urls.anthropicBaseUrl;
-    env.ANTHROPIC_AUTH_TOKEN = apiKey.trim();
-    env.API_TIMEOUT_MS = "600000";
-
-    // Clean conflicting ANTHROPIC_API_KEY
-    delete env.ANTHROPIC_API_KEY;
+    // 2. Vá TẠI CHỖ — giữ nguyên chú thích, thứ tự key và mọi key lạ khác
+    //    (permissions, hooks, statusLine…) mà người dùng đã cấu hình.
+    const set: Array<{ path: (string | number)[]; value: unknown }> = [
+      { path: ["env", "ANTHROPIC_BASE_URL"], value: urls.anthropicBaseUrl },
+      { path: ["env", "ANTHROPIC_AUTH_TOKEN"], value: apiKey.trim() },
+      { path: ["env", "API_TIMEOUT_MS"], value: "600000" },
+      { path: ["hasCompletedOnboarding"], value: true },
+    ];
 
     if (model) {
       if (modelType === "fable") {
-        env.ANTHROPIC_MODEL = model;
+        set.push({ path: ["env", "ANTHROPIC_MODEL"], value: model });
       } else if (modelType === "sonnet") {
-        env.ANTHROPIC_DEFAULT_SONNET_MODEL = model;
+        set.push({ path: ["env", "ANTHROPIC_DEFAULT_SONNET_MODEL"], value: model });
       } else if (modelType === "opus") {
-        env.ANTHROPIC_DEFAULT_OPUS_MODEL = model;
+        set.push({ path: ["env", "ANTHROPIC_DEFAULT_OPUS_MODEL"], value: model });
       } else if (modelType === "haiku") {
-        env.ANTHROPIC_DEFAULT_HAIKU_MODEL = model;
+        set.push({ path: ["env", "ANTHROPIC_DEFAULT_HAIKU_MODEL"], value: model });
       } else {
-        env.ANTHROPIC_MODEL = model;
-        env.ANTHROPIC_DEFAULT_SONNET_MODEL = model;
-        env.ANTHROPIC_DEFAULT_OPUS_MODEL = model;
-        env.ANTHROPIC_DEFAULT_HAIKU_MODEL = model;
+        set.push(
+          { path: ["env", "ANTHROPIC_MODEL"], value: model },
+          { path: ["env", "ANTHROPIC_DEFAULT_SONNET_MODEL"], value: model },
+          { path: ["env", "ANTHROPIC_DEFAULT_OPUS_MODEL"], value: model },
+          { path: ["env", "ANTHROPIC_DEFAULT_HAIKU_MODEL"], value: model }
+        );
       }
     }
 
-    if (maxContextTokens !== undefined) {
-      if (maxContextTokens) {
-        env.CLAUDE_CODE_MAX_CONTEXT_TOKENS = String(maxContextTokens);
-      } else {
-        delete env.CLAUDE_CODE_MAX_CONTEXT_TOKENS;
-      }
+    const remove: Array<(string | number)[]> = [["env", "ANTHROPIC_API_KEY"]];
+    if (maxContextTokens !== undefined && !maxContextTokens) {
+      remove.push(["env", "CLAUDE_CODE_MAX_CONTEXT_TOKENS"]);
+    } else if (maxContextTokens) {
+      set.push({
+        path: ["env", "CLAUDE_CODE_MAX_CONTEXT_TOKENS"],
+        value: String(maxContextTokens),
+      });
     }
 
-    const updated = {
-      ...existing,
-      hasCompletedOnboarding: true,
-      env,
-    };
-
-    // 4. Write back
-    await ensureParentDir(settingsPath);
-    await writeJsonFile(settingsPath, updated);
+    const ok = await patchJsoncFile(settingsPath, { set, remove });
+    if (!ok) {
+      return {
+        toolId: "claude",
+        toolName: "[CC]",
+        success: false,
+        message: "settings.json hỏng định dạng — KHÔNG ghi đè để tránh mất cấu hình",
+        configPath: settingsPath,
+        backupPath: backupPath || undefined,
+        error: `File ${settingsPath} không parse được. Sửa tay hoặc sao lưu rồi xoá, sau đó chạy lại.`,
+      };
+    }
 
     return {
       toolId: "claude",
-      toolName: "Claude Code",
+      toolName: "[CC]",
       success: true,
-      message: "Cấu hình Claude Code thành công!",
+      message: "Cấu hình [CC] thành công!",
       configPath: settingsPath,
       backupPath: backupPath || undefined,
     };
   } catch (error: any) {
     return {
       toolId: "claude",
-      toolName: "Claude Code",
+      toolName: "[CC]",
       success: false,
-      message: "Lỗi khi cấu hình Claude Code",
+      message: "Lỗi khi cấu hình [CC]",
       error: error?.message || String(error),
     };
   }
@@ -142,53 +146,61 @@ export async function saveClaudeFullSettings(
 
   try {
     const backupPath = await createTimestampBackup(settingsPath);
-    const existing = (await readJsonFile(settingsPath)) || {};
 
     const cfg = await loadStaliConfig();
     const urls = resolveStaliUrls(cfg?.baseUrl);
-    const env = { ...(existing.env || {}) };
-    env.ANTHROPIC_BASE_URL = urls.anthropicBaseUrl;
-    env.ANTHROPIC_AUTH_TOKEN = apiKey.trim();
-    env.API_TIMEOUT_MS = "600000";
 
-    delete env.ANTHROPIC_API_KEY;
+    const set: Array<{ path: (string | number)[]; value: unknown }> = [
+      { path: ["env", "ANTHROPIC_BASE_URL"], value: urls.anthropicBaseUrl },
+      { path: ["env", "ANTHROPIC_AUTH_TOKEN"], value: apiKey.trim() },
+      { path: ["env", "API_TIMEOUT_MS"], value: "600000" },
+      { path: ["hasCompletedOnboarding"], value: true },
+    ];
+    if (config.fableModel) set.push({ path: ["env", "ANTHROPIC_MODEL"], value: config.fableModel });
+    if (config.sonnetModel)
+      set.push({ path: ["env", "ANTHROPIC_DEFAULT_SONNET_MODEL"], value: config.sonnetModel });
+    if (config.opusModel)
+      set.push({ path: ["env", "ANTHROPIC_DEFAULT_OPUS_MODEL"], value: config.opusModel });
+    if (config.haikuModel)
+      set.push({ path: ["env", "ANTHROPIC_DEFAULT_HAIKU_MODEL"], value: config.haikuModel });
 
-    if (config.fableModel) env.ANTHROPIC_MODEL = config.fableModel;
-    if (config.sonnetModel) env.ANTHROPIC_DEFAULT_SONNET_MODEL = config.sonnetModel;
-    if (config.opusModel) env.ANTHROPIC_DEFAULT_OPUS_MODEL = config.opusModel;
-    if (config.haikuModel) env.ANTHROPIC_DEFAULT_HAIKU_MODEL = config.haikuModel;
-
-    if (config.maxContextTokens !== undefined) {
-      if (config.maxContextTokens) {
-        env.CLAUDE_CODE_MAX_CONTEXT_TOKENS = String(config.maxContextTokens);
-      } else {
-        delete env.CLAUDE_CODE_MAX_CONTEXT_TOKENS;
-      }
+    const remove: Array<(string | number)[]> = [["env", "ANTHROPIC_API_KEY"]];
+    if (config.maxContextTokens !== undefined && !config.maxContextTokens) {
+      remove.push(["env", "CLAUDE_CODE_MAX_CONTEXT_TOKENS"]);
+    } else if (config.maxContextTokens) {
+      set.push({
+        path: ["env", "CLAUDE_CODE_MAX_CONTEXT_TOKENS"],
+        value: String(config.maxContextTokens),
+      });
     }
 
-    const updated = {
-      ...existing,
-      hasCompletedOnboarding: true,
-      env,
-    };
-
-    await ensureParentDir(settingsPath);
-    await writeJsonFile(settingsPath, updated);
+    const ok = await patchJsoncFile(settingsPath, { set, remove });
+    if (!ok) {
+      return {
+        toolId: "claude",
+        toolName: "[CC]",
+        success: false,
+        message: "settings.json hỏng định dạng — KHÔNG ghi đè để tránh mất cấu hình",
+        configPath: settingsPath,
+        backupPath: backupPath || undefined,
+        error: `File ${settingsPath} không parse được.`,
+      };
+    }
 
     return {
       toolId: "claude",
-      toolName: "Claude Code",
+      toolName: "[CC]",
       success: true,
-      message: "Cấu hình Claude Code thành công!",
+      message: "Cấu hình [CC] thành công!",
       configPath: settingsPath,
       backupPath: backupPath || undefined,
     };
   } catch (error: any) {
     return {
       toolId: "claude",
-      toolName: "Claude Code",
+      toolName: "[CC]",
       success: false,
-      message: "Lỗi khi cấu hình Claude Code",
+      message: "Lỗi khi cấu hình [CC]",
       error: error?.message || String(error),
     };
   }
@@ -197,32 +209,45 @@ export async function saveClaudeFullSettings(
 export async function resetClaudeSettings(): Promise<SyncerResult> {
   try {
     const backupPath = await createTimestampBackup(CLAUDE_SETTINGS_PATH);
-    const existing = (await readJsonFile(CLAUDE_SETTINGS_PATH)) || {};
-    if (existing.env) {
-      delete existing.env.ANTHROPIC_BASE_URL;
-      delete existing.env.ANTHROPIC_AUTH_TOKEN;
-      delete existing.env.ANTHROPIC_MODEL;
-      delete existing.env.ANTHROPIC_DEFAULT_SONNET_MODEL;
-      delete existing.env.ANTHROPIC_DEFAULT_OPUS_MODEL;
-      delete existing.env.ANTHROPIC_DEFAULT_HAIKU_MODEL;
-      delete existing.env.CLAUDE_CODE_MAX_CONTEXT_TOKENS;
-      delete existing.env.API_TIMEOUT_MS;
+
+    const ok = await patchJsoncFile(CLAUDE_SETTINGS_PATH, {
+      remove: [
+        ["env", "ANTHROPIC_BASE_URL"],
+        ["env", "ANTHROPIC_AUTH_TOKEN"],
+        ["env", "ANTHROPIC_MODEL"],
+        ["env", "ANTHROPIC_DEFAULT_SONNET_MODEL"],
+        ["env", "ANTHROPIC_DEFAULT_OPUS_MODEL"],
+        ["env", "ANTHROPIC_DEFAULT_HAIKU_MODEL"],
+        ["env", "CLAUDE_CODE_MAX_CONTEXT_TOKENS"],
+        ["env", "API_TIMEOUT_MS"],
+      ],
+    });
+    if (!ok) {
+      return {
+        toolId: "claude",
+        toolName: "[CC]",
+        success: false,
+        message: "settings.json hỏng định dạng — KHÔNG ghi đè để tránh mất cấu hình",
+        configPath: CLAUDE_SETTINGS_PATH,
+        backupPath: backupPath || undefined,
+        error: `File ${CLAUDE_SETTINGS_PATH} không parse được.`,
+      };
     }
-    await writeJsonFile(CLAUDE_SETTINGS_PATH, existing);
+
     return {
       toolId: "claude",
-      toolName: "Claude Code",
+      toolName: "[CC]",
       success: true,
-      message: "Đã reset cấu hình Claude Code về mặc định!",
+      message: "Đã reset cấu hình [CC] về mặc định!",
       configPath: CLAUDE_SETTINGS_PATH,
       backupPath: backupPath || undefined,
     };
   } catch (e: any) {
     return {
       toolId: "claude",
-      toolName: "Claude Code",
+      toolName: "[CC]",
       success: false,
-      message: "Lỗi khi reset Claude Code",
+      message: "Lỗi khi reset [CC]",
       error: e?.message || String(e),
     };
   }

@@ -78,7 +78,7 @@ export function registerCommands(program: Command): void {
       if (!name || name === "bench" || name === "telemetry" || parent === "telemetry") return;
       try {
         const { recordCliTelemetry } = await import("../services/telemetry");
-        await recordCliTelemetry(name);
+        recordCliTelemetry(name);
       } catch {
         /* ignore */
       }
@@ -1489,20 +1489,48 @@ export function registerCommands(program: Command): void {
     .description("Hướng dẫn user; `stali help advanced` = toàn bộ lệnh")
     .argument("[topic]", "advanced | all")
     .action(async (topic?: string) => {
-      if (topic === "advanced" || topic === "all") {
-        process.env.STALI_HELP_FULL = "1";
-        for (const cmd of program.commands) {
-          setCommandHelpHidden(cmd, false);
-        }
-        program.outputHelp();
-        process.exit(0);
-      }
-      const { printUserQuickReference } = await import("../services/user-cli");
-      const { printAdvancedHelpHint } = await import("./help-format");
-      printUserQuickReference();
-      printAdvancedHelpHint();
+      // In từ danh mục OFFLINE (src/constants/command-docs.ts) — tức thì,
+      // không phụ thuộc mạng như bản cũ (tải docs rồi mới in).
+      const { renderCommandHelp } = await import("../constants/command-docs");
+      const advanced = topic === "advanced" || topic === "all";
+      if (advanced) process.env.STALI_HELP_FULL = "1";
+      console.log(
+        renderCommandHelp({
+          advanced,
+          colorize: (text, style) =>
+            style === "bold"
+              ? chalk.bold(text)
+              : style === "cyan"
+                ? chalk.cyan(text)
+                : chalk.gray(text),
+        })
+      );
       process.exit(0);
     });
 
   applyCommandVisibility(program);
+  attachUnknownCommandSuggestions(program);
+}
+
+/**
+ * Gõ sai lệnh → gợi ý lệnh gần đúng thay vì chỉ báo lỗi khô khan.
+ * Commander in "unknown command" trước; ta thêm gợi ý + gợi ý khởi đầu.
+ */
+function attachUnknownCommandSuggestions(program: Command): void {
+  program.showSuggestionAfterError(false);
+  program.on("command:*", (operands: string[]) => {
+    const typed = operands[0];
+    void (async () => {
+      const { suggestCommands } = await import("../constants/command-docs");
+      const suggestions = suggestCommands(typed);
+      if (suggestions.length > 0) {
+        console.error(
+          chalk.yellow(`\nCó phải bạn muốn: ${suggestions.map((s) => chalk.bold(s)).join(", ")} ?`)
+        );
+      }
+      console.error(chalk.gray(`\nXem toàn bộ lệnh: stali help advanced`));
+      console.error(chalk.gray(`Bắt đầu nhanh:   stali setup -k sk-stali-...\n`));
+      process.exit(1);
+    })();
+  });
 }

@@ -1,15 +1,40 @@
 import { SyncerResult } from "../../types";
 import { resolveStaliUrls, type StaliResolvedUrls } from "../../utils/stali-urls";
 import {
-  readJsonFile,
-  writeJsonFile,
-  readTomlFile,
+  readJsonFileDetailed,
+  patchJsoncFile,
+  readTomlFileDetailed,
   writeTomlFile,
 } from "../../utils/file";
 import { createTimestampBackup, listBackupsForFile, restoreFromBackup } from "../../utils/backup";
 
 export interface PatchOptions {
   requireBackup?: boolean;
+}
+
+/**
+ * Lỗi khi file cấu hình của người dùng tồn tại nhưng hỏng định dạng.
+ * Ném ra để syncer DỪNG thay vì ghi đè làm mất dữ liệu.
+ */
+export class CorruptConfigError extends Error {
+  constructor(public readonly filePath: string) {
+    super(
+      `File cấu hình hỏng định dạng: ${filePath} — không ghi đè để tránh mất dữ liệu. ` +
+        `Sửa tay (hoặc sao lưu rồi xoá) file này rồi chạy lại.`
+    );
+    this.name = "CorruptConfigError";
+  }
+}
+
+/** Lỗi khi file TOML tồn tại nhưng hỏng — cũng không được ghi đè. */
+export class CorruptTomlError extends Error {
+  constructor(public readonly filePath: string) {
+    super(
+      `File TOML hỏng định dạng: ${filePath} — không ghi đè để tránh mất dữ liệu. ` +
+        `Sửa tay (hoặc sao lưu rồi xoá) file này rồi chạy lại.`
+    );
+    this.name = "CorruptTomlError";
+  }
 }
 
 async function ensureBackup(
@@ -56,6 +81,23 @@ export async function restoreToolConfig(configPath: string): Promise<SyncerResul
   }
 }
 
+/**
+ * Đọc JSON cấu hình để GHI. Ném `CorruptConfigError` nếu file hỏng —
+ * người gọi bắt lỗi và trả SyncerResult thất bại thay vì ghi đè.
+ */
+async function readJsonForWrite<T = any>(configPath: string): Promise<T> {
+  const read = await readJsonFileDetailed<T>(configPath);
+  if (read.corrupt) throw new CorruptConfigError(configPath);
+  return (read.data ?? ({} as T)) as T;
+}
+
+/** Đọc TOML cấu hình để GHI, ném `CorruptTomlError` nếu hỏng. */
+async function readTomlForWrite<T = any>(configPath: string): Promise<T> {
+  const read = await readTomlFileDetailed<T>(configPath);
+  if (read.corrupt) throw new CorruptTomlError(configPath);
+  return (read.data ?? ({} as T)) as T;
+}
+
 export async function patchAnthropicEnvJsonTool(
   toolId: string,
   toolName: string,
@@ -67,27 +109,30 @@ export async function patchAnthropicEnvJsonTool(
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
-    const data = (await readJsonFile(configPath)) || {};
-    const env = { ...(data.env || {}) };
 
-    env.ANTHROPIC_BASE_URL = urls.anthropicBaseUrl;
-    env.ANTHROPIC_AUTH_TOKEN = apiKey.trim();
-    env.API_TIMEOUT_MS = "600000";
-    delete env.ANTHROPIC_API_KEY;
-
+    // Vá tại chỗ: giữ chú thích + định dạng + key lạ của người dùng.
+    const set: Array<{ path: (string | number)[]; value: unknown }> = [
+      { path: ["env", "ANTHROPIC_BASE_URL"], value: urls.anthropicBaseUrl },
+      { path: ["env", "ANTHROPIC_AUTH_TOKEN"], value: apiKey.trim() },
+      { path: ["env", "API_TIMEOUT_MS"], value: "600000" },
+      { path: ["hasCompletedOnboarding"], value: true },
+    ];
     if (model) {
-      env.ANTHROPIC_MODEL = model;
-      env.ANTHROPIC_DEFAULT_FABLE_MODEL = model;
-      env.ANTHROPIC_DEFAULT_OPUS_MODEL = model;
-      env.ANTHROPIC_DEFAULT_SONNET_MODEL = model;
-      env.ANTHROPIC_DEFAULT_HAIKU_MODEL = model;
+      set.push(
+        { path: ["env", "ANTHROPIC_MODEL"], value: model },
+        { path: ["env", "ANTHROPIC_DEFAULT_FABLE_MODEL"], value: model },
+        { path: ["env", "ANTHROPIC_DEFAULT_OPUS_MODEL"], value: model },
+        { path: ["env", "ANTHROPIC_DEFAULT_SONNET_MODEL"], value: model },
+        { path: ["env", "ANTHROPIC_DEFAULT_HAIKU_MODEL"], value: model },
+        { path: ["model"], value: model }
+      );
     }
+    const ok = await patchJsoncFile(configPath, {
+      set,
+      remove: [["env", "ANTHROPIC_API_KEY"]],
+    });
+    if (!ok) throw new CorruptConfigError(configPath);
 
-    data.env = env;
-    data.hasCompletedOnboarding = true;
-    if (model) data.model = model;
-
-    await writeJsonFile(configPath, data);
     return {
       toolId,
       toolName,
@@ -102,6 +147,7 @@ export async function patchAnthropicEnvJsonTool(
       toolName,
       success: false,
       message: `Lỗi cấu hình ${toolName}`,
+      configPath,
       error: e?.message || String(e),
     };
   }
@@ -118,27 +164,34 @@ export async function patchOpenAiProviderJsonTool(
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
-    const data = (await readJsonFile(configPath)) || {};
     const resolvedModel = model || "gpt-5.6-sol";
 
-    data.provider = {
-      ...(data.provider || {}),
-      stali: {
-        npm: "@ai-sdk/openai-compatible",
-        name: "Stali API",
-        options: {
-          baseURL: urls.openAiBaseUrl,
-          apiKey: apiKey.trim(),
-        },
-        models: {
-          [resolvedModel]: { name: resolvedModel },
-        },
+    // Merge vào provider.stali hiện có (không xoá provider khác của người dùng).
+    const data = await readJsonForWrite<Record<string, any>>(configPath);
+    const stali = {
+      ...(data.provider?.stali || {}),
+      npm: "@ai-sdk/openai-compatible",
+      name: "Stali API",
+      options: {
+        ...(data.provider?.stali?.options || {}),
+        baseURL: urls.openAiBaseUrl,
+        apiKey: apiKey.trim(),
+      },
+      models: {
+        ...(data.provider?.stali?.models || {}),
+        [resolvedModel]: { name: resolvedModel },
       },
     };
-    data.defaultProvider = "stali";
-    data.model = resolvedModel;
 
-    await writeJsonFile(configPath, data);
+    const ok = await patchJsoncFile(configPath, {
+      set: [
+        { path: ["provider", "stali"], value: stali },
+        { path: ["defaultProvider"], value: "stali" },
+        { path: ["model"], value: resolvedModel },
+      ],
+    });
+    if (!ok) throw new CorruptConfigError(configPath);
+
     return {
       toolId,
       toolName,
@@ -153,6 +206,7 @@ export async function patchOpenAiProviderJsonTool(
       toolName,
       success: false,
       message: `Lỗi cấu hình ${toolName}`,
+      configPath,
       error: e?.message || String(e),
     };
   }
@@ -163,21 +217,23 @@ export async function patchVsCodeAgentJsonTool(
   toolName: string,
   configPath: string,
   apiKey: string,
-  model = "claude-fable-5",
+  model = "",
   options?: PatchOptions,
   urls: StaliResolvedUrls = resolveStaliUrls()
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
-    const data = (await readJsonFile(configPath)) || {};
+    const ok = await patchJsoncFile(configPath, {
+      set: [
+        { path: ["apiProvider"], value: "anthropic" },
+        { path: ["anthropicApiKey"], value: apiKey.trim() },
+        { path: ["anthropicBaseUrl"], value: urls.anthropicBaseUrl },
+        { path: ["anthropicModelId"], value: model },
+        { path: ["openAiModelId"], value: model },
+      ],
+    });
+    if (!ok) throw new CorruptConfigError(configPath);
 
-    data.apiProvider = "anthropic";
-    data.anthropicApiKey = apiKey.trim();
-    data.anthropicBaseUrl = urls.anthropicBaseUrl;
-    data.anthropicModelId = model;
-    data.openAiModelId = model;
-
-    await writeJsonFile(configPath, data);
     return {
       toolId,
       toolName,
@@ -192,6 +248,7 @@ export async function patchVsCodeAgentJsonTool(
       toolName,
       success: false,
       message: `Lỗi cấu hình ${toolName}`,
+      configPath,
       error: e?.message || String(e),
     };
   }
@@ -208,7 +265,7 @@ export async function patchOpenAiTomlTool(
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
-    const data = (await readTomlFile(configPath)) || {};
+    const data = await readTomlForWrite<Record<string, any>>(configPath);
 
     data.provider = "openai";
     data.base_url = urls.openAiBaseUrl;
@@ -230,6 +287,7 @@ export async function patchOpenAiTomlTool(
       toolName,
       success: false,
       message: `Lỗi cấu hình ${toolName}`,
+      configPath,
       error: e?.message || String(e),
     };
   }
@@ -240,22 +298,23 @@ export async function patchDroidJsonTool(
   toolName: string,
   configPath: string,
   apiKey: string,
-  model = "claude-fable-5",
+  model = "",
   options?: PatchOptions,
   urls: StaliResolvedUrls = resolveStaliUrls()
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
-    const data = (await readJsonFile(configPath)) || {};
+    const ok = await patchJsoncFile(configPath, {
+      set: [
+        {
+          path: ["provider"],
+          value: { type: "openai", baseUrl: urls.openAiBaseUrl, apiKey: apiKey.trim() },
+        },
+        { path: ["model"], value: model },
+      ],
+    });
+    if (!ok) throw new CorruptConfigError(configPath);
 
-    data.provider = {
-      type: "openai",
-      baseUrl: urls.openAiBaseUrl,
-      apiKey: apiKey.trim(),
-    };
-    data.model = model;
-
-    await writeJsonFile(configPath, data);
     return {
       toolId,
       toolName,
@@ -270,6 +329,7 @@ export async function patchDroidJsonTool(
       toolName,
       success: false,
       message: `Lỗi cấu hình ${toolName}`,
+      configPath,
       error: e?.message || String(e),
     };
   }
@@ -286,16 +346,14 @@ export async function patchCoworkJsonTool(
 ): Promise<SyncerResult> {
   try {
     const backupPath = await ensureBackup(configPath, options?.requireBackup ?? false);
-    const data = (await readJsonFile(configPath)) || {};
+    const ok = await patchJsoncFile(configPath, {
+      set: [
+        { path: ["openai"], value: { baseUrl: urls.openAiBaseUrl, apiKey: apiKey.trim(), model } },
+        { path: ["defaultModel"], value: model },
+      ],
+    });
+    if (!ok) throw new CorruptConfigError(configPath);
 
-    data.openai = {
-      baseUrl: urls.openAiBaseUrl,
-      apiKey: apiKey.trim(),
-      model,
-    };
-    data.defaultModel = model;
-
-    await writeJsonFile(configPath, data);
     return {
       toolId,
       toolName,
@@ -310,6 +368,7 @@ export async function patchCoworkJsonTool(
       toolName,
       success: false,
       message: `Lỗi cấu hình ${toolName}`,
+      configPath,
       error: e?.message || String(e),
     };
   }

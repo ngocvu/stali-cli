@@ -56,7 +56,7 @@ describe("telemetry", () => {
     }
   });
 
-  test("queue failed POST and flush on next command", async () => {
+  test("queue failed POST and flush on next command (sync path)", async () => {
     const prevHome = process.env.STALI_HOME;
     const home = path.join(os.tmpdir(), `stali-tel-q-${Date.now()}`);
     process.env.STALI_HOME = home;
@@ -67,14 +67,51 @@ describe("telemetry", () => {
       return new Response(null, { status: 204 });
     }) as unknown as typeof fetch;
     try {
+      const { setTelemetryEnabled, recordCliTelemetrySync, readTelemetryQueueDepth } =
+        await import("./telemetry");
+      await setTelemetryEnabled(true);
+      await recordCliTelemetrySync("info");
+      expect(await readTelemetryQueueDepth()).toBe(1);
+      mode = "ok";
+      await recordCliTelemetrySync("doctor");
+      expect(await readTelemetryQueueDepth()).toBe(0);
+    } finally {
+      globalThis.fetch = original;
+      await fs.rm(home, { recursive: true, force: true }).catch(() => {});
+      if (prevHome === undefined) delete process.env.STALI_HOME;
+      else process.env.STALI_HOME = prevHome;
+    }
+  });
+
+  test("recordCliTelemetry KHÔNG chặn lệnh khi mạng treo", async () => {
+    const prevHome = process.env.STALI_HOME;
+    const home = path.join(os.tmpdir(), `stali-tel-nb-${Date.now()}`);
+    process.env.STALI_HOME = home;
+    const original = globalThis.fetch;
+    // fetch treo vĩnh viễn — mô phỏng mạng chết / bị chặn
+    globalThis.fetch = ((_url: any, init: any) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener?.("abort", () =>
+          reject(new Error("aborted"))
+        );
+      })) as unknown as typeof fetch;
+    try {
       const { setTelemetryEnabled, recordCliTelemetry, readTelemetryQueueDepth } =
         await import("./telemetry");
       await setTelemetryEnabled(true);
-      await recordCliTelemetry("info");
+
+      const started = Date.now();
+      recordCliTelemetry("info");
+      const elapsed = Date.now() - started;
+
+      // Trả về gần như tức thì — không chờ mạng.
+      expect(elapsed).toBeLessThan(150);
+
+      // Chờ ghi queue xong (ghi local, không cần mạng).
+      for (let i = 0; i < 50 && (await readTelemetryQueueDepth()) === 0; i++) {
+        await new Promise((r) => setTimeout(r, 20));
+      }
       expect(await readTelemetryQueueDepth()).toBe(1);
-      mode = "ok";
-      await recordCliTelemetry("doctor");
-      expect(await readTelemetryQueueDepth()).toBe(0);
     } finally {
       globalThis.fetch = original;
       await fs.rm(home, { recursive: true, force: true }).catch(() => {});
