@@ -19,7 +19,7 @@ describe("user-cli", () => {
     }
   });
 
-  test("deriveSetupNextCommand success → status", () => {
+  test("deriveSetupNextCommand success → verify (gọi API thật, không chỉ xem trạng thái)", () => {
     expect(
       deriveSetupNextCommand({
         success: true,
@@ -27,9 +27,23 @@ describe("user-cli", () => {
           { name: "auth login", ok: true },
           { name: "gateway auto", ok: true },
           { name: "check", ok: true },
+          { name: "verify", ok: true },
         ],
       })
-    ).toBe("stali status");
+    ).toBe("stali verify");
+  });
+
+  test("deriveSetupNextCommand verify fail → stali verify", () => {
+    expect(
+      deriveSetupNextCommand({
+        success: false,
+        steps: [
+          { name: "auth login", ok: true },
+          { name: "gateway auto", ok: true },
+          { name: "verify", ok: false },
+        ],
+      })
+    ).toBe("stali verify");
   });
 
   test("deriveSetupNextCommand auth fail", () => {

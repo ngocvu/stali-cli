@@ -4,6 +4,7 @@ import { loadStaliConfig, saveStaliConfig } from "./config";
 import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
 import { discoverInstalledTools, type ToolDiscoveryEntry } from "./tool-discovery";
 import { summarizeGatewayPending } from "./gateway-summary";
+import { verifyConfiguration } from "./verify-cli";
 
 export interface InitOptions {
   apiKey: string;
@@ -199,6 +200,33 @@ export async function runInit(opts: InitOptions): Promise<InitResult> {
   }
 
   const discovery = await discoverInstalledTools();
+  // Bước xác minh CUỐI: gọi API thật để chắc chắn key sống + model còn tồn tại.
+  // Không có bước này thì setup có thể báo "xong" trong khi key đã hết hiệu lực.
+  if (!opts.skipConfigure) {
+    try {
+      const v = await verifyConfiguration({ apiKey: opts.apiKey, baseUrl: opts.baseUrl });
+      if (v.keyValid) {
+        const bad = v.toolModels.filter((t) => !t.ok);
+        steps.push({
+          name: "verify",
+          ok: bad.length === 0,
+          detail:
+            bad.length === 0
+              ? `key sống, ${v.modelCount} model khả dụng`
+              : `${bad.length} tool có model không còn tồn tại`,
+        });
+      } else {
+        steps.push({
+          name: "verify",
+          ok: false,
+          detail: v.error || "key không gọi được API",
+        });
+      }
+    } catch (e: any) {
+      steps.push({ name: "verify", ok: false, detail: e?.message || "không xác minh được" });
+    }
+  }
+
   const gateway = summarizeGatewayPending(discovery);
 
   return {

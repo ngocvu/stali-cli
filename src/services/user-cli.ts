@@ -34,9 +34,12 @@ export function deriveSetupNextCommand(result: {
   if (!result.success) {
     const auth = result.steps.find((s) => s.name === "auth login");
     if (auth && !auth.ok) return "stali setup -k sk-stali-...";
+    const verify = result.steps.find((s) => s.name === "verify");
+    if (verify && !verify.ok) return "stali verify";
     const gw = result.steps.find((s) => s.name === "gateway auto");
     if (gw && !gw.ok) return "stali gw";
     return "stali doctor";
   }
-  return "stali status";
+  // Thành công: đưa lệnh xác minh thay vì chỉ xem trạng thái.
+  return "stali verify";
 }
