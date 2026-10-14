@@ -1,5 +1,35 @@
 # Changelog
 
+## [3.48.0] — 2026-10-14
+
+### Added
+- **`stali verify`** — xác minh THẬT bằng cách gọi API: key còn sống không, và
+  model đã ghim vào từng tool còn tồn tại không (kèm kiểm tra model có hợp giao
+  thức anthropic/openai của tool đó). `stali doctor` chỉ kiểm tra "file có trỏ
+  Stali không" nên vẫn báo OK khi key đã hết hiệu lực.
+- **`services/key-discovery.ts`** — dò API key Stali từ `~/.stali/config.json`,
+  config Claude/Codex/Qwen, và biến môi trường. Cần thiết vì người dùng có thể
+  cấu hình qua `stali configure` mà chưa từng chạy `auth login`.
+- **`services/model-catalog.ts`** — lấy danh mục model từ `/v1/models` (cache 5
+  phút) và chọn model còn sống theo giao thức của tool.
+- **`stali setup` thêm bước "verify"** — báo "key sống, N model khả dụng" hoặc
+  "N tool có model không còn tồn tại", thay vì in "✅ sẵn sàng" khi key đã chết.
+
+### Fixed
+- **Qwen ghi SAI schema** — đối chiếu bundle `@qwen-code/qwen-code@0.25.1`:
+  Qwen đọc `model.baseUrl` (không phải `security.auth.baseUrl` như bản cũ ghi),
+  nên trước đây base URL Stali bị bỏ qua và Qwen vẫn gọi endpoint mặc định.
+  Nay ghi đúng `security.auth.selectedType/apiKey` + `model.name/baseUrl` +
+  `providerProtocol.stali`. Qwen chuyển từ "chưa xác minh" sang "đã kiểm chứng".
+- **Model hardcode** — `req/gpt-5.6-sol`, `stali/qwen3-codex`, `grok-4.6`… nay
+  được đối chiếu với API thật; model bị NCC gỡ sẽ tự thay bằng model hợp lệ và
+  ghi rõ lý do vào thông báo, thay vì ghim tên model chết vào config.
+- **Bước kế tiếp sau setup** — trỏ vào `stali verify` (kiểm chứng thật) thay vì
+  `stali status`.
+
+### Kiểm chứng
+- 288 test pass · 126/126 e2e smoke · verify-npm-pack pass · typecheck sạch.
+
 ## [3.47.0] — 2026-10-14
 
 ### Added
