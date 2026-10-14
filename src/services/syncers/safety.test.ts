@@ -108,7 +108,8 @@ describe("syncer an toàn với file cấu hình của người dùng", () => {
   test("opencode: giữ provider khác của người dùng", async () => {
     const home = await tmpHome("opencode");
     try {
-      const dir = path.join(home, ".opencode");
+      // OpenCode đọc theo XDG → ~/.config/opencode/config.json (không phải ~/.opencode)
+      const dir = path.join(home, ".config", "opencode");
       await fs.mkdir(dir, { recursive: true });
       const cfg = path.join(dir, "config.json");
       await fs.writeFile(

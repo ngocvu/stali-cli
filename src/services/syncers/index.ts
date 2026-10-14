@@ -21,6 +21,7 @@ import { patchGrokSettings, resetGrokSettings, GROK_CONFIG_PATH } from "./grok";
 import { patchCoworkSettings, resetCoworkSettings, COWORK_CONFIG_PATH } from "./cowork";
 import { patchJcodeSettings, resetJcodeSettings, JCODE_CONFIG_PATH } from "./jcode";
 import { restoreToolConfig } from "./common";
+import { resolveToolConfigPath } from "./paths";
 import type { SyncOptions } from "./sync-options";
 import type { DoctorStatusContext } from "./status-context";
 import { isStaliLikeUrl, resolveStaliUrls } from "../../utils/stali-urls";
@@ -143,8 +144,11 @@ export async function getToolHealthStatus(
   const tool = getToolById(toolId);
   if (!tool) return null;
 
-  const configPath = resolveHomePath(tool.configFile);
-  const exists = await fileExists(configPath);
+  // Dùng đường dẫn THẬT (bộ dò `paths.ts`) thay vì đường dẫn hardcode trong
+  // registry — nhiều tool có đường dẫn khác với giá trị cũ của stali-cli.
+  const resolved = await resolveToolConfigPath(toolId);
+  const configPath = resolved?.chosen ?? resolveHomePath(tool.configFile);
+  const exists = resolved ? resolved.exists : await fileExists(configPath);
   const sync = await getToolSyncStatus(toolId, ctx);
 
   return {

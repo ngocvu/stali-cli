@@ -776,8 +776,14 @@ export function registerCommands(program: Command): void {
 
   program
     .command("paths")
-    .description("Hiển thị thư mục ~/.stali (cli, bin, config)")
-    .action(async () => {
+    .description("Thư mục ~/.stali; thêm --tools để xem đường dẫn config THẬT của 13 tool")
+    .option("--tools", "In đường dẫn cấu hình thật của từng tool kèm mức tin cậy")
+    .option("--json", "JSON output (dùng với --tools)")
+    .action(async (opts: { tools?: boolean; json?: boolean }) => {
+      if (opts.tools) {
+        const { runToolPaths } = await import("./paths-cmd");
+        process.exit(await runToolPaths({ json: opts.json }));
+      }
       await runPaths();
       process.exit(0);
     });
