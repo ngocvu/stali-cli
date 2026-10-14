@@ -22,7 +22,7 @@ function runDiscovery(home: string): { status: number | null; stdout: string } {
   // Xoá biến môi trường liên quan để test chỉ đo phần DÒ TỪ FILE.
   // (Máy thật có thể có ANTHROPIC_AUTH_TOKEN/OPENAI_API_KEY sẵn — đó là
   //  đường dự phòng hợp lệ, nhưng không phải thứ test này muốn đo.)
-  const cleanEnv = { ...process.env, HOME: home, USERPROFILE: home };
+  const cleanEnv: Record<string, string | undefined> = { ...process.env, HOME: home, USERPROFILE: home };
   for (const k of ["STALI_API_KEY", "ANTHROPIC_AUTH_TOKEN", "OPENAI_API_KEY"]) {
     delete cleanEnv[k];
   }
