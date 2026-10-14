@@ -133,10 +133,9 @@ export const COMMANDS: CommandDoc[] = [
     group: "cau-hinh",
   },
   {
-    name: "models",
-    aliases: ["ls"],
-    summary: "Bảng giá model thời gian thực",
-    examples: ["stali ls", "stali --models"],
+    name: "ls",
+    summary: "Bảng giá model thời gian thực (cũng có: stali --models)",
+    examples: ["stali ls", "stali ls -k sk-stali-xxxx", "stali --models"],
     group: "cau-hinh",
   },
   {
@@ -202,6 +201,13 @@ export const COMMANDS: CommandDoc[] = [
     summary: "Khôi phục file cấu hình từ backup gần nhất",
     examples: ["stali restore -t claude"],
     group: "bao-tri",
+  },
+  {
+    name: "install",
+    summary: "In kế hoạch cài đặt / gợi ý cách cài cho máy này",
+    examples: ["stali install", "stali install --json"],
+    group: "bao-tri",
+    advanced: true,
   },
   {
     name: "paths",

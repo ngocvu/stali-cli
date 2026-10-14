@@ -1,4 +1,11 @@
-/** Subcommand names (không gồm flags). */
+/**
+ * Subcommand names (không gồm flags).
+ *
+ * PHẢI khớp với các lệnh đăng ký trong `commands/register.ts` — lệch nhau sẽ
+ * khiến lệnh rơi nhầm vào nhánh wizard (trước đây `models` nằm đây nhưng
+ * KHÔNG hề được đăng ký → gõ `stali models` mở wizard Ink).
+ * `wizard` cũng nằm đây để `hasExplicitCliCommand` nhận ra nó là lệnh tường minh.
+ */
 export const STALI_SUBCOMMANDS = new Set([
   "paths",
   "tools",
@@ -32,6 +39,7 @@ export const STALI_SUBCOMMANDS = new Set([
   "restore",
   "completion",
   "ls",
+  "wizard",
 ]);
 
 /** Subcommand chỉ định mở wizard Ink — route tới wizard-cli (không bundle React). */

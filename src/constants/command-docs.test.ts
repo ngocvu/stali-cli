@@ -6,6 +6,7 @@ import {
   renderCommandHelp,
   suggestCommands,
 } from "./command-docs";
+import { STALI_SUBCOMMANDS } from "../cli-route";
 
 describe("command-docs", () => {
   test("mọi lệnh có nhóm hợp lệ và mô tả", () => {
@@ -28,6 +29,11 @@ describe("command-docs", () => {
     expect(names).toContain("ready");
     expect(names).toContain("gw");
     expect(names).toContain("ls");
+  });
+
+  test("không quảng cáo lệnh không tồn tại", () => {
+    // `models` từng nằm trong danh mục nhưng KHÔNG được đăng ký → gõ vào là mở wizard.
+    expect(allCommandNames()).not.toContain("models");
   });
 
   test("renderCommandHelp bản gọn ẩn lệnh nâng cao", () => {
@@ -62,5 +68,29 @@ describe("suggestCommands", () => {
 
   test("giới hạn số gợi ý", () => {
     expect(suggestCommands("config", 1).length).toBeLessThanOrEqual(1);
+  });
+
+  test("không tự gợi ý lại chính từ đã gõ", () => {
+    // Nếu lệnh không tồn tại, KHÔNG được trả về chính nó (bug `stali models`
+    // từng in "Có phải bạn muốn: models ?").
+    for (const input of ["models", "foo", "zzz"]) {
+      expect(suggestCommands(input)).not.toContain(input);
+    }
+  });
+});
+
+describe("STALI_SUBCOMMANDS khớp với danh mục", () => {
+  test("mọi lệnh trong danh mục đều có trong STALI_SUBCOMMANDS (trừ alias)", () => {
+    for (const c of COMMANDS) {
+      expect(STALI_SUBCOMMANDS.has(c.name)).toBe(true);
+    }
+  });
+
+  test("mọi mục trong STALI_SUBCOMMANDS đều được quảng cáo (trừ wizard)", () => {
+    const advertised = new Set(allCommandNames());
+    for (const name of STALI_SUBCOMMANDS) {
+      if (name === "wizard") continue;
+      expect(advertised.has(name)).toBe(true);
+    }
   });
 });
