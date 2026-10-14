@@ -27,11 +27,7 @@ import { resolveApiKey } from "./context";
 import { runBackupsList } from "./backups";
 import { runPaths, runToolsList } from "./paths-cmd";
 import { resolveIncludePluginsFromHome } from "../utils/include-plugins";
-import {
-  applyCommandVisibility,
-  formatCompactHelpFooter,
-  setCommandHelpHidden,
-} from "./help-format";
+import { applyCommandVisibility, formatCompactHelpFooter } from "./help-format";
 
 async function runPluginsList(opts: { init?: boolean }) {
   if (opts.init) {
