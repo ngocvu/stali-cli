@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.47.0] — 2026-10-14
+
+### Added
+- **`stali paths --tools`** (+ `--json`) — in đường dẫn cấu hình THẬT của từng tool
+  kèm **mức tin cậy** (`đã kiểm chứng` / `theo quy ước` / `chưa xác minh`) và đường
+  dẫn đã cân nhắc khác. Người dùng tự kiểm chứng được thay vì tin lời CLI.
+- **Bộ dò đường dẫn** (`services/syncers/paths.ts`) — quét `globalStorage` của
+  VS Code / Cursor / Windsurf / VSCodium trên cả macOS, Windows, Linux.
+
+### Fixed
+- **Đường dẫn SAI của 4 tool** — đã kiểm chứng bằng cách cài tool thật rồi chạy với
+  HOME giả để xem tool tự tạo file cấu hình ở đâu:
+  - `deepseek-tui`: ghi TOML vào `~/.deepseek/config.toml`, nhưng DeepSeek CLI tạo và
+    đọc `~/.config/deepseek-cli-nodejs/config.json` (JSON).
+  - `opencode`: ghi `~/.opencode/config.json`, nhưng OpenCode dùng XDG
+    (`~/.config/opencode/`); `~/.opencode` không hề tồn tại trước khi stali-cli tạo.
+  - `cline` / `roo` / `kilo`: ghi `~/.vscode/*_settings.json`, nhưng đây là extension
+    VS Code nên cấu hình nằm trong `<IDE>/User/globalStorage/<publisher>.<name>/`.
+    Grep trong package thật của cline/roo-cline/kilocode: KHÔNG có chuỗi nào
+    `cline_settings`, `roo_settings`, `globalStorage` hay `saoudrizwan`.
+- **Ưu tiên đường dẫn cũ** — cờ `legacy` đảm bảo file cũ do chính stali-cli tạo không
+  bao giờ được chọn chỉ vì nó tồn tại (trước đó khiến CLI tiếp tục ghi sai chỗ).
+
+### Ghi chú
+- `qwen`, `openclaw`, `droid`, `grok-build`, `cowork`, `jcode` được đánh dấu
+  **chưa xác minh**: chưa kiểm chứng được định dạng/đường dẫn. CLI KHÔNG hứa cấu hình
+  đúng cho nhóm này cho tới khi có bằng chứng.
+
 ## [3.46.0] — 2026-10-14
 
 ### Fixed
@@ -19,6 +47,9 @@
   "Raw mode is not supported" khi không có TTY). Giờ báo lỗi rõ kèm gợi ý lệnh gần đúng.
 - **launchd/cron/systemd** — escape XML cho plist và quote đường dẫn, tránh hỏng khi
   thư mục Home chứa `&` hoặc khoảng trắng.
+- **Lệnh ma `models`** — nằm trong bộ định tuyến nhưng chưa bao giờ được đăng ký, nên
+  `stali models` rơi nhầm vào wizard. Đã bỏ khỏi bộ định tuyến; thêm test ràng buộc
+  `STALI_SUBCOMMANDS` phải khớp danh mục lệnh để không tái diễn.
 
 ### Added
 - **`stali help` offline** — danh mục lệnh theo nhóm kèm ví dụ, in tức thì từ binary
