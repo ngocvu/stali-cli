@@ -12,8 +12,9 @@
  *   - "convention" : theo quy ước chuẩn (XDG, VS Code globalStorage)
  *   - "unverified" : chưa kiểm chứng được — KHÔNG hứa hẹn
  *
- * Trạng thái 2026-10-14: claude, codex, deepseek-tui, qwen = verified;
- * opencode, cline, roo, kilo = convention; 5 tool còn lại = unverified.
+ * Trạng thái 2026-10-16: claude, codex, deepseek-tui, qwen, openclaw, droid,
+ * grok-build, jcode = verified; opencode, cline, roo, kilo = convention;
+ * cowork = unverified (là app desktop, không có file cấu hình CLI).
  * và `doctor --paths` in ra đúng nhãn đó để người dùng biết mức tin cậy.
  */
 import fs from "fs/promises";
@@ -208,41 +209,77 @@ const SPECS: Record<string, PathSpec> = {
   roo: vscodeSpec("roo", "roo_settings.json", path.join(HOME(), ".vscode", "roo_settings.json")),
   kilo: vscodeSpec("kilo", "kilo_settings.json", path.join(HOME(), ".kilo", "config.json")),
   openclaw: {
-    confidence: "unverified",
+    confidence: "verified",
     candidates: () => [
-      { path: path.join(HOME(), ".openclaw", "config.json"), note: "đường dẫn cũ của stali-cli", legacy: true },
+      {
+        path: path.join(HOME(), ".openclaw", "openclaw.json"),
+        note: "đã đối chiếu docs + bundle openclaw@2026.10.4 (JSON5)",
+      },
+      {
+        path: path.join(HOME(), ".openclaw", "config.json"),
+        note: "đường dẫn cũ của stali-cli — OpenClaw KHÔNG đọc",
+        legacy: true,
+      },
     ],
     note:
-      "openclaw có mặt trên npm (2026.10.3) nhưng chạy với HOME giả không tạo file cấu hình nào → " +
-      "CHƯA xác minh được định dạng/đường dẫn",
+      "OpenClaw đọc `~/.openclaw/openclaw.json` (JSON5). Provider khai trong " +
+      "`models.providers.<id>` (baseUrl/apiKey/api); model mặc định ở " +
+      "`agents.defaults.model.primary`.",
   },
   "grok-build": {
-    confidence: "unverified",
+    confidence: "verified",
     candidates: () => [
-      { path: path.join(HOME(), ".grok", "config.toml"), note: "đường dẫn cũ của stali-cli", legacy: true },
+      {
+        path: path.join(HOME(), ".grok", "config.toml"),
+        note: "đã đối chiếu @xai-official/grok@1.0.60 (binary grok-native)",
+      },
     ],
-    note: "grok-cli trên npm là package khác, chạy với HOME giả không tạo config → CHƯA xác minh",
+    note:
+      "Grok CLI đọc `~/.grok/config.toml`: `[model_providers.<id>]` " +
+      "(api_base_url, api_key, api_backend) + `[models].default`. " +
+      "Key cũng nhận qua biến môi trường XAI_API_KEY.",
   },
   droid: {
-    confidence: "unverified",
+    confidence: "verified",
     candidates: () => [
-      { path: path.join(HOME(), ".droid", "config.json"), note: "đường dẫn cũ của stali-cli", legacy: true },
+      {
+        path: path.join(HOME(), ".factory", "settings.json"),
+        note: "đã đối chiếu droid@0.243.0 + docs BYOK (khoá camelCase)",
+      },
+      {
+        path: path.join(HOME(), ".factory", "config.json"),
+        note: "file cấu hình cũ của Droid — tool vẫn đọc (khoá snake_case)",
+      },
+      {
+        path: path.join(HOME(), ".droid", "config.json"),
+        note: "đường dẫn cũ của stali-cli — Droid KHÔNG đọc",
+        legacy: true,
+      },
     ],
-    note: "Droid CLI không có trên npm công khai → CHƯA xác minh được",
+    note:
+      "Factory Droid đọc `~/.factory/settings.json`, khoá `customModels[]` " +
+      "(model, displayName, provider, baseUrl, apiKey).",
   },
   cowork: {
     confidence: "unverified",
     candidates: () => [
       { path: path.join(HOME(), ".cowork", "settings.json"), note: "đường dẫn cũ của stali-cli", legacy: true },
     ],
-    note: "npm `cowork` không có binary trùng tên → CHƯA xác minh",
+    note:
+      "Cowork là app desktop của Anthropic, không có CLI cấu hình qua file; npm chỉ có " +
+      "`cowork-harness` (harness test) → CHƯA xác minh được file cấu hình",
   },
   jcode: {
-    confidence: "unverified",
+    confidence: "verified",
     candidates: () => [
-      { path: path.join(HOME(), ".jcode", "config.toml"), note: "đường dẫn cũ của stali-cli", legacy: true },
+      {
+        path: path.join(HOME(), ".jcode", "config.toml"),
+        note: "đã đối chiếu @1jehuang/jcode-darwin-arm64@1.2.0 (binary)",
+      },
     ],
-    note: "npm `jcode` là package khác (0.0.0) → CHƯA xác minh",
+    note:
+      "jcode đọc `~/.jcode/config.toml`: `[provider]` (default_provider/default_model) + " +
+      "`[providers.<id>]` (type, base_url, api_key) + `[[providers.<id>.models]]`.",
   },
 };
 

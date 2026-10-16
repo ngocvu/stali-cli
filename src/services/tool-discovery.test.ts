@@ -16,7 +16,7 @@ describe("tool-discovery", () => {
     const entry = await discoverTool("openclaw", {
       toolId: "openclaw",
       toolName: "OpenClaw",
-      configPath: "~/.openclaw/config.json",
+      configPath: "~/.openclaw/openclaw.json",
       exists: true,
       configuredForStali: false,
     });

@@ -1,5 +1,46 @@
 # Changelog
 
+## [3.49.0] — 2026-10-16
+
+### Fixed — 4 tool ghi SAI file cấu hình (đã đối chiếu package/binary thật)
+Bốn tool dưới đây trước đây được cấu hình vào file mà chính tool KHÔNG đọc, nên
+người dùng chạy `stali configure` xong vẫn thấy app gọi endpoint mặc định.
+
+- **OpenClaw** — đọc `~/.openclaw/openclaw.json` (JSON5), KHÔNG đọc
+  `~/.openclaw/config.json`. Nay ghi đúng `models.providers.stali`
+  (`baseUrl`/`apiKey`/`api: openai-completions`) + `agents.defaults.model.primary`.
+  Đối chiếu: docs OpenClaw + bundle `openclaw@2026.10.4`.
+- **Factory Droid** — đọc `~/.factory/settings.json`, khoá `customModels[]`
+  (camelCase), KHÔNG đọc `~/.droid/config.json`. Nay ghi đúng entry
+  `{model, displayName, provider: generic-chat-completion-api, baseUrl, apiKey}`
+  và GIỮ các custom model khác của người dùng.
+  Đối chiếu: docs BYOK + binary `droid@0.243.0`.
+- **Grok CLI (xAI)** — dùng bảng `[model_providers.stali]` với `api_base_url`,
+  `api_key`, `api_backend`, KHÔNG dùng khoá TOML phẳng `base_url`/`api_key`.
+  Model mặc định ở `[models].default`. Đối chiếu: binary
+  `@xai-official/grok@1.0.60`.
+- **jcode** — dùng `[provider]` (default_provider/default_model) +
+  `[providers.stali]` (`type: openai-compatible`, `base_url`, `api_key`) +
+  `[[providers.stali.models]]`, KHÔNG dùng khoá phẳng. Đối chiếu: binary
+  `@1jehuang/jcode-darwin-arm64@1.2.0`.
+
+### Changed
+- **`stali paths --tools`**: `openclaw`, `droid`, `grok-build`, `jcode` chuyển từ
+  "chưa xác minh" sang **"đã kiểm chứng"**. Chỉ còn `cowork` là "chưa xác minh"
+  (là app desktop của Anthropic, không có file cấu hình CLI).
+- Bộ dò trạng thái (`getToolSyncStatus`) nay dùng đường dẫn THẬT từ `paths.ts`
+  thay vì đường dẫn hardcode trong registry.
+
+### Tests
+- Thêm `schema-verified.test.ts`: khoá lại schema đã kiểm chứng của 4 tool trên
+  (kể cả khẳng định KHÔNG ghi schema cũ, và giữ custom model khác của người dùng).
+- `safety.test.ts`: thêm ca "KHÔNG ghi đè file hỏng" cho openclaw/droid/grok/jcode.
+
+### Kiểm chứng
+- `bun run typecheck` sạch · `bun test` **296 pass / 0 fail** (976 expect)
+- `scripts/e2e-smoke-offline.ts` **126/126**
+- `bun scripts/verify-npm-pack.ts` pass · runtime **1196 KB** (trần 1300)
+
 ## [3.48.0] — 2026-10-14
 
 ### Added

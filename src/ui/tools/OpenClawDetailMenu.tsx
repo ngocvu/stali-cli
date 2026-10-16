@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { SimpleToolMenu, type SimpleToolAction } from "../components/SimpleToolMenu";
-import { getOpenClawStatus } from "../../services/syncers/openclaw";
+import { getToolSyncStatus } from "../../services/syncers";
 import { getProtocolModelShortcuts } from "../../utils/tool-utils";
 import type { ToolSyncStatus } from "../../services/syncers/status";
 
@@ -24,14 +24,9 @@ export const OpenClawDetailMenu: React.FC<OpenClawDetailMenuProps> = ({
     let active = true;
     (async () => {
       setLoading(true);
-      const s = await getOpenClawStatus();
+      const s = await getToolSyncStatus("openclaw");
       if (!active) return;
-      setStatus({
-        configured: s.configured,
-        endpoint: s.endpoint,
-        model: s.model,
-        apiKeyPresent: s.apiKeyPresent,
-      });
+      setStatus(s ?? { configured: false });
       setLoading(false);
     })();
     return () => {
@@ -47,9 +42,9 @@ export const OpenClawDetailMenu: React.FC<OpenClawDetailMenuProps> = ({
       model={model}
       status={status}
       loading={loading}
-      file="~/.openclaw/config.json"
+      file="~/.openclaw/openclaw.json"
       protocol="anthropic"
-      extraLines={["ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL (giống Claude Code)."]}
+      extraLines={["models.providers.stali (baseUrl/apiKey/api) + agents.defaults.model.primary."]}
       shortcuts={getProtocolModelShortcuts("openclaw")}
       quickSetupLabel="Quick setup (claude-fable-5)"
       onSelectAction={onSelectAction}

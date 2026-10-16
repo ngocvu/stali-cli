@@ -19,17 +19,17 @@ const TOOL_CHECKS: Array<{
   //  - opencode     -> `.config/opencode/config.json` (XDG, không ~/.opencode)
   //  - cline/roo/kilo -> `.config/Code/User/globalStorage/<publisher>.<name>/...`
   //    (extension VS Code; môi trường test không có IDE nào nên chọn VS Code mặc định)
-  { toolId: "openclaw", relPath: ".openclaw/config.json", needles: ["api.stali.vn"], model: "" },
+  { toolId: "openclaw", relPath: ".openclaw/openclaw.json", needles: ["api.stali.vn", "models", "providers", "agents"], model: "" },
   { toolId: "deepseek-tui", relPath: ".config/deepseek-cli-nodejs/config.json", needles: ["api.stali.vn"], model: "deepseek-v4-flash" },
   { toolId: "qwen", relPath: ".qwen/settings.json", needles: ["api.stali.vn"], model: "stali/qwen3-codex" },
   { toolId: "opencode", relPath: ".config/opencode/config.json", needles: ["stali"], model: "gpt-5.6-sol" },
   { toolId: "kilo", relPath: ".config/Code/User/globalStorage/kilocode.kilo-code/kilo_settings.json", needles: ["api.stali.vn"], model: "" },
-  { toolId: "droid", relPath: ".droid/config.json", needles: ["api.stali.vn"], model: "" },
+  { toolId: "droid", relPath: ".factory/settings.json", needles: ["api.stali.vn", "customModels", "generic-chat-completion-api"], model: "" },
   { toolId: "cline", relPath: ".config/Code/User/globalStorage/saoudrizwan.claude-dev/cline_settings.json", needles: ["api.stali.vn"], model: "" },
   { toolId: "roo", relPath: ".config/Code/User/globalStorage/rooveterinaryinc.roo-cline/roo_settings.json", needles: ["api.stali.vn"], model: "" },
-  { toolId: "grok-build", relPath: ".grok/config.toml", needles: ["api.stali.vn"], model: "grok-4.6" },
+  { toolId: "grok-build", relPath: ".grok/config.toml", needles: ["api.stali.vn", "model_providers", "api_base_url", "api_backend"], model: "grok-4.6" },
   { toolId: "cowork", relPath: ".cowork/settings.json", needles: ["api.stali.vn"], model: "gpt-5.6-sol" },
-  { toolId: "jcode", relPath: ".jcode/config.toml", needles: ["api.stali.vn"], model: "" },
+  { toolId: "jcode", relPath: ".jcode/config.toml", needles: ["api.stali.vn", "providers", "openai-compatible", "base_url"], model: "" },
   { toolId: "claude", relPath: ".claude/settings.json", needles: ["api.stali.vn"], model: "" },
   { toolId: "codex", relPath: ".codex/config.toml", needles: ["stali"], model: "req/gpt-5.6-sol" },
 ];
@@ -102,7 +102,7 @@ describe("đường dẫn ghi khớp bộ dò paths.ts", () => {
         const { resolveToolConfigPath } = await import("./paths.ts");
         const { syncTool } = await import("./index.ts");
         const out = {};
-        for (const id of ["claude","codex","qwen","opencode","deepseek-tui","kilo","cline","roo"]) {
+        for (const id of ["claude","codex","qwen","opencode","deepseek-tui","kilo","cline","roo","openclaw","droid","grok-build","jcode"]) {
           const info = await resolveToolConfigPath(id);
           const r = await syncTool(id, ${JSON.stringify(TEST_KEY)}, "");
           out[id] = { expected: info?.chosen, actual: r.configPath };
@@ -123,6 +123,9 @@ describe("đường dẫn ghi khớp bộ dò paths.ts", () => {
         expect(v.actual).not.toMatch(/\/\.vscode\/(cline|roo)_settings\.json$/);
         expect(v.actual).not.toMatch(/\/\.deepseek\/config\.toml$/);
         expect(v.actual).not.toMatch(/\/\.opencode\/config\.json$/);
+        // Các đường dẫn cũ đã kiểm chứng là SAI — không bao giờ ghi vào
+        expect(v.actual).not.toMatch(/\/\.openclaw\/config\.json$/);
+        expect(v.actual).not.toMatch(/\/\.droid\/config\.json$/);
       }
     } finally {
       await fs.rm(tmpHome, { recursive: true, force: true });

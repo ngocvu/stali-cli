@@ -37,15 +37,48 @@ export function buildToolConfigPreview(
         auth: { OPENAI_API_KEY: masked },
       };
     case "openclaw":
-      return anthropicEnvPreview(masked, model, urls.anthropicBaseUrl);
+      return {
+        models: {
+          providers: {
+            stali: {
+              baseUrl: urls.openAiBaseUrl,
+              apiKey: masked,
+              api: "openai-completions",
+              models: [{ id: model, name: model }],
+            },
+          },
+        },
+        agents: { defaults: { model: { primary: `stali/${model}` } } },
+      };
     case "deepseek-tui":
-    case "grok-build":
-    case "jcode":
       return {
         provider: "openai",
         base_url: urls.openAiBaseUrl,
         api_key: masked,
         model,
+      };
+    case "grok-build":
+      return {
+        models: { default: model },
+        model_providers: {
+          stali: {
+            api_base_url: urls.openAiBaseUrl,
+            api_key: masked,
+            api_backend: "chat_completions",
+          },
+        },
+      };
+    case "jcode":
+      return {
+        provider: { default_provider: "stali", default_model: model },
+        providers: {
+          stali: {
+            type: "openai-compatible",
+            base_url: urls.openAiBaseUrl,
+            api_key: masked,
+            models: [{ id: model }],
+          },
+        },
       };
     case "qwen":
       return {
@@ -83,12 +116,15 @@ export function buildToolConfigPreview(
       };
     case "droid":
       return {
-        provider: {
-          type: "openai",
-          baseUrl: urls.openAiBaseUrl,
-          apiKey: masked,
-        },
-        model,
+        customModels: [
+          {
+            model,
+            displayName: `Stali: ${model}`,
+            provider: "generic-chat-completion-api",
+            baseUrl: urls.openAiBaseUrl,
+            apiKey: masked,
+          },
+        ],
       };
     case "cowork":
       return {

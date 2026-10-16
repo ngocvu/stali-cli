@@ -30,6 +30,9 @@ import {
   detectCodexTomlStatus,
   detectCoworkJsonStatus,
   detectDroidJsonStatus,
+  detectGrokTomlStatus,
+  detectJcodeTomlStatus,
+  detectOpenClawStatus,
   detectOpenAiProviderJsonStatus,
   detectOpenAiTomlStatus,
   detectQwenJsonStatus,
@@ -85,7 +88,7 @@ type StatusDetector = (
 const STATUS_BY_TOOL: Record<string, StatusDetector | "claude" | "codex"> = {
   claude: "claude",
   codex: "codex",
-  openclaw: detectAnthropicEnvJsonStatus,
+  openclaw: detectOpenClawStatus,
   "deepseek-tui": detectOpenAiTomlStatus,
   qwen: detectQwenJsonStatus,
   opencode: detectOpenAiProviderJsonStatus,
@@ -93,9 +96,9 @@ const STATUS_BY_TOOL: Record<string, StatusDetector | "claude" | "codex"> = {
   droid: detectDroidJsonStatus,
   cline: detectVsCodeAgentJsonStatus,
   roo: detectVsCodeAgentJsonStatus,
-  "grok-build": detectOpenAiTomlStatus,
+  "grok-build": detectGrokTomlStatus,
   cowork: detectCoworkJsonStatus,
-  jcode: detectOpenAiTomlStatus,
+  jcode: detectJcodeTomlStatus,
 };
 
 export async function getToolSyncStatus(
@@ -105,7 +108,10 @@ export async function getToolSyncStatus(
   const tool = getToolById(toolId);
   if (!tool) return null;
 
-  const configPath = resolveHomePath(tool.configFile);
+  // Dùng đường dẫn THẬT (bộ dò `paths.ts`): nhiều tool đọc file khác với
+  // giá trị hardcode trong registry.
+  const resolved = await resolveToolConfigPath(toolId);
+  const configPath = resolved?.chosen ?? resolveHomePath(tool.configFile);
   if (!(await fileExists(configPath))) {
     return { configured: false };
   }

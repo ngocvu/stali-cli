@@ -122,12 +122,12 @@ async function main() {
 
   // Verify files created (13/13)
   const checks = [
-    [".openclaw/config.json", "api.stali.vn"],
+    [".openclaw/openclaw.json", "api.stali.vn"],
     [".deepseek/config.toml", "api.stali.vn"],
     [".qwen/settings.json", "api.stali.vn"],
     [".opencode/config.json", "stali"],
     [".kilo/config.json", "api.stali.vn"],
-    [".droid/config.json", "api.stali.vn"],
+    [".factory/settings.json", "api.stali.vn"],
     [".vscode/cline_settings.json", "api.stali.vn"],
     [".vscode/roo_settings.json", "api.stali.vn"],
     [".grok/config.toml", "api.stali.vn"],
@@ -143,7 +143,7 @@ async function main() {
   }
 
   // 7. Backup + restore (cần file đã tồn tại → configure lần 2 tạo backup)
-  const openclawPath = path.join(tmpHome, ".openclaw/config.json");
+  const openclawPath = path.join(tmpHome, ".openclaw/openclaw.json");
   await run("configure openclaw 2nd", ["configure", "openclaw", "-k", rawKey, "-m", "claude-sonnet-5"], envHome);
   await fs.writeFile(openclawPath, JSON.stringify({ broken: true }));
   const restore = run("restore openclaw", ["restore", "-t", "openclaw"], envHome);

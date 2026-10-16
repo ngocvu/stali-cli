@@ -87,16 +87,71 @@ describe("syncer an toàn với file cấu hình của người dùng", () => {
     }
   });
 
-  test("openclaw: KHÔNG ghi đè config.json hỏng", async () => {
+  test("openclaw: KHÔNG ghi đè openclaw.json hỏng", async () => {
     const home = await tmpHome("openclaw-broken");
     try {
       const dir = path.join(home, ".openclaw");
       await fs.mkdir(dir, { recursive: true });
-      const cfg = path.join(dir, "config.json");
-      const broken = `{"env": {`;
+      // Đường dẫn THẬT OpenClaw đọc là openclaw.json (không phải config.json).
+      const cfg = path.join(dir, "openclaw.json");
+      const broken = `{"models": {`;
       await fs.writeFile(cfg, broken, "utf8");
 
       const r = runSyncInHome(home, "openclaw");
+      const result = JSON.parse(r.stdout.trim());
+      expect(result.success).toBe(false);
+      expect(await fs.readFile(cfg, "utf8")).toBe(broken);
+    } finally {
+      await fs.rm(home, { recursive: true, force: true });
+    }
+  });
+
+  test("droid: KHÔNG ghi đè settings.json hỏng", async () => {
+    const home = await tmpHome("droid-broken");
+    try {
+      const dir = path.join(home, ".factory");
+      await fs.mkdir(dir, { recursive: true });
+      const cfg = path.join(dir, "settings.json");
+      const broken = `{"customModels": [`;
+      await fs.writeFile(cfg, broken, "utf8");
+
+      const r = runSyncInHome(home, "droid");
+      const result = JSON.parse(r.stdout.trim());
+      expect(result.success).toBe(false);
+      expect(await fs.readFile(cfg, "utf8")).toBe(broken);
+    } finally {
+      await fs.rm(home, { recursive: true, force: true });
+    }
+  });
+
+  test("grok: KHÔNG ghi đè config.toml hỏng", async () => {
+    const home = await tmpHome("grok-broken");
+    try {
+      const dir = path.join(home, ".grok");
+      await fs.mkdir(dir, { recursive: true });
+      const cfg = path.join(dir, "config.toml");
+      const broken = `[models\ndefault = `;
+      await fs.writeFile(cfg, broken, "utf8");
+
+      const r = runSyncInHome(home, "grok-build");
+      const result = JSON.parse(r.stdout.trim());
+      expect(result.success).toBe(false);
+      expect(await fs.readFile(cfg, "utf8")).toBe(broken);
+    } finally {
+      await fs.rm(home, { recursive: true, force: true });
+    }
+  });
+
+  test("jcode: KHÔNG ghi đè config.toml hỏng", async () => {
+    const home = await tmpHome("jcode-broken");
+    try {
+      const dir = path.join(home, ".jcode");
+      await fs.mkdir(dir, { recursive: true });
+      const cfg = path.join(dir, "config.toml");
+      const broken = `[provider\ndefault_provider = `;
+      await fs.writeFile(cfg, broken, "utf8");
+
+      const r = runSyncInHome(home, "jcode");
       const result = JSON.parse(r.stdout.trim());
       expect(result.success).toBe(false);
       expect(await fs.readFile(cfg, "utf8")).toBe(broken);

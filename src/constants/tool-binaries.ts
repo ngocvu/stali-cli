@@ -12,7 +12,7 @@ export const TOOL_BINARY_NAMES: Record<string, string[]> = {
   roo: ["roo"],
   "grok-build": ["grok", "grok-build"],
   cowork: ["cowork"],
-  jcode: ["jcode"],
+  jcode: ["jcode", "@1jehuang/jcode"],
 };
 
 /** Substring markers trong full process command line (ps args / tasklist). */
@@ -24,12 +24,12 @@ export const TOOL_PROCESS_MARKERS: Record<string, string[]> = {
   qwen: ["qwen-code", "@qwen"],
   opencode: ["opencode", "@opencode"],
   kilo: ["kilocode", "kilo-code"],
-  droid: ["factory-droid", "droid-cli"],
+  droid: ["droid", "factory-droid", "@factory/cli"],
   cline: ["cline", "claude-dev"],
   roo: ["roo-cline", "roocode"],
-  "grok-build": ["grok-build", "@xai/grok"],
+  "grok-build": ["grok", "@xai-official/grok", "grok-build"],
   cowork: ["cowork"],
-  jcode: ["jcode"],
+  jcode: ["jcode", "@1jehuang/jcode"],
 };
 
 /** macOS .app bundles under /Applications or ~/Applications */
@@ -77,7 +77,7 @@ export const TOOL_HOME_MARKERS: Record<string, string[]> = {
   qwen: [".qwen"],
   opencode: [".opencode"],
   kilo: [".kilo"],
-  droid: [".droid"],
+  droid: [".factory", ".droid"],
   cline: [".vscode"],
   roo: [".vscode"],
   "grok-build": [".grok"],

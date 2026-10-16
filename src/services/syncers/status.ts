@@ -1,5 +1,6 @@
 import { isStaliLikeUrl } from "../../utils/stali-urls";
 import { readJsonFile, readTomlFile } from "../../utils/file";
+import { STALI_PROVIDER_ID } from "../../constants/tool-providers";
 import type { DoctorStatusContext } from "./status-context";
 
 export interface ToolSyncStatus {
@@ -102,20 +103,88 @@ export async function detectCodexTomlStatus(
   };
 }
 
+/**
+ * Droid: BYOK custom model nằm trong `customModels[]` của
+ * `~/.factory/settings.json` (khoá camelCase — đã đối chiếu docs + binary).
+ */
 export async function detectDroidJsonStatus(
   configPath: string,
   ctx?: DoctorStatusContext
 ): Promise<ToolSyncStatus> {
   const data = await readJsonFile(configPath);
-  const configured = matchStali(data?.provider?.baseUrl, ctx);
+  const models: any[] = Array.isArray(data?.customModels) ? data.customModels : [];
+  const hit = models.find((m) => matchStali(m?.baseUrl, ctx));
   return {
-    configured,
-    endpoint: data?.provider?.baseUrl,
-    model: data?.model,
-    apiKeyPresent: Boolean(data?.provider?.apiKey),
+    configured: Boolean(hit),
+    endpoint: hit?.baseUrl,
+    model: hit?.model,
+    apiKeyPresent: Boolean(hit?.apiKey),
   };
 }
 
+/**
+ * OpenClaw: provider khai ở `models.providers.<id>`, model mặc định ở
+ * `agents.defaults.model.primary` — đã đối chiếu docs + bundle.
+ */
+export async function detectOpenClawStatus(
+  configPath: string,
+  ctx?: DoctorStatusContext
+): Promise<ToolSyncStatus> {
+  const data = await readJsonFile(configPath);
+  const provider = data?.models?.providers?.[STALI_PROVIDER_ID];
+  const ref: string | undefined = data?.agents?.defaults?.model?.primary;
+  const model =
+    typeof ref === "string" && ref.startsWith(`${STALI_PROVIDER_ID}/`)
+      ? ref.slice(STALI_PROVIDER_ID.length + 1)
+      : undefined;
+  return {
+    configured: Boolean(provider) || matchStali(provider?.baseUrl, ctx),
+    endpoint: provider?.baseUrl,
+    model,
+    apiKeyPresent: Boolean(provider?.apiKey),
+  };
+}
+
+/**
+ * Grok CLI: `[model_providers.<id>]` + `[models].default` trong
+ * `~/.grok/config.toml` — đã đối chiếu binary @xai-official/grok.
+ */
+export async function detectGrokTomlStatus(
+  configPath: string,
+  ctx?: DoctorStatusContext
+): Promise<ToolSyncStatus> {
+  const data = await readTomlFile<any>(configPath);
+  const provider = data?.model_providers?.[STALI_PROVIDER_ID];
+  return {
+    configured: Boolean(provider) || matchStali(provider?.api_base_url, ctx),
+    endpoint: provider?.api_base_url,
+    model: data?.models?.default,
+    apiKeyPresent: Boolean(provider?.api_key),
+  };
+}
+
+/**
+ * jcode: `[providers.<id>]` + `[provider]` trong `~/.jcode/config.toml`
+ * — đã đối chiếu binary @1jehuang/jcode.
+ */
+export async function detectJcodeTomlStatus(
+  configPath: string,
+  ctx?: DoctorStatusContext
+): Promise<ToolSyncStatus> {
+  const data = await readTomlFile<any>(configPath);
+  const provider = data?.providers?.[STALI_PROVIDER_ID];
+  return {
+    configured:
+      data?.provider?.default_provider === STALI_PROVIDER_ID ||
+      Boolean(provider) ||
+      matchStali(provider?.base_url, ctx),
+    endpoint: provider?.base_url,
+    model: data?.provider?.default_model,
+    apiKeyPresent: Boolean(provider?.api_key),
+  };
+}
+
+/** Cowork: chưa xác minh được file cấu hình (là app desktop). */
 export async function detectCoworkJsonStatus(
   configPath: string,
   ctx?: DoctorStatusContext
